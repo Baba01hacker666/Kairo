@@ -212,6 +212,18 @@ export class Quaternion {
     return this;
   }
 
+  copy(q: Quaternion): this {
+    this.x = q.x;
+    this.y = q.y;
+    this.z = q.z;
+    this.w = q.w;
+    return this;
+  }
+
+  clone(): Quaternion {
+    return new Quaternion(this.x, this.y, this.z, this.w);
+  }
+
   identity(): this {
     return this.set(0, 0, 0, 1);
   }
@@ -276,6 +288,17 @@ export class Matrix4 {
     e[2] = 0; e[6] = 0; e[10] = 1; e[14] = 0;
     e[3] = 0; e[7] = 0; e[11] = 0; e[15] = 1;
     return this;
+  }
+
+  copy(m: Matrix4): this {
+    this.elements.set(m.elements);
+    return this;
+  }
+
+  clone(): Matrix4 {
+    const mat = new Matrix4();
+    mat.copy(this);
+    return mat;
   }
 
   compose(position: Vector3, rotation: Quaternion, scale: Vector3): this {

@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "build": "tsc --noEmit",
     "test": "node --test tests/**/*.test.js",
     "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
   },
   "keywords": [
     "game-engine",

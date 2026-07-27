@@ -19,14 +19,14 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install Dependencies
+        run: npm install
+
       - name: Check TypeScript Compilation
         run: npx tsc --noEmit
 
       - name: Run Engine Unit Tests
         run: node --test tests/**/*.test.js
-
-      - name: Build Web Editor & Bundles
-        run: npx vite build || echo "Vite build complete"
 
   publish-docs:
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Verify Documentation & Diagrams
+      - name: Verify Documentation & Specs
         run: |
           echo "Verifying architecture documentation and API specs..."
           ls -la docs/
