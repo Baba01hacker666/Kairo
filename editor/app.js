@@ -1,6 +1,6 @@
 /**
  * Kairo Engine Studio - Main Editor Application Script
- * Full 3D Camera Controls: Orbit, Pan, Zoom, Reset, & Viewport Gizmo Controls.
+ * 2D/3D Dual Engine Studio + Playable "Stickman Quest & Runner" Game.
  */
 
 // --- ENGINE MATH & UTILS ---
@@ -14,7 +14,7 @@ class Vector3 {
   scale(s) { this.x *= s; this.y *= s; this.z *= s; return this; }
 }
 
-// Web Audio API Synthesizer
+// Web Audio API Synthesizer (SFX for Game & Studio)
 class AudioManager {
   constructor() { this.ctx = null; }
   init() {
@@ -35,15 +35,29 @@ class AudioManager {
       if (type === 'jump') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(220, now);
-        osc.frequency.exponentialRampToValueAtTime(550, now + 0.18);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
-        osc.start(now); osc.stop(now + 0.18);
+        osc.frequency.exponentialRampToValueAtTime(580, now + 0.16);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.16);
+        osc.start(now); osc.stop(now + 0.16);
+      } else if (type === 'coin') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(1320, now + 0.08);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.2);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
       } else if (type === 'run') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(520, now);
         osc.frequency.exponentialRampToValueAtTime(260, now + 0.12);
-        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.setValueAtTime(0.12, now);
         gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
         osc.start(now); osc.stop(now + 0.12);
       } else {
@@ -58,7 +72,7 @@ class AudioManager {
 }
 const audioManager = new AudioManager();
 
-// --- EDITOR STATE ---
+// --- EDITOR & GAME STATE ---
 const state = {
   isPlaying: true,
   isPaused: false,
@@ -66,7 +80,7 @@ const state = {
   activeGizmo: 'translate',
   showPhysicsDebug: false,
   entities: [],
-  demoType: 'stickman', // Default 3D Studio Mode
+  demoType: 'stickman', // 'stickman' (3D) | 'game' (Playable Game) | 'stickman2d' (2D) | 'scifi' | 'platformer'
   stickmanAnimState: 'idle',
   animSpeed: 1.0,
   ikTargetHeight: 0.0,
@@ -75,6 +89,25 @@ const state = {
   isDrawerCollapsed: false,
   isZenMode: false
 };
+
+// Playable Game State
+const gameState = {
+  score: 0,
+  health: 100,
+  isGameOver: false,
+  playerX: 0,
+  playerY: 0,
+  playerVelY: 0,
+  isGrounded: true,
+  coins: [],
+  hazards: [],
+  gameTimer: 0
+};
+
+// Keyboard Action Controls for Game
+const keys = {};
+window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
 // Global Mouse Screen Tracking
 let mouseScreenPos = { x: 400, y: 300 };
@@ -91,7 +124,6 @@ let container, canvas3D, scene, camera, renderer;
 let canvas2D, ctx2D;
 let threeObjectsMap = new Map();
 
-// Camera Orbit & Pan State
 let camTarget = new THREE.Vector3(0, 1.8, 0);
 let camRadius = 7.5;
 let camTheta = 0;
@@ -106,6 +138,13 @@ let stickmanBones = {
   rightUpperArm: null, rightForearm: null, rightHand: null,
   leftThigh: null, leftShin: null, leftFoot: null,
   rightThigh: null, rightShin: null, rightFoot: null
+};
+
+// Game Objects (Coins & Hazards) in 3D Scene
+let gameSceneObjects = {
+  playerGroup: null,
+  coinsMeshGroup: [],
+  hazardsMeshGroup: []
 };
 
 function initViewport() {
@@ -196,7 +235,7 @@ function onWindowResize() {
   }
 }
 
-// --- ADVANCED CAMERA CONTROL SUITE (ORBIT, PAN, ZOOM & GIZMOS) ---
+// --- ADVANCED CAMERA CONTROL SUITE ---
 function setupAdvancedCameraControls() {
   let isDragging = false;
   let isPanning = false;
@@ -205,10 +244,17 @@ function setupAdvancedCameraControls() {
   const viewportPanel = document.getElementById('viewport-container');
 
   viewportPanel.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.camera-controls-overlay') || e.target.closest('.viewport-overlay')) return;
+    if (e.target.closest('.camera-controls-overlay') || e.target.closest('.viewport-overlay') || e.target.closest('#game-ui-overlay')) return;
     isDragging = true;
     isPanning = e.shiftKey || e.button === 1 || e.button === 2;
     prevMouse = { x: e.clientX, y: e.clientY };
+
+    // Trigger Game Jump on Viewport Click if in Game Mode!
+    if (state.demoType === 'game' && gameState.isGrounded && !gameState.isGameOver) {
+      gameState.playerVelY = 12;
+      gameState.isGrounded = false;
+      audioManager.playSound('jump');
+    }
   });
 
   window.addEventListener('mousemove', (e) => {
@@ -217,14 +263,12 @@ function setupAdvancedCameraControls() {
     const dy = e.clientY - prevMouse.y;
 
     if (isPanning) {
-      // Pan Camera parallel to Viewport
       const right = new THREE.Vector3().crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).negate().normalize();
       const up = new THREE.Vector3().copy(camera.up).normalize();
 
       camTarget.addScaledVector(right, -dx * 0.008);
       camTarget.addScaledVector(up, dy * 0.008);
     } else {
-      // Orbit Camera Angle
       camTheta -= dx * 0.006;
       camPhi -= dy * 0.006;
     }
@@ -236,7 +280,6 @@ function setupAdvancedCameraControls() {
   window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
   viewportPanel.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // Mouse Wheel Zoom
   viewportPanel.addEventListener('wheel', (e) => {
     e.preventDefault();
     camRadius *= (1 + e.deltaY * 0.001);
@@ -456,6 +499,66 @@ function build3DCharacter() {
   threeObjectsMap.set('stickman_root', charGroup);
 }
 
+// --- PLAYABLE GAME LEVEL BUILDER ("Stickman Quest & Runner") ---
+function buildPlayableGameLevel() {
+  gameState.score = 0;
+  gameState.health = 100;
+  gameState.isGameOver = false;
+  gameState.playerX = -6;
+  gameState.playerY = 0;
+  gameState.playerVelY = 0;
+  gameState.isGrounded = true;
+  gameState.coins = [];
+  gameState.hazards = [];
+
+  // Ground Track
+  createEntity('Game Track Floor', 'game_floor', { x: 0, y: -0.1, z: 0 }, { x: 36, y: 0.2, z: 6 }, 0x151923, false);
+
+  // Build Player 3D Character
+  build3DCharacter();
+  gameSceneObjects.playerGroup = threeObjectsMap.get('stickman_root');
+  if (gameSceneObjects.playerGroup) {
+    gameSceneObjects.playerGroup.position.set(gameState.playerX, 2.3, 0);
+  }
+
+  // Spawn Collectible Glowing Cyan Coins along track
+  const coinMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.9, roughness: 0.1 });
+  const coinGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 20);
+  coinGeom.rotateX(Math.PI / 2);
+
+  for (let i = 0; i < 8; i++) {
+    const coinMesh = new THREE.Mesh(coinGeom, coinMat);
+    const coinX = -3 + i * 2.2;
+    const coinY = 1.2 + Math.sin(i * 0.8) * 0.8;
+    coinMesh.position.set(coinX, coinY, 0);
+    coinMesh.castShadow = true;
+    scene.add(coinMesh);
+
+    gameState.coins.push({ mesh: coinMesh, x: coinX, y: coinY, active: true });
+    threeObjectsMap.set(`coin_${i}`, coinMesh);
+    state.entities.push({ id: `coin_${i}`, name: `Coin #${i+1}`, position: new Vector3(coinX, coinY, 0), scale: new Vector3(0.6, 0.6, 0.1), color: 0x06b6d4 });
+  }
+
+  // Spawn Enemy Hazards (Red Spikes & Moving Blocks)
+  const hazardMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.4, roughness: 0.3 });
+  const hazardGeom = new THREE.ConeGeometry(0.35, 0.7, 16);
+
+  for (let j = 0; j < 3; j++) {
+    const hazardMesh = new THREE.Mesh(hazardGeom, hazardMat);
+    const hzX = -1.5 + j * 4.5;
+    hazardMesh.position.set(hzX, 0.35, 0);
+    hazardMesh.castShadow = true;
+    scene.add(hazardMesh);
+
+    gameState.hazards.push({ mesh: hazardMesh, x: hzX, y: 0.35 });
+    threeObjectsMap.set(`hazard_${j}`, hazardMesh);
+    state.entities.push({ id: `hazard_${j}`, name: `Spike Hazard #${j+1}`, position: new Vector3(hzX, 0.35, 0), scale: new Vector3(0.7, 0.7, 0.7), color: 0xef4444 });
+  }
+
+  const gameUi = document.getElementById('game-ui-overlay');
+  if (gameUi) gameUi.style.display = 'flex';
+}
+
 function loadDemoScene(type) {
   state.demoType = type;
   threeObjectsMap.forEach(obj => scene.remove(obj));
@@ -465,14 +568,23 @@ function loadDemoScene(type) {
 
   const modeOverlay = document.getElementById('stat-anim-mode');
   const demoSelect = document.getElementById('project-demo-select');
+  const gameUi = document.getElementById('game-ui-overlay');
+  if (gameUi) gameUi.style.display = 'none';
+
   if (demoSelect && demoSelect.value !== type) demoSelect.value = type;
 
-  if (type === 'stickman2d') {
+  if (type === 'game') {
+    canvas3D.style.display = 'block';
+    canvas2D.style.display = 'none';
+    if (modeOverlay) modeOverlay.innerText = '🎮 Playable Stickman Quest Active';
+    buildPlayableGameLevel();
+    logConsole('[Engine] Launched Playable Stickman Quest & Runner Game.');
+  } else if (type === 'stickman2d') {
     canvas3D.style.display = 'none';
     canvas2D.style.display = 'block';
     if (modeOverlay) modeOverlay.innerText = '2D Stickman Studio Active';
     createEntity('2D Stickman Figure', 'stick2d_root', { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1 }, 0xffffff);
-    logConsole('[Engine] Switched to 2D HTML5 Canvas Stickman Physics Engine.');
+    logConsole('[Engine] Switched to 2D HTML5 Canvas Stickman Engine.');
   } else {
     canvas3D.style.display = 'block';
     canvas2D.style.display = 'none';
@@ -518,7 +630,7 @@ function updateHierarchyTree() {
   state.entities.forEach(ent => {
     const node = document.createElement('div');
     node.className = `tree-node ${ent.id === state.selectedEntityId ? 'selected' : ''}`;
-    node.innerHTML = `<span>${ent.id.includes('stick') ? '🤸' : '📦'}</span> <span>${ent.name}</span>`;
+    node.innerHTML = `<span>${ent.id.includes('stick') ? '🤸' : (ent.id.includes('coin') ? '🪙' : '📦')}</span> <span>${ent.name}</span>`;
     node.onclick = () => selectEntity(ent.id);
     container.appendChild(node);
   });
@@ -547,7 +659,7 @@ function renderInspector() {
 
   if (tag) tag.innerText = `ID: ${ent.id}`;
 
-  const is2D = state.demoType === 'stickman2d';
+  const isGame = state.demoType === 'game';
 
   container.innerHTML = `
     <div class="inspector-group">
@@ -556,10 +668,10 @@ function renderInspector() {
     </div>
 
     <div class="inspector-group">
-      <div class="inspector-group-title"><span>Camera Controls</span></div>
-      <div class="form-row"><span class="form-label">Orbit</span><span style="color: var(--accent-secondary); font-weight: bold;">Left-Click Drag</span></div>
-      <div class="form-row"><span class="form-label">Pan</span><span style="color: var(--accent-success); font-weight: bold;">Shift + Drag / Middle Drag</span></div>
-      <div class="form-row"><span class="form-label">Zoom</span><span style="color: var(--accent-warning); font-weight: bold;">Scroll Wheel / Gizmo Buttons</span></div>
+      <div class="inspector-group-title"><span>${isGame ? '🎮 Game Controls' : 'Engine System'}</span></div>
+      <div class="form-row"><span class="form-label">Move Left/Right</span><span style="color: var(--accent-secondary); font-weight: bold;">A / D or Left/Right Arrow</span></div>
+      <div class="form-row"><span class="form-label">Jump</span><span style="color: var(--accent-success); font-weight: bold;">W / Space / Click</span></div>
+      <div class="form-row"><span class="form-label">Goal</span><span style="color: var(--accent-warning); font-weight: bold;">Collect Coins & Avoid Red Spikes</span></div>
     </div>
 
     <div class="inspector-group">
@@ -589,7 +701,7 @@ function setStickmanAnimState(newState) {
   });
 
   const overlayMode = document.getElementById('stat-anim-mode');
-  if (overlayMode) overlayMode.innerText = `${state.demoType === 'stickman2d' ? '2D Stickman' : '3D Character'} ${newState.toUpperCase()}`;
+  if (overlayMode) overlayMode.innerText = `${state.demoType === 'game' ? 'Stickman Game' : (state.demoType === 'stickman2d' ? '2D Stickman' : '3D Character')} ${newState.toUpperCase()}`;
 }
 
 function bindEditorEvents() {
@@ -648,7 +760,7 @@ function bindEditorEvents() {
   });
 }
 
-// --- RENDER PURE CLASSIC 2D STICK FIGURE ---
+// --- RENDER 2D STICKMAN ENGINE ---
 function render2DStickmanEngine(now, dt) {
   if (!ctx2D || !canvas2D) return;
 
@@ -657,14 +769,12 @@ function render2DStickmanEngine(now, dt) {
   const centerX = w / 2;
   const centerY = h / 2 + 50;
 
-  // Clear 2D Canvas
   const grad = ctx2D.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, '#0b0f19');
   grad.addColorStop(1, '#151923');
   ctx2D.fillStyle = grad;
   ctx2D.fillRect(0, 0, w, h);
 
-  // 2D Floor Surface Line
   const floorY = centerY + 140;
   ctx2D.strokeStyle = '#6366f1';
   ctx2D.lineWidth = 3;
@@ -673,7 +783,6 @@ function render2DStickmanEngine(now, dt) {
   ctx2D.lineTo(w - 50, floorY);
   ctx2D.stroke();
 
-  // Grid Dots
   ctx2D.fillStyle = '#232938';
   for (let x = 60; x < w - 60; x += 30) {
     ctx2D.beginPath();
@@ -681,7 +790,6 @@ function render2DStickmanEngine(now, dt) {
     ctx2D.fill();
   }
 
-  // Motion Math
   const t = now * 0.005 * state.animSpeed;
   let rootY = 0, swing = 0, kneeBend = 0, armSwing = 0;
 
@@ -704,7 +812,6 @@ function render2DStickmanEngine(now, dt) {
     swing = 20; kneeBend = 45; armSwing = -50;
   }
 
-  // 2D Skeleton Joint Coordinates
   const pelvisPos = { x: centerX, y: centerY + rootY };
   const neckPos = { x: pelvisPos.x, y: pelvisPos.y - 85 };
   const headPos = { x: pelvisPos.x, y: pelvisPos.y - 120 };
@@ -726,7 +833,6 @@ function render2DStickmanEngine(now, dt) {
   const lFoot = { x: lKnee.x + Math.sin((swing + kneeBend) * 0.02) * 18, y: Math.min(floorY - 6, lKnee.y + 55) };
   const rFoot = { x: rKnee.x - Math.sin((swing - kneeBend) * 0.02) * 18, y: Math.min(floorY - 6, rKnee.y + 55) };
 
-  // Shadow Oval on Floor
   ctx2D.fillStyle = 'rgba(0, 0, 0, 0.4)';
   ctx2D.beginPath();
   ctx2D.ellipse(pelvisPos.x, floorY + 4, 45, 10, 0, 0, Math.PI * 2);
@@ -742,7 +848,6 @@ function render2DStickmanEngine(now, dt) {
     ctx2D.stroke();
   }
 
-  // Pure White Stick Lines (#ffffff)
   drawBoneLine(pelvisPos, neckPos, 8, '#ffffff');
 
   drawBoneLine(lHip, lKnee, 6, '#ffffff');
@@ -755,13 +860,11 @@ function render2DStickmanEngine(now, dt) {
   drawBoneLine(shoulderAnchor, rElbow, 6, '#ffffff');
   drawBoneLine(rElbow, rHand, 6, '#ffffff');
 
-  // Head Circle
   ctx2D.fillStyle = '#ffffff';
   ctx2D.beginPath();
   ctx2D.arc(headPos.x, headPos.y, 28, 0, Math.PI * 2);
   ctx2D.fill();
 
-  // 2D Trigonometric Eye Pupil Tracking
   const dx = mouseScreenPos.x - (canvas2D.getBoundingClientRect().left + headPos.x);
   const dy = mouseScreenPos.y - (canvas2D.getBoundingClientRect().top + headPos.y);
   const angle = Math.atan2(dy, dx);
@@ -776,12 +879,103 @@ function render2DStickmanEngine(now, dt) {
   ctx2D.beginPath(); ctx2D.arc(leftEyeX, leftEyeY, 5, 0, Math.PI * 2); ctx2D.fill();
   ctx2D.beginPath(); ctx2D.arc(rightEyeX, rightEyeY, 5, 0, Math.PI * 2); ctx2D.fill();
 
-  // 2D Smile Mouth
   ctx2D.strokeStyle = '#0f172a';
   ctx2D.lineWidth = 3;
   ctx2D.beginPath();
   ctx2D.arc(headPos.x, headPos.y + 6, 9, 0.1, Math.PI - 0.1);
   ctx2D.stroke();
+}
+
+// --- UPDATE PLAYABLE STICKMAN GAME TICK ---
+function updatePlayableGameTick(dt) {
+  if (gameState.isGameOver || !state.isPlaying || state.isPaused) return;
+
+  gameState.gameTimer += dt;
+
+  // 1. Player Input Movement (A / D or Left / Right Arrow)
+  let moveX = 0;
+  if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+  gameState.playerX += moveX * 6 * dt;
+  gameState.playerX = Math.max(-12, Math.min(12, gameState.playerX));
+
+  // Jump Input (W / Space / Up Arrow)
+  if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && gameState.isGrounded) {
+    gameState.playerVelY = 12;
+    gameState.isGrounded = false;
+    audioManager.playSound('jump');
+  }
+
+  // 2. Player Gravity Physics Step
+  gameState.playerVelY -= 28 * dt; // Gravity
+  gameState.playerY += gameState.playerVelY * dt;
+
+  if (gameState.playerY <= 0) {
+    gameState.playerY = 0;
+    gameState.playerVelY = 0;
+    gameState.isGrounded = true;
+  }
+
+  // Update Player 3D Mesh Position & Animation Clip
+  if (gameSceneObjects.playerGroup) {
+    gameSceneObjects.playerGroup.position.x = gameState.playerX;
+    gameSceneObjects.playerGroup.position.y = 2.3 + gameState.playerY;
+
+    if (!gameState.isGrounded) {
+      state.stickmanAnimState = 'jump';
+    } else if (Math.abs(moveX) > 0.1) {
+      state.stickmanAnimState = 'run';
+    } else {
+      state.stickmanAnimState = 'idle';
+    }
+  }
+
+  // 3. Coin Pickups Collision Check
+  gameState.coins.forEach((c, idx) => {
+    if (c.active) {
+      c.mesh.rotation.z += dt * 3; // Spin Coin
+      const dist = Math.abs(gameState.playerX - c.x);
+      if (dist < 0.8 && gameState.playerY < 1.2) {
+        c.active = false;
+        c.mesh.visible = false;
+        gameState.score += 100;
+        audioManager.playSound('coin');
+        logConsole(`[Game] Collected Coin #${idx+1}! Score: ${gameState.score}`);
+      }
+    }
+  });
+
+  // 4. Enemy Hazard Collision Check
+  gameState.hazards.forEach(h => {
+    const dist = Math.abs(gameState.playerX - h.x);
+    if (dist < 0.6 && gameState.playerY < 0.6) {
+      gameState.health -= 25 * dt; // Take Damage
+      if (Math.random() < 0.05) audioManager.playSound('hit');
+
+      if (gameState.health <= 0) {
+        gameState.health = 0;
+        gameState.isGameOver = true;
+        audioManager.playSound('hit');
+        logConsole('[Game] Game Over! You hit a spike hazard.', 'error');
+      }
+    }
+  });
+
+  // Update Game UI Overlay DOM
+  const scoreEl = document.getElementById('game-score-val');
+  const healthEl = document.getElementById('game-health-val');
+  const healthBarEl = document.getElementById('game-health-bar-fill');
+  const gameOverEl = document.getElementById('game-over-banner');
+
+  if (scoreEl) scoreEl.innerText = gameState.score;
+  if (healthEl) healthEl.innerText = Math.ceil(gameState.health);
+  if (healthBarEl) healthBarEl.style.width = `${Math.max(0, gameState.health)}%`;
+  if (gameOverEl) gameOverEl.style.display = gameState.isGameOver ? 'flex' : 'none';
+
+  // Smooth Camera Follow Player in Game Mode
+  camTarget.x += (gameState.playerX - camTarget.x) * 0.1;
+  updateCameraTransform();
 }
 
 // --- PROCEDURAL MOTION TICK ---
@@ -802,13 +996,15 @@ function animate(now) {
     frameCount = 0; fpsTimer -= 1.0;
   }
 
-  // Branch between 2D HTML5 Canvas & 3D WebGL Engines!
-  if (state.demoType === 'stickman2d') {
+  // Branch between Playable Game, 2D Canvas, & 3D Studio Modes!
+  if (state.demoType === 'game') {
+    updatePlayableGameTick(dt);
+  } else if (state.demoType === 'stickman2d') {
     render2DStickmanEngine(now, dt);
     return;
   }
 
-  // Drive 3D Character Engine
+  // Drive 3D Character Engine (Animations & IK Surface Clamping)
   if (state.isPlaying && !state.isPaused && stickmanBones.rootGroup) {
     animTimer += dt * state.animSpeed;
     const t = animTimer * 5.0;
@@ -844,8 +1040,7 @@ function animate(now) {
       lLeg = 0.7; rLeg = 0.7; lShin = 1.0; rShin = 1.0;
     }
 
-    // Apply Constrained Bone Transformations
-    stickmanBones.pelvis.position.y = 2.3 + rootY + state.ikTargetHeight;
+    stickmanBones.pelvis.position.y = (state.demoType === 'game' ? 2.3 + gameState.playerY : 2.3 + rootY + state.ikTargetHeight);
     stickmanBones.pelvis.rotation.x = flipAngle;
     stickmanBones.torso.rotation.x = torsoAngle;
 
