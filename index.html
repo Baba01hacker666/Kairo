@@ -21,7 +21,7 @@
       right: 16px;
       left: 16px;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
       z-index: 20;
       pointer-events: none;
@@ -38,7 +38,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.6);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
 
     .health-bar-bg {
@@ -125,26 +125,6 @@
       cursor: pointer;
       box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
     }
-
-    .studio-link-btn {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      pointer-events: auto;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 11px;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      backdrop-filter: blur(8px);
-    }
-
-    .studio-link-btn:hover { background: rgba(99, 102, 241, 0.3); border-color: #6366f1; }
   </style>
 </head>
 <body>
@@ -152,12 +132,8 @@
   <!-- Fullscreen 3D WebGL Game Canvas -->
   <canvas id="game-canvas"></canvas>
 
-  <!-- Top Studio Link -->
-  <a href="editor/" class="studio-link-btn">🛠 Studio Editor Mode</a>
-
   <!-- Sleek HUD Overlay -->
   <div id="hud-overlay">
-    <div></div>
     <div class="hud-card">
       <div>
         <div style="font-size: 9px; color: #9ca3af;">SCORE</div>
@@ -320,7 +296,7 @@
         const haz = new THREE.Mesh(hazGeom, hazMat);
         const hx = -1.5 + j * 4.5;
         haz.position.set(hx, 0.35, 0); haz.castShadow = true; scene.add(haz);
-        hazardsList.push({ mesh: haz, x: hx });
+        hazardsList.push({ mesh: hx, x: hx });
       }
     }
 
