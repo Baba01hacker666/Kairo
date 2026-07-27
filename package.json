@@ -7,10 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit",
-    "test": "node --test tests/ai.test.js tests/ecs.test.js tests/math.test.js tests/physics.test.js",
+    "test": "node --import tsx --test tests/ai.test.js tests/ecs.test.js tests/math.test.js tests/physics.test.js",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },
   "keywords": [
