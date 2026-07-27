@@ -1,6 +1,6 @@
 /**
  * Kairo Engine Studio - Main Editor Application Script
- * 2D/3D Dual Engine Studio + Playable "Stickman Quest & Runner" Game.
+ * 2D/3D Dual Engine Studio + Playable "Stickman Quest & Runner" Game with Fullscreen Mobile Touch Support.
  */
 
 // --- ENGINE MATH & UTILS ---
@@ -80,14 +80,15 @@ const state = {
   activeGizmo: 'translate',
   showPhysicsDebug: false,
   entities: [],
-  demoType: 'stickman', // 'stickman' (3D) | 'game' (Playable Game) | 'stickman2d' (2D) | 'scifi' | 'platformer'
+  demoType: 'game', // Default to Playable Game Mode on load!
   stickmanAnimState: 'idle',
   animSpeed: 1.0,
   ikTargetHeight: 0.0,
   isLeftCollapsed: false,
   isRightCollapsed: false,
   isDrawerCollapsed: false,
-  isZenMode: false
+  isZenMode: false,
+  isFullscreen: false
 };
 
 // Playable Game State
@@ -104,8 +105,10 @@ const gameState = {
   gameTimer: 0
 };
 
-// Keyboard Action Controls for Game
+// Keyboard & Mobile Touch Action Controls for Game
 const keys = {};
+const touchControls = { left: false, right: false, jump: false };
+
 window.addEventListener('keydown', (e) => { keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
@@ -199,9 +202,10 @@ function initViewport() {
   // Dropdowns & Drawers
   setupDropdownMenus();
   setupCollapsibleDrawers();
+  setupMobileTouchListeners();
 
-  // Load Default 3D Character Scene
-  loadDemoScene('stickman');
+  // Load Default Playable Game Scene
+  loadDemoScene('game');
 
   // Start Loop
   animate(0);
@@ -244,7 +248,7 @@ function setupAdvancedCameraControls() {
   const viewportPanel = document.getElementById('viewport-container');
 
   viewportPanel.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.camera-controls-overlay') || e.target.closest('.viewport-overlay') || e.target.closest('#game-ui-overlay')) return;
+    if (e.target.closest('.camera-controls-overlay') || e.target.closest('.viewport-overlay') || e.target.closest('#game-ui-overlay') || e.target.closest('#mobile-touch-overlay')) return;
     isDragging = true;
     isPanning = e.shiftKey || e.button === 1 || e.button === 2;
     prevMouse = { x: e.clientX, y: e.clientY };
@@ -308,7 +312,28 @@ function setupAdvancedCameraControls() {
   if (rotRightBtn) rotRightBtn.onclick = () => { camTheta -= Math.PI / 4; updateCameraTransform(); };
 }
 
-// --- COLLAPSIBLE DRAWERS & ZEN MODE ---
+// --- MOBILE TOUCH CONTROLLER LISTENERS ---
+function setupMobileTouchListeners() {
+  const btnLeft = document.getElementById('touch-btn-left');
+  const btnRight = document.getElementById('touch-btn-right');
+  const btnJump = document.getElementById('touch-btn-jump');
+
+  const bindTouch = (el, action) => {
+    if (!el) return;
+    const start = (e) => { e.preventDefault(); touchControls[action] = true; };
+    const end = (e) => { e.preventDefault(); touchControls[action] = false; };
+    el.addEventListener('touchstart', start);
+    el.addEventListener('touchend', end);
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', end);
+  };
+
+  bindTouch(btnLeft, 'left');
+  bindTouch(btnRight, 'right');
+  bindTouch(btnJump, 'jump');
+}
+
+// --- COLLAPSIBLE DRAWERS & FULLSCREEN MODE ---
 function setupCollapsibleDrawers() {
   const leftPanel = document.getElementById('sidebar-left');
   const rightPanel = document.getElementById('sidebar-right');
@@ -321,6 +346,7 @@ function setupCollapsibleDrawers() {
   const btnDrawer = document.getElementById('toggle-bottom-drawer');
   const btnCollapseDrawer = document.getElementById('btn-collapse-drawer');
   const btnZen = document.getElementById('btn-zen-mode');
+  const btnFullscreen = document.getElementById('btn-fullscreen-mode');
 
   if (btnLeft && leftPanel) {
     btnLeft.onclick = () => {
@@ -362,6 +388,27 @@ function setupCollapsibleDrawers() {
 
       btnZen.classList.toggle('active', state.isZenMode);
       btnZen.innerText = state.isZenMode ? '👁 Restore Studio' : '👁 Pure Viewport';
+      setTimeout(onWindowResize, 260);
+    };
+  }
+
+  if (btnFullscreen) {
+    btnFullscreen.onclick = () => {
+      state.isFullscreen = !state.isFullscreen;
+      if (leftPanel) leftPanel.classList.toggle('collapsed', state.isFullscreen);
+      if (rightPanel) rightPanel.classList.toggle('collapsed', state.isFullscreen);
+      if (bottomDrawer) bottomDrawer.classList.toggle('collapsed', state.isFullscreen);
+      if (statsOverlay) statsOverlay.classList.toggle('hidden', state.isFullscreen);
+      if (camOverlay) camOverlay.style.display = state.isFullscreen ? 'none' : 'flex';
+
+      btnFullscreen.classList.toggle('active', state.isFullscreen);
+      btnFullscreen.innerText = state.isFullscreen ? '📱 Exit Fullscreen' : '📱 Fullscreen Mode';
+
+      if (state.isFullscreen && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else if (!state.isFullscreen && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
       setTimeout(onWindowResize, 260);
     };
   }
@@ -556,7 +603,9 @@ function buildPlayableGameLevel() {
   }
 
   const gameUi = document.getElementById('game-ui-overlay');
+  const touchUi = document.getElementById('mobile-touch-overlay');
   if (gameUi) gameUi.style.display = 'flex';
+  if (touchUi) touchUi.style.display = 'flex';
 }
 
 function loadDemoScene(type) {
@@ -569,7 +618,10 @@ function loadDemoScene(type) {
   const modeOverlay = document.getElementById('stat-anim-mode');
   const demoSelect = document.getElementById('project-demo-select');
   const gameUi = document.getElementById('game-ui-overlay');
+  const touchUi = document.getElementById('mobile-touch-overlay');
+
   if (gameUi) gameUi.style.display = 'none';
+  if (touchUi) touchUi.style.display = 'none';
 
   if (demoSelect && demoSelect.value !== type) demoSelect.value = type;
 
@@ -668,10 +720,10 @@ function renderInspector() {
     </div>
 
     <div class="inspector-group">
-      <div class="inspector-group-title"><span>${isGame ? '🎮 Game Controls' : 'Engine System'}</span></div>
-      <div class="form-row"><span class="form-label">Move Left/Right</span><span style="color: var(--accent-secondary); font-weight: bold;">A / D or Left/Right Arrow</span></div>
-      <div class="form-row"><span class="form-label">Jump</span><span style="color: var(--accent-success); font-weight: bold;">W / Space / Click</span></div>
-      <div class="form-row"><span class="form-label">Goal</span><span style="color: var(--accent-warning); font-weight: bold;">Collect Coins & Avoid Red Spikes</span></div>
+      <div class="inspector-group-title"><span>${isGame ? '🎮 Mobile Game Controls' : 'Engine System'}</span></div>
+      <div class="form-row"><span class="form-label">Move Left/Right</span><span style="color: var(--accent-secondary); font-weight: bold;">A / D or Touch ◀ / ▶ Pads</span></div>
+      <div class="form-row"><span class="form-label">Jump</span><span style="color: var(--accent-success); font-weight: bold;">W / Space / Touch ⬆ Pad</span></div>
+      <div class="form-row"><span class="form-label">Fullscreen</span><span style="color: var(--accent-warning); font-weight: bold;">Click 📱 Fullscreen Mode Button</span></div>
     </div>
 
     <div class="inspector-group">
@@ -892,16 +944,16 @@ function updatePlayableGameTick(dt) {
 
   gameState.gameTimer += dt;
 
-  // 1. Player Input Movement (A / D or Left / Right Arrow)
+  // 1. Player Input Movement (Keyboard A/D or Mobile Touch Controls)
   let moveX = 0;
-  if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+  if (keys['KeyA'] || keys['ArrowLeft'] || touchControls.left) moveX -= 1;
+  if (keys['KeyD'] || keys['ArrowRight'] || touchControls.right) moveX += 1;
 
   gameState.playerX += moveX * 6 * dt;
   gameState.playerX = Math.max(-12, Math.min(12, gameState.playerX));
 
-  // Jump Input (W / Space / Up Arrow)
-  if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && gameState.isGrounded) {
+  // Jump Input (Keyboard W / Space / Up Arrow or Mobile Touch Jump Button)
+  if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp'] || touchControls.jump) && gameState.isGrounded) {
     gameState.playerVelY = 12;
     gameState.isGrounded = false;
     audioManager.playSound('jump');
