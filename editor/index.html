@@ -14,11 +14,12 @@
   <div id="app">
     <!-- Top Bar -->
     <header class="top-bar">
-      <div style="display: flex; align-items: center; gap: 6px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
         <button id="toggle-sidebar-left" class="btn" title="Toggle Left Hierarchy Panel">📁 Hierarchy</button>
         <div class="brand">
           <div class="brand-icon">K</div>
           <span>KAIRO ENGINE</span>
+          <span class="pill-badge pill-indigo">v1.0 PRO</span>
         </div>
       </div>
 
@@ -294,8 +295,11 @@
 
     <!-- Status Bar -->
     <footer class="status-bar">
-      <span>Ready | Kairo Studio Editor (Playable Game Active)</span>
-      <span>Select "Demo: 🎮 Play Stickman Game!" to play</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="status-dot"></span>
+        <span>Ready | Kairo Studio Editor (Playable Game Active)</span>
+      </div>
+      <span style="font-family: var(--font-mono); font-size: 9px; opacity: 0.8;">Select "Demo: 🎮 Play Stickman Game!" to play</span>
     </footer>
   </div>
 
