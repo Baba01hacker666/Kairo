@@ -26,7 +26,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Run Engine Unit Tests
-        run: node --test tests/**/*.test.js
+        run: npm test
 
   publish-docs:
     runs-on: ubuntu-latest
