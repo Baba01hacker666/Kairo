@@ -1,0 +1,28 @@
+{
+  "name": "kairo-engine-monorepo",
+  "version": "1.0.0",
+  "description": "Modern, Modular, High-Performance 2D/3D TypeScript Game Engine & Web-Based Editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/**/*.test.js",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "game-engine",
+    "typescript",
+    "webgpu",
+    "webgl",
+    "ecs",
+    "threejs",
+    "physics",
+    "gamedev",
+    "editor",
+    "monorepo"
+  ],
+  "author": "Kairo Engine Team",
+  "license": "MIT"
+}

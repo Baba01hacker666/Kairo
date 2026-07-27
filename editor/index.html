@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kairo Engine Studio & Web Editor</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <button id="toggle-sidebar-left" class="btn" title="Toggle Left Hierarchy Panel">📁 Hierarchy</button>
+        <div class="brand">
+          <div class="brand-icon">K</div>
+          <span>KAIRO ENGINE</span>
+        </div>
+      </div>
+
+      <!-- Functional Dropdown Menus -->
+      <div class="menu-items">
+        <div class="menu-item-wrapper">
+          <span class="menu-item" id="menu-btn-file">File</span>
+          <div class="dropdown-menu" id="dropdown-file">
+            <div class="dropdown-item" id="menu-new-scene">📄 New Scene <span>Ctrl+N</span></div>
+            <div class="dropdown-item" id="menu-save-scene">💾 Save Scene <span>Ctrl+S</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" id="menu-import-asset">📁 Import Asset...</div>
+            <div class="dropdown-item" id="menu-export-proj">⚡ Export Build...</div>
+          </div>
+        </div>
+
+        <div class="menu-item-wrapper">
+          <span class="menu-item" id="menu-btn-edit">Edit</span>
+          <div class="dropdown-menu" id="dropdown-edit">
+            <div class="dropdown-item" id="menu-undo">↩ Undo <span>Ctrl+Z</span></div>
+            <div class="dropdown-item" id="menu-redo">↪ Redo <span>Ctrl+Y</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" id="menu-select-all">☑ Select All <span>Ctrl+A</span></div>
+          </div>
+        </div>
+
+        <div class="menu-item-wrapper">
+          <span class="menu-item" id="menu-btn-scene">Scene</span>
+          <div class="dropdown-menu" id="dropdown-scene">
+            <div class="dropdown-item" id="menu-add-stickman">🤸 Add 3D Character</div>
+            <div class="dropdown-item" id="menu-add-cube">📦 Add 3D Cube</div>
+            <div class="dropdown-item" id="menu-add-sphere">⚽ Add 3D Sphere</div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" id="menu-clear-scene">🗑 Clear Scene</div>
+          </div>
+        </div>
+
+        <div class="menu-item-wrapper">
+          <span class="menu-item" id="menu-btn-gameobject">GameObject</span>
+          <div class="dropdown-menu" id="dropdown-gameobject">
+            <div class="dropdown-item" id="menu-add-light">💡 Directional Sun Light</div>
+            <div class="dropdown-item" id="menu-add-camera">📷 Perspective Camera</div>
+            <div class="dropdown-item" id="menu-add-particles">✨ Particle Emitter</div>
+          </div>
+        </div>
+
+        <div class="menu-item-wrapper">
+          <span class="menu-item" id="menu-btn-help">Help</span>
+          <div class="dropdown-menu" id="dropdown-help">
+            <div class="dropdown-item" id="menu-help-docs">📖 Engine API Reference</div>
+            <div class="dropdown-item" id="menu-help-about">ℹ About Kairo Studio</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar Controls -->
+      <div class="toolbar-controls">
+        <select id="project-demo-select" class="btn" style="background: var(--bg-darker);">
+          <option value="stickman" selected>Demo: 3D Character Studio</option>
+          <option value="stickman2d">Demo: 2D Stickman Physics Studio ✏️</option>
+          <option value="scifi">Demo: 3D Sci-Fi Explorer</option>
+          <option value="platformer">Demo: 2D Platformer</option>
+          <option value="ai-maze">Demo: AI NavMesh</option>
+        </select>
+
+        <div class="btn-group">
+          <button id="btn-play" class="btn btn-success">▶ Play</button>
+          <button id="btn-pause" class="btn">⏸</button>
+          <button id="btn-stop" class="btn btn-danger">⏹</button>
+        </div>
+
+        <button id="btn-zen-mode" class="btn btn-primary" title="1-Click Pure Viewport (Hide All UI & Diagrams)">👁 Pure Viewport</button>
+        <button id="toggle-sidebar-right" class="btn" title="Toggle Right Inspector Panel">🔍 Inspector</button>
+        <button id="toggle-bottom-drawer" class="btn" title="Toggle Bottom Studio Drawer">🛠 Tools</button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Flex Container -->
+    <main class="main-workspace">
+      <!-- Left Panel: Scene Hierarchy & Assets -->
+      <aside class="sidebar-panel sidebar-left" id="sidebar-left">
+        <div class="panel-header">
+          <span>Scene Hierarchy</span>
+          <button id="btn-add-entity" class="btn" style="padding: 1px 4px; height: 18px; font-size: 9px;">+ Entity</button>
+        </div>
+        <div class="panel-content" id="hierarchy-list">
+          <!-- Hierarchy Tree Rendered Here -->
+        </div>
+
+        <div class="panel-header" style="border-top: 1px solid var(--border-color);">
+          <span>Project Assets</span>
+          <button id="btn-import-asset" class="btn" style="padding: 1px 4px; height: 18px; font-size: 9px;">Import</button>
+        </div>
+        <div class="panel-content asset-grid" id="asset-grid">
+          <div class="asset-card">
+            <div class="asset-icon">🤸</div>
+            <div class="asset-title">Character</div>
+          </div>
+          <div class="asset-card">
+            <div class="asset-icon">✏️</div>
+            <div class="asset-title">Stick2D</div>
+          </div>
+          <div class="asset-card">
+            <div class="asset-icon">📦</div>
+            <div class="asset-title">Cube</div>
+          </div>
+          <div class="asset-card">
+            <div class="asset-icon">📜</div>
+            <div class="asset-title">IK_Solver</div>
+          </div>
+          <div class="asset-card">
+            <div class="asset-icon">🎵</div>
+            <div class="asset-title">Footstep</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Viewport & Bottom Drawer Container -->
+      <div class="center-container">
+        <!-- 3D Viewport Panel & 2D Canvas Overlay Container -->
+        <section class="viewport-panel" id="viewport-container">
+          <!-- 3D WebGL Canvas -->
+          <canvas id="viewport-canvas"></canvas>
+
+          <!-- 2D Canvas Engine Viewport -->
+          <canvas id="canvas-2d" style="position: absolute; top:0; left:0; width:100%; height:100%; display:none; background:#0b0f19; z-index:10;"></canvas>
+          
+          <!-- Viewport Overlay Diagrams / Stats (Collapsible) -->
+          <div class="viewport-overlay" id="viewport-stats-overlay">
+            <div>FPS: <span id="stat-fps">60</span></div>
+            <div>Draw Calls: <span id="stat-dc">8</span></div>
+            <div>Triangles: <span id="stat-tris">1,420</span></div>
+            <div>Active Entities: <span id="stat-entities">16</span></div>
+            <div style="margin-top: 2px; color: var(--accent-warning);">Mode: <span id="stat-anim-mode">3D Studio</span></div>
+          </div>
+
+          <!-- Camera Navigation Controls Overlay Bar -->
+          <div class="camera-controls-overlay" id="camera-controls-overlay">
+            <button id="cam-btn-reset" class="btn" title="Reset Camera View to Focus Character">🏠 Reset View</button>
+            <button id="cam-btn-zoom-in" class="btn" title="Zoom In Camera">🔍 +</button>
+            <button id="cam-btn-zoom-out" class="btn" title="Zoom Out Camera">🔍 -</button>
+            <button id="cam-btn-rot-left" class="btn" title="Orbit Camera Left 45°">↺ Left</button>
+            <button id="cam-btn-rot-right" class="btn" title="Orbit Camera Right 45°">↻ Right</button>
+          </div>
+        </section>
+
+        <!-- Bottom Panel Collapsible Drawer -->
+        <footer class="bottom-drawer" id="bottom-drawer">
+          <div class="tab-header">
+            <div class="tab-btn-group">
+              <div class="tab-btn active" data-tab="tab-animation">Stickman Studio</div>
+              <div class="tab-btn" data-tab="tab-console">Console Log</div>
+              <div class="tab-btn" data-tab="tab-profiler">Profiler</div>
+              <div class="tab-btn" data-tab="tab-shader">Shader Graph</div>
+              <div class="tab-btn" data-tab="tab-particles">Particles</div>
+              <div class="tab-btn" data-tab="tab-physics">Physics</div>
+            </div>
+            <button id="btn-collapse-drawer" class="btn" style="height: 20px; font-size: 9px; margin-right: 6px;">▼ Hide Drawer</button>
+          </div>
+
+          <div class="tab-content" id="tab-animation">
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+              <div>
+                <strong>Animation Motions</strong>
+                <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                  <button class="btn anim-state-btn" data-state="idle">💤 Idle</button>
+                  <button class="btn anim-state-btn active" data-state="walk">🚶 Walk</button>
+                  <button class="btn anim-state-btn" data-state="run">🏃 Run</button>
+                  <button class="btn anim-state-btn" data-state="jump">🤸 Backflip</button>
+                </div>
+              </div>
+
+              <div style="flex: 1; border-left: 1px solid var(--border-color); padding-left: 12px; min-width: 180px;">
+                <div class="form-row">
+                  <span class="form-label">Motion Speed</span>
+                  <input type="range" min="0.2" max="2.5" value="1.0" step="0.1" class="form-input" id="anim-speed-slider">
+                  <span id="anim-speed-val" style="width: 30px; color: var(--accent-secondary);">1.0x</span>
+                </div>
+                <div class="form-row">
+                  <span class="form-label">IK Elevation</span>
+                  <input type="range" min="0.0" max="1.5" value="0.0" step="0.05" class="form-input" id="anim-ik-slider">
+                  <span id="anim-ik-val" style="width: 30px; color: var(--accent-secondary);">0.00m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-console" style="display: none;">
+            <div class="console-log info">[Engine] Kairo Engine v1.0.0 Initialized. WebGL 2.0 / WebGPU / 2D Canvas ready.</div>
+            <div class="console-log info">[Animation] Loaded 2D & 3D Stickman Procedural Armature & Skeletal IK System.</div>
+            <div class="console-log info">[Camera] Interactive 3D Orbit, Pan, Zoom & Camera Navigation active.</div>
+          </div>
+
+          <div class="tab-content" id="tab-profiler" style="display: none;">
+            <div style="display: flex; gap: 16px;">
+              <div style="flex: 1;">
+                <strong>CPU Frame Time Breakdown</strong>
+                <div style="background: var(--bg-dark); padding: 6px; border-radius: 4px; margin-top: 4px;">
+                  <div>Fixed Update (Physics 2D/3D): <span style="color: var(--accent-success);">0.8 ms</span></div>
+                  <div>Variable Update (ECS): <span style="color: var(--accent-secondary);">1.1 ms</span></div>
+                  <div>Animation & IK: <span style="color: var(--accent-warning);">0.6 ms</span></div>
+                  <div>Render Batch Prep: <span style="color: var(--accent-primary);">1.9 ms</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-shader" style="display: none;">
+            <div style="background: var(--bg-darker); border: 1px dashed var(--border-color); border-radius: 4px; padding: 10px; text-align: center; color: var(--text-muted);">
+              Visual Shader Graph Compiler [Active]
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-particles" style="display: none;">
+            <div class="form-row">
+              <span class="form-label">Trail Particles</span>
+              <input type="range" min="1" max="500" value="100" class="form-input" id="part-rate">
+            </div>
+          </div>
+
+          <div class="tab-content" id="tab-physics" style="display: none;">
+            <div>
+              <strong>Stickman Physics Status</strong>
+              <div style="margin-top: 4px;">
+                <div>Ragdoll Hinge Joints: <span style="color: var(--accent-secondary);">12 Active</span></div>
+                <div>Feet Ground Surface Alignment: <span style="color: var(--accent-success);">TRUE</span></div>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+      <!-- Right Panel: Inspector -->
+      <aside class="sidebar-panel sidebar-right" id="sidebar-right">
+        <div class="panel-header">
+          <span>Entity Inspector</span>
+          <span id="inspector-entity-tag" style="color: var(--accent-secondary); font-size: 9px;">ID: node_1</span>
+        </div>
+        <div class="panel-content" id="inspector-content">
+          <!-- Inspector Form Fields Rendered Dynamically -->
+        </div>
+      </aside>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+      <span>Ready | Kairo Studio Editor (Interactive Camera Controls Active)</span>
+      <span>Left-Click Drag: Orbit | Shift/Middle Drag: Pan | Scroll: Zoom</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

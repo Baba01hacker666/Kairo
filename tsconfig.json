@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@kairo/core": ["packages/core/src/index.ts"],
+      "@kairo/ecs": ["packages/ecs/src/index.ts"],
+      "@kairo/renderer": ["packages/renderer/src/index.ts"],
+      "@kairo/physics": ["packages/physics/src/index.ts"],
+      "@kairo/animation": ["packages/animation/src/index.ts"],
+      "@kairo/audio": ["packages/audio/src/index.ts"],
+      "@kairo/input": ["packages/input/src/index.ts"],
+      "@kairo/ai": ["packages/ai/src/index.ts"],
+      "@kairo/network": ["packages/network/src/index.ts"],
+      "@kairo/assets": ["packages/assets/src/index.ts"],
+      "@kairo/plugins": ["packages/plugins/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/**/*.ts",
+    "editor/**/*.ts",
+    "examples/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}
