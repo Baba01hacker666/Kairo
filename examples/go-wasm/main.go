@@ -131,12 +131,55 @@ func CreateIcosahedronMesh(radius float64, r, g, b, a float64) *Mesh {
 	return &Mesh{vertices: verts, faces: faces}
 }
 
-// --- OBJ Parser ---
+// --- Advanced OBJ & MTL Parser ---
 
-func parseOBJ(data string, r, g, b, a float64) *Mesh {
+type Material struct {
+	r, g, b float64
+	alpha   float64
+}
+
+func parseMTL(data string) map[string]Material {
+	materials := make(map[string]Material)
+	var currentMtl string
+	lines := strings.Split(data, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "newmtl ") {
+			currentMtl = strings.TrimSpace(line[7:])
+			materials[currentMtl] = Material{r: 255, g: 255, b: 255, alpha: 1.0}
+		} else if strings.HasPrefix(line, "Kd ") && currentMtl != "" {
+			parts := strings.Fields(line)
+			if len(parts) >= 4 {
+				r, _ := strconv.ParseFloat(parts[1], 64)
+				g, _ := strconv.ParseFloat(parts[2], 64)
+				b, _ := strconv.ParseFloat(parts[3], 64)
+				
+				mat := materials[currentMtl]
+				mat.r = r * 255
+				mat.g = g * 255
+				mat.b = b * 255
+				materials[currentMtl] = mat
+			}
+		} else if (strings.HasPrefix(line, "d ") || strings.HasPrefix(line, "Tr ")) && currentMtl != "" {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				a, _ := strconv.ParseFloat(parts[1], 64)
+				if strings.HasPrefix(line, "Tr ") { a = 1.0 - a } // Tr is transparency, d is dissolve (opacity)
+				mat := materials[currentMtl]
+				mat.alpha = a
+				materials[currentMtl] = mat
+			}
+		}
+	}
+	return materials
+}
+
+func parseOBJ(data string, materials map[string]Material, defaultR, defaultG, defaultB, defaultA float64) *Mesh {
 	lines := strings.Split(data, "\n")
 	var verts []Vector3
 	var faces []Face
+
+	currentMat := Material{r: defaultR, g: defaultG, b: defaultB, alpha: defaultA}
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -148,6 +191,11 @@ func parseOBJ(data string, r, g, b, a float64) *Mesh {
 				pz, _ := strconv.ParseFloat(parts[3], 64)
 				verts = append(verts, Vector3{px, py, pz})
 			}
+		} else if strings.HasPrefix(line, "usemtl ") {
+			matName := strings.TrimSpace(line[7:])
+			if mat, ok := materials[matName]; ok {
+				currentMat = mat
+			}
 		} else if strings.HasPrefix(line, "f ") {
 			parts := strings.Fields(line)
 			var indices []int
@@ -157,25 +205,49 @@ func parseOBJ(data string, r, g, b, a float64) *Mesh {
 				indices = append(indices, idx-1) // 1-based to 0-based
 			}
 			if len(indices) >= 3 {
-				faces = append(faces, Face{indices: indices, r: r, g: g, b: b, alpha: a})
+				faces = append(faces, Face{indices: indices, r: currentMat.r, g: currentMat.g, b: currentMat.b, alpha: currentMat.alpha})
 			}
 		}
 	}
 	return &Mesh{vertices: verts, faces: faces}
 }
 
-func loadOBJFromURL(url string, r, g, b, alpha float64, pos, scale Vector3) {
-	js.Global().Call("fetch", url).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		return args[0].Call("text")
-	})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		data := args[0].String()
-		mesh := parseOBJ(data, r, g, b, alpha)
-		scene.entities = append(scene.entities, &Entity{
-			mesh:      mesh,
-			transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
-		})
-		return nil
-	}))
+func loadOBJFromURL(objURL, mtlURL string, defR, defG, defB, defA float64, pos, scale Vector3) {
+	if mtlURL == "" {
+		// Just load OBJ
+		js.Global().Call("fetch", objURL).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return args[0].Call("text")
+		})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			data := args[0].String()
+			mesh := parseOBJ(data, nil, defR, defG, defB, defA)
+			scene.entities = append(scene.entities, &Entity{
+				mesh:      mesh,
+				transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
+			})
+			return nil
+		}))
+	} else {
+		// Load MTL then OBJ
+		js.Global().Call("fetch", mtlURL).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return args[0].Call("text")
+		})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			mtlData := args[0].String()
+			materials := parseMTL(mtlData)
+			
+			js.Global().Call("fetch", objURL).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return args[0].Call("text")
+			})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				objData := args[0].String()
+				mesh := parseOBJ(objData, materials, defR, defG, defB, defA)
+				scene.entities = append(scene.entities, &Entity{
+					mesh:      mesh,
+					transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
+				})
+				return nil
+			}))
+			return nil
+		}))
+	}
 }
 
 // --- Global State ---
@@ -414,13 +486,13 @@ func main() {
 
 	// 2. Load Premade Models Async!
 	// Load a few rocks
-	loadOBJFromURL("../../models/rock.obj", 150, 150, 160, 1.0, Vector3{-4, 0.5, 3}, Vector3{1.2, 1.2, 1.2})
-	loadOBJFromURL("../../models/rock.obj", 140, 130, 130, 1.0, Vector3{5, 0.2, -2}, Vector3{0.8, 0.8, 0.8})
-	loadOBJFromURL("../../models/rock.obj", 120, 120, 120, 1.0, Vector3{-2, 0.4, -5}, Vector3{1.5, 1.0, 1.5})
+	loadOBJFromURL("../../models/rock.obj", "", 150, 150, 160, 1.0, Vector3{-4, 0.5, 3}, Vector3{1.2, 1.2, 1.2})
+	loadOBJFromURL("../../models/rock.obj", "", 140, 130, 130, 1.0, Vector3{5, 0.2, -2}, Vector3{0.8, 0.8, 0.8})
+	loadOBJFromURL("../../models/rock.obj", "", 120, 120, 120, 1.0, Vector3{-2, 0.4, -5}, Vector3{1.5, 1.0, 1.5})
 	
 	// Load some magical crystals
-	loadOBJFromURL("../../models/crystal.obj", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6})
-	loadOBJFromURL("../../models/crystal.obj", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4})
+	loadOBJFromURL("../../models/crystal.obj", "", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6})
+	loadOBJFromURL("../../models/crystal.obj", "", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4})
 
 	// 3. Petals
 	petalMesh := CreateQuadMesh(0.4, 255, 183, 197, 0.95)
