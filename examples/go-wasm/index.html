@@ -54,7 +54,8 @@
     <script src="./wasm_exec.js"></script>
     <script>
         const go = new Go();
-        fetch("main.wasm")
+        // Append a timestamp to the URL to bypass aggressive browser caching of the .wasm file!
+        fetch("main.wasm?v=" + new Date().getTime())
             .then(response => response.arrayBuffer())
             .then(bytes => WebAssembly.instantiate(bytes, go.importObject))
             .then(result => go.run(result.instance))
