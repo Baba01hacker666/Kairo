@@ -1,6 +1,7 @@
 import { Engine, Vector3 } from '@kairo/core';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import * as THREE from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 
 // Synthesizer
 let audioCtx: any = null;
@@ -55,11 +56,10 @@ const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerH
 camera.position.set(-6, 3, 8);
 camera.lookAt(-6, 2, 0);
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+const renderer = new WebGPURenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap = { enabled: true, type: THREE.PCFShadowMap } as any;
 
 // Lighting
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 import { Engine } from './Engine.ts';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
@@ -20,7 +21,7 @@ export class KairoApp {
   public physics: PhysicsWorld;
   public scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
-  public renderer: THREE.WebGLRenderer;
+  public renderer: WebGPURenderer;
 
   private keys: Record<string, boolean> = {};
 
@@ -50,11 +51,14 @@ export class KairoApp {
       document.body.appendChild(canvasObj);
     }
     
-    this.renderer = new THREE.WebGLRenderer({ canvas: canvasObj, antialias: true, powerPreference: "high-performance" });
+    // Upgrade to WebGPU Renderer!
+    this.renderer = new WebGPURenderer({ canvas: canvasObj, antialias: true, powerPreference: "high-performance" });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = config.shadows ?? true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    
+    // WebGPURenderer automatically enables shadows if added to the scene, but we set it just in case
+    // (Note: WebGPURenderer handles shadowMap slightly differently, but maintaining API compatibility)
+    this.renderer.shadowMap = { enabled: config.shadows ?? true, type: THREE.PCFShadowMap } as any;
 
     // Auto-setup camera
     this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
