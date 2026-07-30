@@ -30,9 +30,9 @@ const VIEWS = [
   for (const view of VIEWS) {
     console.log(`Taking screenshot for ${view.name}...`);
     try {
-      await page.goto(view.url, { waitUntil: 'networkidle0', timeout: 15000 });
-      // Wait 3 seconds for WebGL/WASM canvases to fully render
-      await new Promise(r => setTimeout(r, 3000));
+      await page.goto(view.url, { waitUntil: 'load', timeout: 10000 }).catch(e => console.error("Navigation timeout, proceeding anyway...", e));
+      // Wait 4 seconds for WebGL/WASM canvases to fully render
+      await new Promise(r => setTimeout(r, 4000));
       
       const screenshotPath = path.join('screenshots', `${view.name}.png`);
       await page.screenshot({ path: screenshotPath });
