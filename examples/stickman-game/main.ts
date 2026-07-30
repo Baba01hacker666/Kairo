@@ -60,6 +60,7 @@ const renderer = new WebGPURenderer({ canvas, antialias: true, powerPreference: 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.BasicShadowMap as any;
 
 // Lighting
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
