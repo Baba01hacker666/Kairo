@@ -3,10 +3,10 @@ import fs from 'fs';
 import path from 'path';
 
 const VIEWS = [
-  { name: 'hub', url: 'http://localhost:4173/' },
-  { name: 'go-wasm', url: 'http://localhost:4173/examples/go-wasm/index.html' },
-  { name: 'stickman', url: 'http://localhost:4173/examples/stickman-game/index.html' },
-  { name: 'cherry-blossoms', url: 'http://localhost:4173/examples/cherry-blossoms/index.html' }
+  { name: 'hub', url: 'http://localhost:4173/Kairo/' },
+  { name: 'go-wasm', url: 'http://localhost:4173/Kairo/examples/go-wasm/index.html' },
+  { name: 'stickman', url: 'http://localhost:4173/Kairo/examples/stickman-game/index.html' },
+  { name: 'cherry-blossoms', url: 'http://localhost:4173/Kairo/examples/cherry-blossoms/index.html' }
 ];
 
 (async () => {
@@ -17,6 +17,9 @@ const VIEWS = [
   
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
+  
+  page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
+  page.on('pageerror', error => console.log('BROWSER ERROR:', error.message));
   
   if (!fs.existsSync('screenshots')) {
     fs.mkdirSync('screenshots');

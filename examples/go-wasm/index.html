@@ -54,9 +54,11 @@
     <script src="./wasm_exec.js"></script>
     <script>
         const go = new Go();
-        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
-            go.run(result.instance);
-        });
+        fetch("main.wasm")
+            .then(response => response.arrayBuffer())
+            .then(bytes => WebAssembly.instantiate(bytes, go.importObject))
+            .then(result => go.run(result.instance))
+            .catch(err => console.error("Failed to load WASM engine:", err));
     </script>
 </body>
 </html>
