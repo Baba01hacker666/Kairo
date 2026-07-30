@@ -52,6 +52,8 @@ type Transform struct {
 type Entity struct {
 	mesh      *Mesh
 	transform Transform
+	collider  float64 // Radius for sphere collision, 0 = no collider
+	isPlayer  bool
 }
 
 type Camera struct {
@@ -212,7 +214,7 @@ func parseOBJ(data string, materials map[string]Material, defaultR, defaultG, de
 	return &Mesh{vertices: verts, faces: faces}
 }
 
-func loadOBJFromURL(objURL, mtlURL string, defR, defG, defB, defA float64, pos, scale Vector3) {
+func loadOBJFromURL(objURL, mtlURL string, defR, defG, defB, defA float64, pos, scale Vector3, collider float64) {
 	if mtlURL == "" {
 		// Just load OBJ
 		js.Global().Call("fetch", objURL).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -223,6 +225,7 @@ func loadOBJFromURL(objURL, mtlURL string, defR, defG, defB, defA float64, pos, 
 			scene.entities = append(scene.entities, &Entity{
 				mesh:      mesh,
 				transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
+				collider:  collider,
 			})
 			return nil
 		}))
@@ -242,6 +245,7 @@ func loadOBJFromURL(objURL, mtlURL string, defR, defG, defB, defA float64, pos, 
 				scene.entities = append(scene.entities, &Entity{
 					mesh:      mesh,
 					transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
+					collider:  collider,
 				})
 				return nil
 			}))
@@ -262,6 +266,8 @@ var (
 	isDragging bool = false
 	lastMouseX float64 = 0.0
 	lastMouseY float64 = 0.0
+	
+	keys map[string]bool = make(map[string]bool)
 	
 	petals     []*PetalState
 	lastTime   float64 = 0
@@ -294,6 +300,15 @@ func project(p Vector3, cam Camera) Vector3 {
 	}
 }
 
+func checkCollision(e1, e2 *Entity) bool {
+	if e1.collider == 0 || e2.collider == 0 { return false }
+	dx := e1.transform.position.x - e2.transform.position.x
+	dy := e1.transform.position.y - e2.transform.position.y
+	dz := e1.transform.position.z - e2.transform.position.z
+	dist := math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return dist < (e1.collider + e2.collider)
+}
+
 func renderFrame(this js.Value, args []js.Value) interface{} {
 	timeMs := js.Global().Get("performance").Call("now").Float()
 	if lastTime == 0 {
@@ -308,8 +323,70 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	
 	time := timeMs * 0.001
 
-	// Camera is static, we rotate the world instead since we don't have a view matrix
-	scene.camera.position = Vector3{0, 6, 20}
+	// --- Player Movement & Collision ---
+	var player *Entity
+	for _, e := range scene.entities {
+		if e.isPlayer {
+			player = e
+			break
+		}
+	}
+	
+	if player != nil {
+		speed := 5.0 * dt
+		velX := 0.0
+		velZ := 0.0
+		
+		// WASD Movement relative to camera angle
+		if keys["w"] || keys["ArrowUp"] {
+			velX += math.Sin(-camAngleX) * speed
+			velZ -= math.Cos(-camAngleX) * speed
+		}
+		if keys["s"] || keys["ArrowDown"] {
+			velX -= math.Sin(-camAngleX) * speed
+			velZ += math.Cos(-camAngleX) * speed
+		}
+		if keys["a"] || keys["ArrowLeft"] {
+			velX -= math.Cos(-camAngleX) * speed
+			velZ -= math.Sin(-camAngleX) * speed
+		}
+		if keys["d"] || keys["ArrowRight"] {
+			velX += math.Cos(-camAngleX) * speed
+			velZ += math.Sin(-camAngleX) * speed
+		}
+		
+		if velX != 0 || velZ != 0 {
+			origX := player.transform.position.x
+			origZ := player.transform.position.z
+			
+			// Try moving X
+			player.transform.position.x += velX
+			for _, e := range scene.entities {
+				if e != player && checkCollision(player, e) {
+					player.transform.position.x = origX // Revert X on collision
+					break
+				}
+			}
+			
+			// Try moving Z
+			player.transform.position.z += velZ
+			for _, e := range scene.entities {
+				if e != player && checkCollision(player, e) {
+					player.transform.position.z = origZ // Revert Z on collision
+					break
+				}
+			}
+			
+			// Rotate player mesh based on movement for visual flair
+			player.transform.rotation.y += (math.Abs(velX) + math.Abs(velZ))
+		}
+		
+		// Camera follows player smoothly
+		scene.camera.position.x = player.transform.position.x
+		scene.camera.position.z = player.transform.position.z + 20
+	} else {
+		scene.camera.position = Vector3{0, 6, 20}
+	}
 
 	lightDir := Vector3{-0.5, 1.0, -0.5} 
 	lightLen := math.Sqrt(lightDir.x*lightDir.x + lightDir.y*lightDir.y + lightDir.z*lightDir.z)
@@ -523,6 +600,18 @@ func main() {
 	canvas.Call("addEventListener", "touchstart", onDown)
 	canvas.Call("addEventListener", "touchmove", onMove)
 	canvas.Call("addEventListener", "touchend", onUp)
+	
+	// Keyboard Input
+	js.Global().Get("window").Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		key := args[0].Get("key").String()
+		keys[key] = true
+		return nil
+	}))
+	js.Global().Get("window").Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		key := args[0].Get("key").String()
+		keys[key] = false
+		return nil
+	}))
 	// ----------------------
 
 	scene = &Scene{
@@ -540,6 +629,7 @@ func main() {
 	scene.entities = append(scene.entities, &Entity{
 		mesh:      trunk,
 		transform: Transform{position: Vector3{0, 3.0, 0}, scale: Vector3{1, 1, 1}},
+		collider:  0.8, // Tree trunk collider
 	})
 
 	canopy := CreateIcosahedronMesh(4.5, 255, 105, 180, 0.95)
@@ -549,14 +639,23 @@ func main() {
 	})
 
 	// 2. Load Premade Models Async!
-	// Load a few rocks
-	loadOBJFromURL("../../models/rock.obj", "", 150, 150, 160, 1.0, Vector3{-4, 0.5, 3}, Vector3{1.2, 1.2, 1.2})
-	loadOBJFromURL("../../models/rock.obj", "", 140, 130, 130, 1.0, Vector3{5, 0.2, -2}, Vector3{0.8, 0.8, 0.8})
-	loadOBJFromURL("../../models/rock.obj", "", 120, 120, 120, 1.0, Vector3{-2, 0.4, -5}, Vector3{1.5, 1.0, 1.5})
+	// Load a few rocks with collision bounds
+	loadOBJFromURL("../../models/rock.obj", "", 150, 150, 160, 1.0, Vector3{-4, 0.5, 3}, Vector3{1.2, 1.2, 1.2}, 1.0)
+	loadOBJFromURL("../../models/rock.obj", "", 140, 130, 130, 1.0, Vector3{5, 0.2, -2}, Vector3{0.8, 0.8, 0.8}, 0.7)
+	loadOBJFromURL("../../models/rock.obj", "", 120, 120, 120, 1.0, Vector3{-2, 0.4, -5}, Vector3{1.5, 1.0, 1.5}, 1.2)
 	
 	// Load some magical crystals
-	loadOBJFromURL("../../models/crystal.obj", "", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6})
-	loadOBJFromURL("../../models/crystal.obj", "", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4})
+	loadOBJFromURL("../../models/crystal.obj", "", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6}, 0.5)
+	loadOBJFromURL("../../models/crystal.obj", "", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4}, 0.4)
+
+	// Add a Player Entity!
+	playerMesh := CreateIcosahedronMesh(0.6, 255, 215, 0, 1.0) // Golden glowing orb
+	scene.entities = append(scene.entities, &Entity{
+		mesh:      playerMesh,
+		transform: Transform{position: Vector3{0, 0.6, 6}, scale: Vector3{1, 1, 1}},
+		collider:  0.6,
+		isPlayer:  true,
+	})
 
 	// 3. Petals
 	petalMesh := CreateQuadMesh(0.4, 255, 183, 197, 0.95)
