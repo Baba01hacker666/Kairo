@@ -32,7 +32,7 @@ jobs:
       
     - name: Start Preview Server
       run: |
-        npx serve dist -p 4173 &
+        npx vite preview --port 4173 &
         sleep 5
         
     - name: Take Screenshots
