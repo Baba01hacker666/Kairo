@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
     "test": "node --import tsx --test tests/ai.test.js tests/ecs.test.js tests/math.test.js tests/physics.test.js",
     "lint": "tsc --noEmit"
   },
@@ -15,7 +15,8 @@
     "@types/three": "^0.185.1",
     "@types/webxr": "^0.5.24",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^8.1.5"
   },
   "keywords": [
     "game-engine",
