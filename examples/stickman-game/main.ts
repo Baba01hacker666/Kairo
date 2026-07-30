@@ -3,7 +3,13 @@ import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '
 import * as THREE from 'three';
 
 // Synthesizer
-const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+let audioCtx: any = null;
+try {
+  const AudioCtxCtor = window.AudioContext || (window as any).webkitAudioContext;
+  if (AudioCtxCtor) audioCtx = new AudioCtxCtor();
+} catch (e) {
+  console.warn("AudioContext not supported or blocked", e);
+}
 function playSfx(type: string) {
   if (!audioCtx) return;
   try {
