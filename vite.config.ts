@@ -11,7 +11,8 @@ export default defineConfig({
         stickman: 'examples/stickman-game/index.html',
         easy: 'examples/easy-game/index.html',
         cherry: 'examples/cherry-blossoms/index.html',
-        gowasm: 'examples/go-wasm/index.html'
+        gowasm: 'examples/go-wasm/index.html',
+        gorunner: 'examples/go-runner/index.html'
       }
     }
   },
