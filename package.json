@@ -11,6 +11,9 @@
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/stats.js": "^0.17.4",
+    "@types/three": "^0.185.1",
+    "@types/webxr": "^0.5.24",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },

@@ -136,9 +136,9 @@ export class PhysicsWorld {
     cBody.addShape(shape, new CANNON.Vec3(collider.centerOffset.x, collider.centerOffset.y, collider.centerOffset.z));
     
     if (!body.useGravity) {
-      cBody.preStep = () => {
+      cBody.addEventListener('preStep', () => {
         cBody.force.y -= this.cannonWorld.gravity.y * cBody.mass;
-      };
+      });
     }
 
     this.cannonWorld.addBody(cBody);
