@@ -213,12 +213,21 @@ engine.events.on('update', (dt: number) => {
     if (keys['KeyA'] || keys['ArrowLeft'] || touchState.left) moveX -= 1;
     if (keys['KeyD'] || keys['ArrowRight'] || touchState.right) moveX += 1;
     
+    // Rotate character to face movement direction
+    if (moveX > 0) playerGroup.rotation.y = Math.PI / 2;
+    else if (moveX < 0) playerGroup.rotation.y = -Math.PI / 2;
+    else playerGroup.rotation.y = Math.PI / 2; // Default facing right
+    
     // Physics Velocity Control
     let vel = playerRb.velocity;
     vel.x = moveX * 7;
-    vel.z = 0;
-    playerPos.z = 0;
-
+    
+    // Lock Z axis completely to prevent falling off the 2.5D track
+    if (playerRb.cannonBody) {
+      playerRb.cannonBody.position.z = 0;
+      playerRb.cannonBody.velocity.z = 0;
+    }
+    
     // Basic Walk Animation (arms and legs swing)
     const t = performance.now() * 0.012;
     if (Math.abs(vel.x) > 0.5) {
@@ -242,9 +251,19 @@ engine.events.on('update', (dt: number) => {
     
     playerRb.velocity = vel;
 
-    // Bounds
-    if (playerPos.x < -12) playerPos.x = -12;
-    if (playerPos.x > 12) playerPos.x = 12;
+    // Bounds check applied directly to physics body to prevent sliding out of bounds
+    if (playerRb.cannonBody) {
+      if (playerRb.cannonBody.position.x < -12) {
+        playerRb.cannonBody.position.x = -12;
+        playerRb.cannonBody.velocity.x = 0;
+      }
+      if (playerRb.cannonBody.position.x > 12) {
+        playerRb.cannonBody.position.x = 12;
+        playerRb.cannonBody.velocity.x = 0;
+      }
+      // Re-sync playerPos
+      playerPos.x = playerRb.cannonBody.position.x;
+    }
 
     const pX = playerPos.x;
     const pY = playerGroup.position.y;
