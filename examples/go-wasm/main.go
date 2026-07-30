@@ -186,21 +186,26 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		pos := &ent.transform.position
 		rot := &ent.transform.rotation
 
-		if pos.y > -0.15 { // Ground level is slightly below 0
+		if p.landedTime == 0 {
+			// Falling state
 			pos.y -= 1.8 * dt
 			pos.x += math.Sin(time*2.0+p.seed) * 1.5 * dt
 			pos.z += math.Cos(time*1.5+p.seed) * 1.5 * dt
 			rot.x += 1.5 * dt
 			rot.y += 2.0 * dt
 			rot.z += 1.0 * dt
-		} else {
-			pos.y = -0.15 + (p.seed * 0.0001)
-			rot.x = 0
-			rot.y = 0
-			
-			if p.landedTime == 0 {
+
+			// Check for impact
+			landHeight := -0.15 + (p.seed * 0.0001)
+			if pos.y <= landHeight {
+				pos.y = landHeight
+				rot.x = 0
+				rot.y = p.seed // lay flat, random yaw
+				rot.z = 0
 				p.landedTime = time
 			}
+		} else {
+			// Landed state (respawn after 6 seconds)
 			if time-p.landedTime > 6.0 {
 				pos.y = p.startY
 				pos.x = (rand.Float64() - 0.5) * 8
