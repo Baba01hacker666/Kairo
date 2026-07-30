@@ -124,35 +124,35 @@ gltfLoader.load(
   }
 );
 
-// Load Helmets as collectibles
+// Load Avocados as collectibles
 gltfLoader.load(
-  (import.meta as any).env.BASE_URL + 'models/DamagedHelmet.glb',
+  (import.meta as any).env.BASE_URL + 'models/Avocado.glb',
   (gltf) => {
-    const helmetTemplate = gltf.scene;
-    helmetTemplate.scale.set(0.5, 0.5, 0.5);
-    helmetTemplate.traverse((child) => {
+    const itemTemplate = gltf.scene;
+    itemTemplate.scale.set(10, 10, 10);
+    itemTemplate.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
 
-    // Spawn 10 helmets
+    // Spawn 10 avocados
     for (let i = 0; i < 10; i++) {
-      const helmet = helmetTemplate.clone();
+      const item = itemTemplate.clone();
       const angle = Math.random() * Math.PI * 2;
       const radius = 3 + Math.random() * 20;
-      helmet.position.set(Math.cos(angle) * radius, 0.5, Math.sin(angle) * radius);
+      item.position.set(Math.cos(angle) * radius, 0.5, Math.sin(angle) * radius);
       
       // Store bobbing state in userData
-      helmet.userData = {
+      item.userData = {
         baseY: 0.5,
         timeOffset: Math.random() * 100,
         active: true
       };
       
-      scene.add(helmet);
-      collectibles.push(helmet);
+      scene.add(item);
+      collectibles.push(item);
     }
   }
 );
@@ -165,6 +165,65 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   if (e.key.toLowerCase() in keys) keys[e.key.toLowerCase() as keyof typeof keys] = false;
 });
+
+// Mobile Joystick State
+let joystickActive = false;
+let joystickVector = new THREE.Vector2(0, 0);
+
+const joystickZone = document.getElementById('joystick-zone');
+const joystickKnob = document.getElementById('joystick-knob');
+const sprintBtn = document.getElementById('sprint-btn');
+
+if (joystickZone && joystickKnob) {
+  let stickCenter = { x: 0, y: 0 };
+  let maxRadius = 60;
+  
+  const onTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    if (!joystickActive) return;
+    const touch = Array.from(e.touches).find(t => t.target === joystickZone || t.target === joystickKnob);
+    if (!touch) return;
+    
+    let dx = touch.clientX - stickCenter.x;
+    let dy = touch.clientY - stickCenter.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist > maxRadius) {
+      dx = (dx / dist) * maxRadius;
+      dy = (dy / dist) * maxRadius;
+    }
+    
+    joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    
+    // Normalize to -1 to 1
+    joystickVector.set(dx / maxRadius, dy / maxRadius);
+  };
+  
+  joystickZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const rect = joystickZone.getBoundingClientRect();
+    stickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    onTouchMove(e);
+  }, { passive: false });
+  
+  joystickZone.addEventListener('touchmove', onTouchMove, { passive: false });
+  
+  const resetJoystick = () => {
+    joystickActive = false;
+    joystickVector.set(0, 0);
+    joystickKnob.style.transform = `translate(-50%, -50%)`;
+  };
+  
+  joystickZone.addEventListener('touchend', resetJoystick);
+  joystickZone.addEventListener('touchcancel', resetJoystick);
+}
+
+if (sprintBtn) {
+  sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.shift = true; }, { passive: false });
+  sprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.shift = false; }, { passive: false });
+  sprintBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); keys.shift = false; }, { passive: false });
+}
 
 // Third Person Controller Variables
 const walkSpeed = 3;
@@ -206,10 +265,16 @@ function animate() {
     
     direction.set(0, 0, 0);
     
-    if (keys.w) direction.add(cameraDirection);
-    if (keys.s) direction.sub(cameraDirection);
-    if (keys.a) direction.sub(cameraRight);
-    if (keys.d) direction.add(cameraRight);
+    if (joystickActive) {
+      // Use joystick vector
+      direction.addScaledVector(cameraDirection, -joystickVector.y);
+      direction.addScaledVector(cameraRight, joystickVector.x);
+    } else {
+      if (keys.w) direction.add(cameraDirection);
+      if (keys.s) direction.sub(cameraDirection);
+      if (keys.a) direction.sub(cameraRight);
+      if (keys.d) direction.add(cameraRight);
+    }
     
     direction.normalize();
 

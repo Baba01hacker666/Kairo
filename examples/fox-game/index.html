@@ -31,12 +31,62 @@
       border-radius: 8px;
       backdrop-filter: blur(5px);
     }
+    
+    /* Mobile Controls */
+    #joystick-zone {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      touch-action: none;
+      display: none; /* Shown via JS if touch device */
+    }
+    #joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    #sprint-btn {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      touch-action: none;
+      display: none;
+      user-select: none;
+    }
+    #sprint-btn:active {
+      background: rgba(255, 255, 255, 0.6);
+    }
+    
+    @media (hover: none) and (pointer: coarse) {
+      .controls-hint { display: none; }
+      #joystick-zone { display: block; }
+      #sprint-btn { display: flex; align-items: center; justify-content: center; }
+    }
   </style>
 </head>
 <body>
   <div id="ui">
     <h1>Fox Adventure</h1>
-    <p>Collect the damaged helmets!</p>
+    <p>Collect the delicious avocados!</p>
     <p>Score: <span id="score">0</span></p>
   </div>
   <div class="controls-hint">
@@ -45,6 +95,12 @@
     [SHIFT] to Run<br>
     [Mouse] to Rotate Camera
   </div>
+  
+  <div id="joystick-zone">
+    <div id="joystick-knob"></div>
+  </div>
+  <div id="sprint-btn">RUN</div>
+
   <script type="module" src="./main.ts"></script>
 </body>
 </html>
