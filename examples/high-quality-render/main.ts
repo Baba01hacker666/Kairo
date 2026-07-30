@@ -40,7 +40,7 @@ let mixer: THREE.AnimationMixer;
 // Load the Animated Fox Model
 const gltfLoader = new GLTFLoader();
 gltfLoader.load(
-  '/models/Fox.glb',
+  import.meta.env.BASE_URL + 'models/Fox.glb',
   (gltf) => {
     const model = gltf.scene;
     
@@ -68,7 +68,7 @@ gltfLoader.load(
 
 // Load the Realistic Helmet Model (PBR Textures)
 gltfLoader.load(
-  '/models/DamagedHelmet.glb',
+  import.meta.env.BASE_URL + 'models/DamagedHelmet.glb',
   (gltf) => {
     const helmet = gltf.scene;
     helmet.scale.set(0.8, 0.8, 0.8);
