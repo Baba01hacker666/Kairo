@@ -59,7 +59,8 @@ camera.lookAt(-6, 2, 0);
 const renderer = new WebGPURenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
+// Disabled shadows globally due to WGSL depth texture bug in current Three.js WebGPU nodes
+renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.BasicShadowMap as any;
 
 // Lighting

@@ -56,8 +56,9 @@ export class KairoApp {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
-    // WebGPURenderer automatically enables shadows if added to the scene
-    this.renderer.shadowMap.enabled = config.shadows ?? true;
+    // WebGPURenderer in this version of Three.js has a fatal WGSL compilation bug with depth textures in Chrome.
+    // We must temporarily disable shadows entirely when using WebGPU until Three.js patches this!
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.BasicShadowMap as any;
 
     // Auto-setup camera
