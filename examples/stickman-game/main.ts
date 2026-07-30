@@ -59,7 +59,7 @@ camera.lookAt(-6, 2, 0);
 const renderer = new WebGPURenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap = { enabled: true, type: THREE.PCFShadowMap } as any;
+renderer.shadowMap.enabled = true;
 
 // Lighting
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));

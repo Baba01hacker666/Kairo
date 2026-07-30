@@ -25,7 +25,7 @@ app.createBox({
 
 // A stylized cherry tree canopy
 const canopyGeo = new THREE.DodecahedronGeometry(3.5, 1);
-const canopyMat = new THREE.MeshStandardMaterial({ color: 0xff69b4, flatShading: true });
+const canopyMat = new THREE.MeshStandardMaterial({ color: 0xff69b4 });
 const canopy = new THREE.Mesh(canopyGeo, canopyMat);
 canopy.position.set(0, 6.5, 0);
 canopy.castShadow = true;

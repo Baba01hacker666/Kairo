@@ -56,9 +56,8 @@ export class KairoApp {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
-    // WebGPURenderer automatically enables shadows if added to the scene, but we set it just in case
-    // (Note: WebGPURenderer handles shadowMap slightly differently, but maintaining API compatibility)
-    this.renderer.shadowMap = { enabled: config.shadows ?? true, type: THREE.PCFShadowMap } as any;
+    // WebGPURenderer automatically enables shadows if added to the scene
+    this.renderer.shadowMap.enabled = config.shadows ?? true;
 
     // Auto-setup camera
     this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
