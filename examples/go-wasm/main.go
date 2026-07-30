@@ -257,7 +257,12 @@ var (
 	height float64
 	scene  *Scene
 	
-	worldAngle float64 = 0.0
+	camAngleX float64 = 0.0
+	camAngleY float64 = 0.0
+	isDragging bool = false
+	lastMouseX float64 = 0.0
+	lastMouseY float64 = 0.0
+	
 	petals     []*PetalState
 	lastTime   float64 = 0
 )
@@ -303,14 +308,16 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	
 	time := timeMs * 0.001
 
-	worldAngle += 0.3 * dt
+	// Camera is static, we rotate the world instead since we don't have a view matrix
 	scene.camera.position = Vector3{0, 6, 20}
 
 	lightDir := Vector3{-0.5, 1.0, -0.5} 
 	lightLen := math.Sqrt(lightDir.x*lightDir.x + lightDir.y*lightDir.y + lightDir.z*lightDir.z)
 	lightDir.x /= lightLen; lightDir.y /= lightLen; lightDir.z /= lightLen
-	ambientLight := 0.6 
-	diffusePower := 0.6 
+	
+	// Brighter lighting as requested
+	ambientLight := 0.75 
+	diffusePower := 0.8 
 
 	for _, p := range petals {
 		ent := p.entity
@@ -325,7 +332,8 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			rot.y += 2.0 * dt
 			rot.z += 1.0 * dt
 
-			landHeight := -0.15 + (p.seed * 0.0001)
+			// Give petals distinctly different land heights to prevent Z-fighting (vibration)
+			landHeight := -0.15 + (p.seed * 0.002) - (rand.Float64() * 0.05)
 			if pos.y <= landHeight {
 				pos.y = landHeight
 				rot.x = 0
@@ -356,7 +364,10 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			v.z *= ent.transform.scale.z
 			v = v.Rotate(ent.transform.rotation.x, ent.transform.rotation.y, ent.transform.rotation.z)
 			v = v.Add(ent.transform.position)
-			v = v.Rotate(0, worldAngle, 0)
+			
+			// Rotate the entire world based on mouse drag!
+			v = v.Rotate(camAngleY, camAngleX, 0)
+			
 			transformed[j] = v
 		}
 
@@ -460,6 +471,59 @@ func main() {
 	}))
 	updateCanvasSize()
 	ctx = canvas.Call("getContext", "2d")
+
+	// --- Input Handling ---
+	onDown := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		isDragging = true
+		e := args[0]
+		if e.Get("touches").Truthy() && e.Get("touches").Get("length").Int() > 0 {
+			lastMouseX = e.Get("touches").Index(0).Get("clientX").Float()
+			lastMouseY = e.Get("touches").Index(0).Get("clientY").Float()
+		} else {
+			lastMouseX = e.Get("clientX").Float()
+			lastMouseY = e.Get("clientY").Float()
+		}
+		return nil
+	})
+	
+	onMove := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if !isDragging { return nil }
+		e := args[0]
+		var curX, curY float64
+		if e.Get("touches").Truthy() && e.Get("touches").Get("length").Int() > 0 {
+			curX = e.Get("touches").Index(0).Get("clientX").Float()
+			curY = e.Get("touches").Index(0).Get("clientY").Float()
+		} else {
+			curX = e.Get("clientX").Float()
+			curY = e.Get("clientY").Float()
+		}
+		
+		dx := curX - lastMouseX
+		dy := curY - lastMouseY
+		lastMouseX = curX
+		lastMouseY = curY
+		
+		camAngleX -= dx * 0.01
+		camAngleY += dy * 0.01
+		if camAngleY > math.Pi/2.2 { camAngleY = math.Pi/2.2 }
+		if camAngleY < -math.Pi/4.0 { camAngleY = -math.Pi/4.0 }
+		return nil
+	})
+	
+	onUp := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		isDragging = false
+		return nil
+	})
+
+	canvas.Call("addEventListener", "mousedown", onDown)
+	canvas.Call("addEventListener", "mousemove", onMove)
+	canvas.Call("addEventListener", "mouseup", onUp)
+	canvas.Call("addEventListener", "mouseleave", onUp)
+	
+	canvas.Call("addEventListener", "touchstart", onDown)
+	canvas.Call("addEventListener", "touchmove", onMove)
+	canvas.Call("addEventListener", "touchend", onUp)
+	// ----------------------
 
 	scene = &Scene{
 		camera: Camera{position: Vector3{0, 6, 20}, fov: 700},
