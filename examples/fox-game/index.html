@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fox Adventure</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #87ceeb; /* Sky blue */
+      font-family: 'Inter', sans-serif;
+    }
+    #ui {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+    h1 { margin: 0 0 10px 0; font-size: 24px; }
+    p { margin: 5px 0; font-size: 16px; }
+    .controls-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 15px;
+      border-radius: 8px;
+      backdrop-filter: blur(5px);
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>Fox Adventure</h1>
+    <p>Collect the damaged helmets!</p>
+    <p>Score: <span id="score">0</span></p>
+  </div>
+  <div class="controls-hint">
+    <strong>Controls:</strong><br>
+    [W, A, S, D] to Move<br>
+    [SHIFT] to Run<br>
+    [Mouse] to Rotate Camera
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
