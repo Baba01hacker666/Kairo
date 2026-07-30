@@ -64,6 +64,8 @@ const treeMat = new THREE.MeshStandardMaterial({ color: 0x2d4c1e });
 const trunkGeo = new THREE.CylinderGeometry(0.2, 0.2, 1);
 const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
 
+const trees: THREE.Group[] = [];
+
 for (let i = 0; i < 30; i++) {
   const tree = new THREE.Group();
   
@@ -86,6 +88,7 @@ for (let i = 0; i < 30; i++) {
   tree.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
   
   scene.add(tree);
+  trees.push(tree);
 }
 
 // Loading Models
@@ -297,6 +300,29 @@ function animate() {
     // Apply movement
     const movement = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), fox.rotation.y);
     fox.position.addScaledVector(movement, currentSpeed * delta);
+
+    // Tree collisions (simple circle-circle overlap on XZ plane)
+    const foxRadius = 0.5;
+    const treeRadius = 0.6; // Slightly larger than visual trunk to feel right
+    
+    for (const tree of trees) {
+      const dx = fox.position.x - tree.position.x;
+      const dz = fox.position.z - tree.position.z;
+      const distSq = dx * dx + dz * dz;
+      const minDistance = foxRadius + treeRadius;
+      
+      if (distSq < minDistance * minDistance) {
+        // Fox is inside the tree, push it out
+        const dist = Math.sqrt(distSq);
+        const overlap = minDistance - dist;
+        // Normalize the vector pointing away from tree
+        const nx = dx / (dist || 1); // fallback if dist is 0
+        const nz = dz / (dist || 1);
+        
+        fox.position.x += nx * overlap;
+        fox.position.z += nz * overlap;
+      }
+    }
 
     // Handle animations
     if (currentSpeed > 0.1) {
