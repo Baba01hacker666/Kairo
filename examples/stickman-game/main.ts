@@ -4,18 +4,24 @@ import * as THREE from 'three';
 
 // Synthesizer
 let audioCtx: any = null;
-try {
-  const AudioCtxCtor = window.AudioContext || (window as any).webkitAudioContext;
-  if (AudioCtxCtor) audioCtx = new AudioCtxCtor();
-} catch (e) {
-  console.warn("AudioContext not supported or blocked", e);
-}
-function playSfx(type: string) {
-  if (!audioCtx) return;
+function getAudioCtx() {
+  if (audioCtx) return audioCtx;
   try {
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    const now = audioCtx.currentTime;
+    const AudioCtxCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtxCtor) audioCtx = new AudioCtxCtor();
+  } catch (e) {}
+  return audioCtx;
+}
+
+function playSfx(type: string) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  
+  try {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    const now = ctx.currentTime;
 
     if (type === 'jump') {
       osc.type = 'sine'; osc.frequency.setValueAtTime(220, now);
@@ -53,7 +59,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 
 // Lighting
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
