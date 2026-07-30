@@ -3,232 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kairo Engine - Modern Stickman 3D</title>
+  <title>Kairo Engine - Hub</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
   
   <style>
-    /* 21st.dev / Originkit inspired Design System */
-    :root {
-      --bg: #09090b; /* Zinc 950 */
-      --fg: #fafafa;
-      --glass-bg: rgba(24, 24, 27, 0.4);
-      --glass-border: rgba(255, 255, 255, 0.08);
-      --accent: #3b82f6;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg); font-family: 'Inter', sans-serif; color: var(--fg); }
-    
-    #game-canvas { width: 100vw; height: 100vh; display: block; }
-    
-    /* Sleek HUD Overlay */
-    #hud-overlay {
-      position: absolute; top: 24px; right: 24px; z-index: 20; pointer-events: none;
-      /* hidden initially for motion animation */
-      opacity: 0; transform: translateY(-20px);
-    }
-    
-    .hud-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
-      padding: 16px 24px;
+    body {
+      margin: 0;
+      padding: 0;
+      background: #09090b;
+      color: #fafafa;
+      font-family: 'Inter', sans-serif;
       display: flex;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      color: #a1a1aa;
+      margin-bottom: 48px;
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 24px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.05);
+      width: 100%;
+      max-width: 1000px;
+      padding: 0 24px;
     }
 
-    .hud-stat {
-      display: flex; flex-direction: column; gap: 4px;
-    }
-    
-    .hud-label {
-      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a1a1aa;
-    }
-    
-    .hud-value {
-      font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700;
-      background: linear-gradient(180deg, #fff, #a1a1aa);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-
-    .divider {
-      width: 1px; height: 40px; background: var(--glass-border);
+    .card {
+      background: rgba(24, 24, 27, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      text-decoration: none;
+      color: white;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    .health-bar-container {
-      width: 140px; height: 8px;
-      background: rgba(0,0,0,0.5);
-      border-radius: 999px;
-      overflow: hidden;
-      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.05);
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+      background: rgba(39, 39, 42, 0.8);
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .health-bar-fill {
-      width: 100%; height: 100%;
-      background: linear-gradient(90deg, #10b981, #34d399);
-      border-radius: 999px;
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-image 0.3s, box-shadow 0.3s;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    .card h2 {
+      font-size: 24px;
+      margin: 0;
     }
 
-    /* Touch Controls */
-    #touch-controls {
-      position: absolute; bottom: 32px; left: 32px; right: 32px;
-      display: flex; justify-content: space-between; align-items: center; z-index: 30;
-      opacity: 0; transform: translateY(20px);
-    }
-
-    .touch-btn {
-      background: var(--glass-bg);
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--glass-border);
-      border-radius: 50%;
-      width: 72px; height: 72px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 24px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.05);
-      transition: transform 0.15s, background 0.15s;
-      cursor: pointer; outline: none;
-    }
-    
-    .touch-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.1); }
-    .touch-btn svg { width: 32px; height: 32px; opacity: 0.8; }
-    
-    .touch-btn-jump {
-      width: 84px; height: 84px;
-      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-
-    /* Game Over Modal */
-    #game-over-modal {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      display: none; justify-content: center; align-items: center;
-      background: rgba(9, 9, 11, 0.8);
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      z-index: 50;
-    }
-    
-    .modal-card {
-      background: rgba(24, 24, 27, 0.6);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 24px;
-      padding: 48px;
-      text-align: center;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
-      display: flex; flex-direction: column; gap: 24px;
-      position: relative; overflow: hidden;
-      transform: scale(0.9); opacity: 0;
-    }
-    
-    .modal-card::before {
-      content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-      background: radial-gradient(circle at top, rgba(239, 68, 68, 0.15), transparent 60%);
-      pointer-events: none;
-    }
-
-    .modal-title { font-size: 32px; font-weight: 700; color: #ef4444; letter-spacing: -0.02em; }
-    .modal-subtitle { font-size: 15px; color: #a1a1aa; }
-    
-    .restart-btn {
-      background: #fafafa;
-      color: #09090b;
-      border: none;
-      padding: 14px 32px;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 16px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(255,255,255,0.1), inset 0 -2px 0 0 rgba(0,0,0,0.1);
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .restart-btn:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 4px rgba(255,255,255,0.1), inset 0 -1px 0 0 rgba(0,0,0,0.1);
+    .card p {
+      font-size: 14px;
+      margin: 0;
+      color: #a1a1aa;
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
+  <h1>Kairo Engine</h1>
+  <p>Select a demo to preview</p>
 
-  <!-- Fullscreen 3D WebGL Game Canvas -->
-  <canvas id="game-canvas"></canvas>
-
-  <!-- Sleek HUD Overlay -->
-  <div id="hud-overlay">
-    <div class="hud-card">
-      <div class="hud-stat">
-        <span class="hud-label">Score</span>
-        <span class="hud-value" id="score-val">0</span>
-      </div>
-      <div class="divider"></div>
-      <div class="hud-stat">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 140px;">
-          <span class="hud-label">Health</span>
-          <span class="hud-label" id="health-val" style="color: #fff">100%</span>
-        </div>
-        <div class="health-bar-container">
-          <div id="health-fill" class="health-bar-fill"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Touch Mobile Controller Overlay -->
-  <div id="touch-controls">
-    <div style="display: flex; gap: 16px;">
-      <button id="btn-left" class="touch-btn">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-      </button>
-      <button id="btn-right" class="touch-btn">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-    <button id="btn-jump" class="touch-btn touch-btn-jump">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-    </button>
-  </div>
-
-  <!-- Game Over Screen -->
-  <div id="game-over-modal">
-    <div class="modal-card" id="modal-card">
-      <div>
-        <div class="modal-title">GAME OVER</div>
-        <div class="modal-subtitle">You hit a hazard and lost your health.</div>
-      </div>
-      <button class="restart-btn" onclick="window.resetGame()">Play Again</button>
-    </div>
-  </div>
-
-  <!-- Motion UI Animation Module -->
-  <script type="module">
-    import { animate } from "motion";
+  <div class="grid">
+    <a href="/examples/stickman-game/index.html" class="card">
+      <h2>Modern Stickman 3D</h2>
+      <p>A full 2.5D physics platformer with custom rigs, animations, UI, and touch controls.</p>
+    </a>
     
-    // Animate HUD in
-    animate("#hud-overlay", { opacity: [0, 1], y: [-20, 0] }, { duration: 0.8, type: "spring", stiffness: 300, damping: 20 });
-    animate("#touch-controls", { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.2, type: "spring", stiffness: 300, damping: 20 });
+    <a href="/examples/cherry-blossoms/index.html" class="card">
+      <h2>Cinematic Cherry Blossoms</h2>
+      <p>A beautiful cinematic animation demonstrating the power of the KairoApp animation API.</p>
+    </a>
 
-    window.showGameOver = () => {
-      const modal = document.getElementById('game-over-modal');
-      const card = document.getElementById('modal-card');
-      modal.style.display = 'flex';
-      animate(modal, { opacity: [0, 1] }, { duration: 0.3 });
-      animate(card, { scale: [0.9, 1], opacity: [0, 1] }, { duration: 0.5, type: "spring", stiffness: 400, damping: 25 });
-    };
-
-    window.hideGameOver = () => {
-      const modal = document.getElementById('game-over-modal');
-      modal.style.display = 'none';
-    };
-  </script>
-
-  <!-- Kairo Engine App Entrypoint -->
-  <script type="module" src="/examples/stickman-game/main.ts"></script>
+    <a href="/examples/easy-game/index.html" class="card">
+      <h2>Super Easy API Demo</h2>
+      <p>A minimal physics scene showing how easily beginners can build a game with KairoApp.</p>
+    </a>
+  </div>
 </body>
 </html>

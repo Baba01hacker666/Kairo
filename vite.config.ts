@@ -5,6 +5,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: '/index.html',
+        stickman: '/examples/stickman-game/index.html',
+        easy: '/examples/easy-game/index.html',
+        cherry: '/examples/cherry-blossoms/index.html'
+      }
+    }
   },
   resolve: {
     alias: {
