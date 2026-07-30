@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -252,6 +254,153 @@ func loadOBJFromURL(objURL, mtlURL string, defR, defG, defB, defA float64, pos, 
 			return nil
 		}))
 	}
+}
+
+// --- GLTF 2.0 Parser ---
+type GLTF struct {
+	Buffers []struct {
+		URI        string `json:"uri"`
+		ByteLength int    `json:"byteLength"`
+	} `json:"buffers"`
+	BufferViews []struct {
+		Buffer     int `json:"buffer"`
+		ByteOffset int `json:"byteOffset"`
+		ByteLength int `json:"byteLength"`
+		ByteStride int `json:"byteStride"`
+	} `json:"bufferViews"`
+	Accessors []struct {
+		BufferView    int    `json:"bufferView"`
+		ByteOffset    int    `json:"byteOffset"`
+		ComponentType int    `json:"componentType"`
+		Count         int    `json:"count"`
+		Type          string `json:"type"`
+	} `json:"accessors"`
+	Meshes []struct {
+		Primitives []struct {
+			Attributes map[string]int `json:"attributes"`
+			Indices    *int           `json:"indices"`
+			Material   *int           `json:"material"`
+		} `json:"primitives"`
+	} `json:"meshes"`
+	Materials []struct {
+		PbrMetallicRoughness struct {
+			BaseColorFactor []float64 `json:"baseColorFactor"`
+		} `json:"pbrMetallicRoughness"`
+	} `json:"materials"`
+}
+
+func parseGLTF(gltf GLTF, binData []byte, defR, defG, defB, defA float64) *Mesh {
+	var verts []Vector3
+	var faces []Face
+
+	if len(gltf.Meshes) == 0 || len(gltf.Meshes[0].Primitives) == 0 {
+		return &Mesh{}
+	}
+	prim := gltf.Meshes[0].Primitives[0]
+
+	r, g, b, a := defR, defG, defB, defA
+	if prim.Material != nil && len(gltf.Materials) > *prim.Material {
+		mat := gltf.Materials[*prim.Material]
+		if len(mat.PbrMetallicRoughness.BaseColorFactor) == 4 {
+			r = mat.PbrMetallicRoughness.BaseColorFactor[0] * 255
+			g = mat.PbrMetallicRoughness.BaseColorFactor[1] * 255
+			b = mat.PbrMetallicRoughness.BaseColorFactor[2] * 255
+			a = mat.PbrMetallicRoughness.BaseColorFactor[3]
+		}
+	}
+
+	posAccIdx, ok := prim.Attributes["POSITION"]
+	if ok && len(gltf.Accessors) > posAccIdx {
+		acc := gltf.Accessors[posAccIdx]
+		bv := gltf.BufferViews[acc.BufferView]
+		start := bv.ByteOffset + acc.ByteOffset
+		stride := bv.ByteStride
+		if stride == 0 {
+			stride = 12
+		}
+
+		for i := 0; i < acc.Count; i++ {
+			offset := start + (i * stride)
+			vx := math.Float32frombits(binary.LittleEndian.Uint32(binData[offset : offset+4]))
+			vy := math.Float32frombits(binary.LittleEndian.Uint32(binData[offset+4 : offset+8]))
+			vz := math.Float32frombits(binary.LittleEndian.Uint32(binData[offset+8 : offset+12]))
+			verts = append(verts, Vector3{float64(vx), float64(vy), float64(vz)})
+		}
+	}
+
+	if prim.Indices != nil && len(gltf.Accessors) > *prim.Indices {
+		acc := gltf.Accessors[*prim.Indices]
+		bv := gltf.BufferViews[acc.BufferView]
+		start := bv.ByteOffset + acc.ByteOffset
+
+		var indices []int
+		for i := 0; i < acc.Count; i++ {
+			var idx int
+			if acc.ComponentType == 5123 { // UNSIGNED_SHORT
+				offset := start + (i * 2)
+				idx = int(binary.LittleEndian.Uint16(binData[offset : offset+2]))
+			} else if acc.ComponentType == 5125 { // UNSIGNED_INT
+				offset := start + (i * 4)
+				idx = int(binary.LittleEndian.Uint32(binData[offset : offset+4]))
+			}
+			indices = append(indices, idx)
+		}
+
+		for i := 0; i < len(indices); i += 3 {
+			if i+2 < len(indices) {
+				faces = append(faces, Face{
+					indices: []int{indices[i], indices[i+1], indices[i+2]},
+					r: r, g: g, b: b, alpha: a,
+				})
+			}
+		}
+	} else {
+		for i := 0; i < len(verts); i += 3 {
+			if i+2 < len(verts) {
+				faces = append(faces, Face{
+					indices: []int{i, i+1, i+2},
+					r: r, g: g, b: b, alpha: a,
+				})
+			}
+		}
+	}
+	return &Mesh{vertices: verts, faces: faces}
+}
+
+func loadGLTFFromURL(gltfURL string, defR, defG, defB, defA float64, pos, scale Vector3, collider float64) {
+	js.Global().Call("fetch", gltfURL).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return args[0].Call("text")
+	})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		jsonData := args[0].String()
+		var gltf GLTF
+		json.Unmarshal([]byte(jsonData), &gltf)
+
+		if len(gltf.Buffers) > 0 {
+			uri := gltf.Buffers[0].URI
+			if !strings.HasPrefix(uri, "data:") {
+				parts := strings.Split(gltfURL, "/")
+				parts[len(parts)-1] = uri
+				uri = strings.Join(parts, "/")
+			}
+
+			js.Global().Call("fetch", uri).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return args[0].Call("arrayBuffer")
+			})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				bufferObj := js.Global().Get("Uint8Array").New(args[0])
+				bytes := make([]byte, bufferObj.Get("length").Int())
+				js.CopyBytesToGo(bytes, bufferObj)
+
+				mesh := parseGLTF(gltf, bytes, defR, defG, defB, defA)
+				scene.entities = append(scene.entities, &Entity{
+					mesh:      mesh,
+					transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
+					collider:  collider,
+				})
+				return nil
+			}))
+		}
+		return nil
+	}))
 }
 
 // --- Global State ---
@@ -647,6 +796,9 @@ func main() {
 	// Load some magical crystals
 	loadOBJFromURL("../../models/crystal.obj", "", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6}, 0.5)
 	loadOBJFromURL("../../models/crystal.obj", "", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4}, 0.4)
+
+	// Load a GLTF Box!
+	loadGLTFFromURL("../../models/box.gltf", 200, 100, 100, 1.0, Vector3{5, 0.5, 5}, Vector3{1, 1, 1}, 1.0)
 
 	// Add a Player Entity!
 	playerMesh := CreateIcosahedronMesh(0.6, 255, 215, 0, 1.0) // Golden glowing orb
