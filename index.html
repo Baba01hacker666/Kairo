@@ -208,18 +208,18 @@
 
   <!-- Motion UI Animation Module -->
   <script type="module">
-    import { animate, spring } from "motion";
+    import { animate } from "motion";
     
     // Animate HUD in
-    animate("#hud-overlay", { opacity: [0, 1], y: [-20, 0] }, { duration: 0.8, easing: spring({ stiffness: 300, damping: 20 }) });
-    animate("#touch-controls", { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.2, easing: spring({ stiffness: 300, damping: 20 }) });
+    animate("#hud-overlay", { opacity: [0, 1], y: [-20, 0] }, { duration: 0.8, type: "spring", stiffness: 300, damping: 20 });
+    animate("#touch-controls", { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.2, type: "spring", stiffness: 300, damping: 20 });
 
     window.showGameOver = () => {
       const modal = document.getElementById('game-over-modal');
       const card = document.getElementById('modal-card');
       modal.style.display = 'flex';
       animate(modal, { opacity: [0, 1] }, { duration: 0.3 });
-      animate(card, { scale: [0.9, 1], opacity: [0, 1] }, { duration: 0.5, easing: spring({ stiffness: 400, damping: 25 }) });
+      animate(card, { scale: [0.9, 1], opacity: [0, 1] }, { duration: 0.5, type: "spring", stiffness: 400, damping: 25 });
     };
 
     window.hideGameOver = () => {
