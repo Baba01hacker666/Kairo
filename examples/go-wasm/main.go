@@ -416,6 +416,9 @@ var (
 	lastMouseX float64 = 0.0
 	lastMouseY float64 = 0.0
 	
+	touchLeft  bool = false
+	touchRight bool = false
+	
 	keys map[string]bool = make(map[string]bool)
 	
 	obstacles  []*ObstacleState
@@ -485,11 +488,11 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		speed := 15.0 * dt
 		velX := 0.0
 		
-		// AD Movement only for runner game
-		if keys["a"] || keys["ArrowLeft"] {
+		// AD Movement and Mobile Touch Support
+		if keys["a"] || keys["ArrowLeft"] || touchLeft {
 			velX -= speed
 		}
-		if keys["d"] || keys["ArrowRight"] {
+		if keys["d"] || keys["ArrowRight"] || touchRight {
 			velX += speed
 		}
 		
@@ -677,12 +680,20 @@ func main() {
 	onDown := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		isDragging = true
 		e := args[0]
+		
+		var clientX float64
 		if e.Get("touches").Truthy() && e.Get("touches").Get("length").Int() > 0 {
-			lastMouseX = e.Get("touches").Index(0).Get("clientX").Float()
-			lastMouseY = e.Get("touches").Index(0).Get("clientY").Float()
+			clientX = e.Get("touches").Index(0).Get("clientX").Float()
 		} else {
-			lastMouseX = e.Get("clientX").Float()
-			lastMouseY = e.Get("clientY").Float()
+			clientX = e.Get("clientX").Float()
+		}
+		
+		if clientX < width/2.0 {
+			touchLeft = true
+			touchRight = false
+		} else {
+			touchRight = true
+			touchLeft = false
 		}
 		return nil
 	})
@@ -690,29 +701,29 @@ func main() {
 	onMove := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if !isDragging { return nil }
 		e := args[0]
-		var curX, curY float64
+		
+		var clientX float64
 		if e.Get("touches").Truthy() && e.Get("touches").Get("length").Int() > 0 {
-			curX = e.Get("touches").Index(0).Get("clientX").Float()
-			curY = e.Get("touches").Index(0).Get("clientY").Float()
+			clientX = e.Get("touches").Index(0).Get("clientX").Float()
 		} else {
-			curX = e.Get("clientX").Float()
-			curY = e.Get("clientY").Float()
+			clientX = e.Get("clientX").Float()
 		}
 		
-		dx := curX - lastMouseX
-		dy := curY - lastMouseY
-		lastMouseX = curX
-		lastMouseY = curY
-		
-		camAngleX -= dx * 0.01
-		camAngleY += dy * 0.01
-		if camAngleY > math.Pi/2.2 { camAngleY = math.Pi/2.2 }
-		if camAngleY < -math.Pi/4.0 { camAngleY = -math.Pi/4.0 }
+		// Update touch side if they drag across the middle
+		if clientX < width/2.0 {
+			touchLeft = true
+			touchRight = false
+		} else {
+			touchRight = true
+			touchLeft = false
+		}
 		return nil
 	})
 	
 	onUp := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		isDragging = false
+		touchLeft = false
+		touchRight = false
 		return nil
 	})
 
