@@ -100,10 +100,7 @@ floor.position.y = 0;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Environment lighting for PBR realism (Simulated without downloading heavy HDR files)
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-pmremGenerator.compileEquirectangularShader();
-scene.environment = pmremGenerator.fromScene(new THREE.Scene()).texture; // Fallback env map
+// Removed empty environment map fallback as it causes metallic materials to render pitch black
 
 // Animation Loop
 const clock = new THREE.Clock();
