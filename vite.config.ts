@@ -7,10 +7,11 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: '/index.html',
-        stickman: '/examples/stickman-game/index.html',
-        easy: '/examples/easy-game/index.html',
-        cherry: '/examples/cherry-blossoms/index.html'
+        main: 'index.html',
+        stickman: 'examples/stickman-game/index.html',
+        easy: 'examples/easy-game/index.html',
+        cherry: 'examples/cherry-blossoms/index.html',
+        gowasm: 'examples/go-wasm/index.html'
       }
     }
   },
