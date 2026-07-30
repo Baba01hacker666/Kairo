@@ -138,7 +138,8 @@ var (
 	scene  *Scene
 	
 	worldAngle float64 = 0.0
-	petals []*PetalState
+	petals     []*PetalState
+	lastTime   float64 = 0
 )
 
 type PetalState struct {
@@ -170,17 +171,29 @@ func project(p Vector3, cam Camera) Vector3 {
 
 func renderFrame(this js.Value, args []js.Value) interface{} {
 	timeMs := js.Global().Get("performance").Call("now").Float()
+	if lastTime == 0 {
+		lastTime = timeMs
+	}
+	// Real delta time for perfectly smooth movement!
+	dt := (timeMs - lastTime) * 0.001
+	lastTime = timeMs
+	
+	// Cap dt to prevent huge jumps if tab was inactive
+	if dt > 0.1 {
+		dt = 0.1
+	}
+	
 	time := timeMs * 0.001
-	dt := 0.016
 
 	worldAngle += 0.3 * dt
 	scene.camera.position = Vector3{0, 6, 20}
 
-	// Light Setup
-	lightDir := Vector3{-0.5, 1.0, -0.5} // Light from top-left-front
+	// Light Setup (Brighter!)
+	lightDir := Vector3{-0.5, 1.0, -0.5} 
 	lightLen := math.Sqrt(lightDir.x*lightDir.x + lightDir.y*lightDir.y + lightDir.z*lightDir.z)
 	lightDir.x /= lightLen; lightDir.y /= lightLen; lightDir.z /= lightLen
-	ambientLight := 0.3
+	ambientLight := 0.6 // Increased from 0.3 for a much brighter scene
+	diffusePower := 0.6 // Max intensity will be 1.2, nicely overexposing the highlights
 
 	for _, p := range petals {
 		ent := p.entity
@@ -235,7 +248,7 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		for _, f := range ent.mesh.faces {
 			if len(f.indices) < 3 { continue }
 			
-			// 1. Calculate Face Normal in 3D Space
+			// 1. Calculate Face Normal
 			p0 := transformed[f.indices[0]]
 			p1 := transformed[f.indices[1]]
 			p2 := transformed[f.indices[2]]
@@ -250,25 +263,24 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			nl := math.Sqrt(nx*nx + ny*ny + nz*nz)
 			if nl > 0 { nx /= nl; ny /= nl; nz /= nl }
 
-			// 2. Backface Culling using 3D normal
+			// 2. Backface Culling
 			if !isDoubleSided {
-				// Vector from camera to face
 				viewDirX := scene.camera.position.x - p0.x
 				viewDirY := scene.camera.position.y - p0.y
 				viewDirZ := scene.camera.position.z - p0.z
 				if (nx*viewDirX + ny*viewDirY + nz*viewDirZ) < 0 {
-					continue // Face is pointing away from camera
+					continue 
 				}
 			}
 
-			// 3. Flat Shading (Dot product with light)
+			// 3. Flat Shading
 			diffuse := nx*lightDir.x + ny*lightDir.y + nz*lightDir.z
 			if isDoubleSided {
-				diffuse = math.Abs(diffuse) // Petals are lit from both sides
+				diffuse = math.Abs(diffuse)
 			}
 			if diffuse < 0 { diffuse = 0 }
 			
-			intensity := ambientLight + (diffuse * 0.7)
+			intensity := ambientLight + (diffuse * diffusePower)
 			if intensity > 1.0 { intensity = 1.0 }
 
 			finalR := int(f.r * intensity)
@@ -290,7 +302,8 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	sort.Slice(pFaces, func(i, j int) bool {
+	// Use Stable Sort to avoid Z-fighting flickering between faces of identical depth!
+	sort.SliceStable(pFaces, func(i, j int) bool {
 		return pFaces[i].z < pFaces[j].z
 	})
 
