@@ -37,6 +37,11 @@ const player = app.createBox({
 });
 
 // 6. Magic Update Loop
+let cameraFollow = false;
+app.animate(app.camera.position, { x: [-10, 0], y: [10, 5], z: [20, 10] }, { duration: 2 }).then(() => {
+  cameraFollow = true;
+});
+
 app.onUpdate((dt) => {
   if (!player.rb || !player.rb.cannonBody) return;
 
@@ -59,9 +64,11 @@ app.onUpdate((dt) => {
   }
 
   // Smooth camera follow
-  app.camera.position.x += (player.mesh.position.x - app.camera.position.x) * 0.1;
-  app.camera.position.z += (player.mesh.position.z + 10 - app.camera.position.z) * 0.1;
-  app.camera.lookAt(player.mesh.position);
+  if (cameraFollow) {
+    app.camera.position.x += (player.mesh.position.x - app.camera.position.x) * 0.1;
+    app.camera.position.z += (player.mesh.position.z + 10 - app.camera.position.z) * 0.1;
+    app.camera.lookAt(player.mesh.position);
+  }
 });
 
 // 7. Start the engine!

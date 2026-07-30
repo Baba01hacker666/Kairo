@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Engine } from './Engine.ts';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
+import { animate } from 'motion';
 
 export interface KairoAppConfig {
   canvas?: HTMLCanvasElement | string;
@@ -103,6 +104,13 @@ export class KairoApp {
 
   public start() {
     this.engine.start();
+  }
+
+  /**
+   * Magically animates any object or value over time! Perfect for cutscenes, UI, or cinematic videos.
+   */
+  public animate(target: any, keyframes: any, options?: any): any {
+    return animate(target, keyframes, options);
   }
 
   /**

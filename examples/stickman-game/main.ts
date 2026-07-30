@@ -206,7 +206,7 @@ engine.events.on('update', (dt: number) => {
     
     // Position mesh
     playerGroup.position.x = playerPos.x;
-    playerGroup.position.y = playerPos.y - 1.25; // Offset for collider half-height
+    playerGroup.position.y = playerPos.y - 1.1; // Offset for collider half-height + small visual padding so feet don't clip underground
     playerGroup.position.z = playerPos.z;
     
     let moveX = 0;
