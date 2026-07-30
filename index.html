@@ -21,6 +21,8 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      padding-top: 60px;
+      padding-bottom: 60px;
     }
 
     h1 {
@@ -29,12 +31,14 @@
       background: linear-gradient(135deg, #3b82f6, #8b5cf6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      text-align: center;
     }
 
-    p {
+    p.subtitle {
       color: #a1a1aa;
       margin-bottom: 48px;
       font-size: 18px;
+      text-align: center;
     }
 
     .grid {
@@ -50,24 +54,41 @@
       background: rgba(24, 24, 27, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      padding: 24px;
+      overflow: hidden;
       text-decoration: none;
       color: white;
-      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
       display: flex;
       flex-direction: column;
-      gap: 12px;
     }
 
     .card:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-      background: rgba(39, 39, 42, 0.8);
       border-color: rgba(255, 255, 255, 0.2);
     }
 
+    .card-img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      transition: opacity 0.2s;
+    }
+
+    .card:hover .card-img {
+      opacity: 0.9;
+    }
+
+    .card-content {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
     .card h2 {
-      font-size: 24px;
+      font-size: 22px;
       margin: 0;
     }
 
@@ -81,27 +102,39 @@
 </head>
 <body>
   <h1>Kairo Engine</h1>
-  <p>Select a demo to preview</p>
+  <p class="subtitle">Select a demo to preview</p>
 
   <div class="grid">
     <a href="/examples/stickman-game/index.html" class="card">
-      <h2>Modern Stickman 3D</h2>
-      <p>A full 2.5D physics platformer with custom rigs, animations, UI, and touch controls.</p>
+      <img src="/thumbnails/stickman.jpg" alt="Stickman Thumbnail" class="card-img" />
+      <div class="card-content">
+        <h2>Modern Stickman 3D</h2>
+        <p>A full 2.5D physics platformer with custom rigs, animations, UI, and touch controls.</p>
+      </div>
     </a>
     
-    <a href="/examples/cherry-blossoms/index.html" class="card">
-      <h2>Cinematic Cherry Blossoms</h2>
-      <p>A beautiful cinematic animation demonstrating the power of the KairoApp animation API.</p>
-    </a>
-
     <a href="/examples/go-wasm/index.html" class="card">
-      <h2>🐹 Golang WASM 3D</h2>
-      <p>A completely custom pure-Go software 3D renderer running in WebAssembly!</p>
+      <img src="/thumbnails/wasm.jpg" alt="WASM Thumbnail" class="card-img" />
+      <div class="card-content">
+        <h2>🐹 Golang WASM 3D</h2>
+        <p>A completely custom pure-Go software 3D renderer running in WebAssembly!</p>
+      </div>
     </a>
 
     <a href="/examples/easy-game/index.html" class="card">
-      <h2>Super Easy API Demo</h2>
-      <p>A minimal physics scene showing how easily beginners can build a game with KairoApp.</p>
+      <img src="/thumbnails/cube.jpg" alt="Cube Thumbnail" class="card-img" />
+      <div class="card-content">
+        <h2>Super Easy API Demo</h2>
+        <p>A minimal physics scene showing how easily beginners can build a game with KairoApp.</p>
+      </div>
+    </a>
+
+    <a href="/examples/cherry-blossoms/index.html" class="card">
+      <img src="/thumbnails/wasm.jpg" alt="Cherry Blossoms Thumbnail" class="card-img" style="filter: hue-rotate(90deg);" />
+      <div class="card-content">
+        <h2>Cinematic Cherry Blossoms</h2>
+        <p>A beautiful cinematic animation demonstrating the power of the KairoApp animation API.</p>
+      </div>
     </a>
   </div>
 </body>
