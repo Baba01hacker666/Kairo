@@ -72,7 +72,7 @@ scene.add(grid);
 
 const trackMesh = new THREE.Mesh(
   new THREE.BoxGeometry(40, 0.4, 10), 
-  new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.2, metalness: 0.1 })
+  new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6, metalness: 0.1 })
 );
 trackMesh.position.set(0, -0.2, 0);
 trackMesh.receiveShadow = true;
@@ -93,38 +93,46 @@ const skinMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2
 const pantsMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.5 });
 const pupilMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
 
+// Torso
 const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.19, 0.55, 20), bodyMat); 
-chest.position.set(0, 0.5, 0); chest.castShadow = true; playerGroup.add(chest);
+chest.position.set(0, 1.6, 0); chest.castShadow = true; playerGroup.add(chest);
 const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.18, 0.4, 20), pantsMat); 
-waist.position.set(0, 0.05, 0); waist.castShadow = true; playerGroup.add(waist);
+waist.position.set(0, 1.15, 0); waist.castShadow = true; playerGroup.add(waist);
 
+// Head & Face
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 32, 32), skinMat); 
-head.position.set(0, 1.1, 0); head.castShadow = true; playerGroup.add(head);
+head.position.set(0, 2.2, 0); head.castShadow = true; playerGroup.add(head);
 const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), pupilMat); 
-eyeL.position.set(-0.11, 1.16, 0.3); playerGroup.add(eyeL);
+eyeL.position.set(-0.11, 2.26, 0.3); playerGroup.add(eyeL);
 const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), pupilMat); 
-eyeR.position.set(0.11, 1.16, 0.3); playerGroup.add(eyeR);
+eyeR.position.set(0.11, 2.26, 0.3); playerGroup.add(eyeR);
 
-const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.9, 16), bodyMat); 
-armL.position.set(-0.35, 0.4, 0); armL.rotation.z = 0.2; armL.castShadow = true; playerGroup.add(armL);
-const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.9, 16), bodyMat); 
-armR.position.set(0.35, 0.4, 0); armR.rotation.z = -0.2; armR.castShadow = true; playerGroup.add(armR);
+// Arms (pivoting from shoulders)
+const armGeom = new THREE.CylinderGeometry(0.06, 0.05, 0.9, 16);
+armGeom.translate(0, -0.45, 0); // Origin at shoulder
+const armL = new THREE.Mesh(armGeom, bodyMat); 
+armL.position.set(-0.35, 1.8, 0); armL.rotation.z = 0.2; armL.castShadow = true; playerGroup.add(armL);
+const armR = new THREE.Mesh(armGeom, bodyMat); 
+armR.position.set(0.35, 1.8, 0); armR.rotation.z = -0.2; armR.castShadow = true; playerGroup.add(armR);
 
-const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.0, 16), pantsMat); 
-legL.position.set(-0.16, -0.6, 0); legL.castShadow = true; playerGroup.add(legL);
-const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.0, 16), pantsMat); 
-legR.position.set(0.16, -0.6, 0); legR.castShadow = true; playerGroup.add(legR);
+// Legs (pivoting from hips)
+const legGeom = new THREE.CylinderGeometry(0.07, 0.06, 1.0, 16);
+legGeom.translate(0, -0.5, 0); // Origin at hip
+const legL = new THREE.Mesh(legGeom, pantsMat); 
+legL.position.set(-0.16, 1.0, 0); legL.castShadow = true; playerGroup.add(legL);
+const legR = new THREE.Mesh(legGeom, pantsMat); 
+legR.position.set(0.16, 1.0, 0); legR.castShadow = true; playerGroup.add(legR);
 
 scene.add(playerGroup);
 
-// Player Physics
+// Physics Entities
 const playerRb = new RigidBody();
 playerRb.type = RigidBodyType.Dynamic;
 playerRb.mass = 1.0;
 playerRb.fixedRotation = true;
 const playerCol = new Collider();
 playerCol.type = ColliderType.Box;
-playerCol.size = new Vector3(0.7, 2.6, 0.7); // Extent
+playerCol.size = new Vector3(0.5, 1.25, 0.5); // Half-extents for physics box (2.5m tall total)
 let playerPos = new Vector3(-6, 3, 0);
 physics.registerBody(playerRb, playerCol, playerPos);
 
@@ -192,7 +200,7 @@ engine.events.on('update', (dt: number) => {
     
     // Position mesh
     playerGroup.position.x = playerPos.x;
-    playerGroup.position.y = playerPos.y - 1.3; // Offset for collider half-height
+    playerGroup.position.y = playerPos.y - 1.25; // Offset for collider half-height
     playerGroup.position.z = playerPos.z;
     
     let moveX = 0;
@@ -204,6 +212,21 @@ engine.events.on('update', (dt: number) => {
     vel.x = moveX * 7;
     vel.z = 0;
     playerPos.z = 0;
+
+    // Basic Walk Animation (arms and legs swing)
+    const t = performance.now() * 0.012;
+    if (Math.abs(vel.x) > 0.5) {
+      legL.rotation.x = Math.sin(t) * 0.8;
+      legR.rotation.x = Math.sin(t + Math.PI) * 0.8;
+      armL.rotation.x = Math.sin(t + Math.PI) * 0.8; // Opposite to leg
+      armR.rotation.x = Math.sin(t) * 0.8;
+    } else {
+      // Ease back to idle
+      legL.rotation.x *= 0.8;
+      legR.rotation.x *= 0.8;
+      armL.rotation.x *= 0.8;
+      armR.rotation.x *= 0.8;
+    }
 
     isGrounded = Math.abs(vel.y) < 0.1 && playerPos.y < 3.0;
     if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp'] || touchState.jump) && isGrounded) {
