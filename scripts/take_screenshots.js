@@ -7,7 +7,8 @@ const VIEWS = [
   { name: 'go-wasm', url: 'http://localhost:4173/Kairo/examples/go-wasm/index.html' },
   { name: 'go-runner', url: 'http://localhost:4173/Kairo/examples/go-runner/index.html' },
   { name: 'stickman', url: 'http://localhost:4173/Kairo/examples/stickman-game/index.html' },
-  { name: 'cherry-blossoms', url: 'http://localhost:4173/Kairo/examples/cherry-blossoms/index.html' }
+  { name: 'cherry-blossoms', url: 'http://localhost:4173/Kairo/examples/cherry-blossoms/index.html' },
+  { name: 'high-quality-render', url: 'http://localhost:4173/Kairo/examples/high-quality-render/index.html' }
 ];
 
 (async () => {

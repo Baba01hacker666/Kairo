@@ -12,7 +12,8 @@ export default defineConfig({
         easy: 'examples/easy-game/index.html',
         cherry: 'examples/cherry-blossoms/index.html',
         gowasm: 'examples/go-wasm/index.html',
-        gorunner: 'examples/go-runner/index.html'
+        gorunner: 'examples/go-runner/index.html',
+        hqrender: 'examples/high-quality-render/index.html'
       }
     }
   },

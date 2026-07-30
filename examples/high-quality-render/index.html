@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>High Quality Rendering - Three.js</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #09090b;
+      --fg: #fafafa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg); font-family: 'Inter', sans-serif; color: var(--fg); }
+    
+    #overlay {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 10;
+      background: rgba(24, 24, 27, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      max-width: 350px;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 8px; font-weight: 600; }
+    p { font-size: 0.9rem; color: #a1a1aa; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <h1>High-Fidelity Assets</h1>
+    <p>This scene showcases a fully animated skeletal rig (Fox) alongside a photorealistic PBR asset (Damaged Helmet) with real-time soft shadows and environmental reflections.</p>
+  </div>
+
+  <!-- Entrypoint -->
+  <script type="module" src="/examples/high-quality-render/main.ts"></script>
+</body>
+</html>
