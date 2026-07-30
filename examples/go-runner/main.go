@@ -367,7 +367,7 @@ func parseGLTF(gltf GLTF, binData []byte, defR, defG, defB, defA float64) *Mesh 
 	return &Mesh{vertices: verts, faces: faces}
 }
 
-func loadGLTFFromURL(gltfURL string, defR, defG, defB, defA float64, pos, scale Vector3, collider float64) {
+func loadGLTFFromURL(gltfURL string, defR, defG, defB, defA float64, onLoaded func(mesh *Mesh)) {
 	js.Global().Call("fetch", gltfURL).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		return args[0].Call("text")
 	})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -391,11 +391,9 @@ func loadGLTFFromURL(gltfURL string, defR, defG, defB, defA float64, pos, scale 
 				js.CopyBytesToGo(bytes, bufferObj)
 
 				mesh := parseGLTF(gltf, bytes, defR, defG, defB, defA)
-				scene.entities = append(scene.entities, &Entity{
-					mesh:      mesh,
-					transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
-					collider:  collider,
-				})
+				if onLoaded != nil {
+					onLoaded(mesh)
+				}
 				return nil
 			}))
 		}
@@ -758,25 +756,22 @@ func main() {
 		transform: Transform{position: Vector3{0, 0, -20}, scale: Vector3{1, 1, 3}},
 	})
 
-	// Add the Player Box Entity (Green Box)
-	// We use the procedural box mesh so we have immediate access to flag it as the player
-	playerMesh := CreateBoxMesh(1.2, 0, 255, 150, 1.0) 
-	scene.entities = append(scene.entities, &Entity{
-		mesh:      playerMesh,
+	// Add a temporary invisible player entity to reserve the spot
+	playerEnt := &Entity{
+		mesh:      CreateBoxMesh(1.2, 0, 255, 150, 1.0), // Temp mesh
 		transform: Transform{position: Vector3{0, 0.6, 0}, scale: Vector3{1, 1, 1}},
 		collider:  0.8,
 		isPlayer:  true,
-	})
+	}
+	scene.entities = append(scene.entities, playerEnt)
 
-	// Obstacles - Spawning 10 Boxes at different Z distances
+	// Add obstacles
 	for i := 0; i < 10; i++ {
 		startZ := -20.0 - float64(i)*15.0
 		startX := (rand.Float64() - 0.5) * 16.0
 		
-		obsMesh := CreateBoxMesh(1.5, 255, 50, 50, 1.0) // Red enemy box
-		
 		obsEnt := &Entity{
-			mesh:      obsMesh,
+			mesh:      CreateBoxMesh(1.5, 255, 50, 50, 1.0), // Temp mesh
 			transform: Transform{position: Vector3{startX, 0.75, startZ}, scale: Vector3{1, 1, 1}},
 			collider:  1.0,
 		}
@@ -787,9 +782,17 @@ func main() {
 		})
 	}
 	
-	// Wait! The user explicitly said: "use box as the obstcale and player".
-	// Since loadGLTFFromURL is async, I can modify it to return a Promise or take a callback.
-	// But it's easier to just build a procedural Box mesh in Go!
+	// Asynchronously load the user's GLTF model and replace the meshes!
+	loadGLTFFromURL("../../models/box.gltf", 200, 200, 200, 1.0, func(mesh *Mesh) {
+		// Replace player mesh (we'll color it differently if possible, but for now we just use the GLTF)
+		// To distinguish player, we could clone the mesh and tint it, but let's just use it!
+		playerEnt.mesh = mesh
+		
+		// Replace all obstacle meshes
+		for _, obs := range obstacles {
+			obs.entity.mesh = mesh
+		}
+	})
 	
 	js.Global().Call("requestAnimationFrame", js.FuncOf(renderFrame))
 	<-c
