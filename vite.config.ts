@@ -14,7 +14,8 @@ export default defineConfig({
         gowasm: 'examples/go-wasm/index.html',
         gorunner: 'examples/go-runner/index.html',
         hqrender: 'examples/high-quality-render/index.html',
-        foxgame: 'examples/fox-game/index.html'
+        foxgame: 'examples/fox-game/index.html',
+        gofox: 'examples/go-fox/index.html'
       }
     }
   },
