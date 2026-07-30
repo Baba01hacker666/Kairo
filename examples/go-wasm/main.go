@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"sort"
@@ -31,7 +32,8 @@ func (v Vector3) Rotate(ax, ay, az float64) Vector3 {
 
 type Face struct {
 	indices []int
-	color   string
+	r, g, b float64
+	alpha   float64
 }
 
 type Mesh struct {
@@ -60,52 +62,48 @@ type Scene struct {
 	camera   Camera
 }
 
-// --- Procedural Geometry Generators (Replaces OBJ files!) ---
+// --- Procedural Geometry Generators ---
 
-func CreateQuadMesh(s float64, color string) *Mesh {
+func CreateQuadMesh(s float64, r, g, b, a float64) *Mesh {
 	hs := s / 2.0
 	return &Mesh{
 		vertices: []Vector3{{-hs, 0, -hs}, {hs, 0, -hs}, {hs, 0, hs}, {-hs, 0, hs}},
-		faces:    []Face{{indices: []int{0, 1, 2, 3}, color: color}},
+		faces:    []Face{{indices: []int{0, 1, 2, 3}, r: r, g: g, b: b, alpha: a}},
 	}
 }
 
-// Generates an N-sided cylinder (great for trunks and grass bases)
-func CreateCylinderMesh(r, h float64, sides int, color string) *Mesh {
+func CreateCylinderMesh(radius, h float64, sides int, r, g, b, a float64) *Mesh {
 	var verts []Vector3
 	var faces []Face
 
-	// Base and Top vertices
 	for i := 0; i < sides; i++ {
 		angle := 2.0 * math.Pi * float64(i) / float64(sides)
-		verts = append(verts, Vector3{math.Cos(angle) * r, -h / 2.0, math.Sin(angle) * r})
+		verts = append(verts, Vector3{math.Cos(angle) * radius, -h / 2.0, math.Sin(angle) * radius})
 	}
 	for i := 0; i < sides; i++ {
 		angle := 2.0 * math.Pi * float64(i) / float64(sides)
-		verts = append(verts, Vector3{math.Cos(angle) * (r * 0.7), h / 2.0, math.Sin(angle) * (r * 0.7)})
+		verts = append(verts, Vector3{math.Cos(angle) * (radius * 0.7), h / 2.0, math.Sin(angle) * (radius * 0.7)})
 	}
 
-	// Side faces
 	for i := 0; i < sides; i++ {
 		next_i := (i + 1) % sides
+		// CCW winding
 		faces = append(faces, Face{
 			indices: []int{i, next_i, next_i + sides, i + sides},
-			color:   color,
+			r: r, g: g, b: b, alpha: a,
 		})
 	}
 	
-	// Top Face
 	var topIndices []int
-	for i := 0; i < sides; i++ {
+	for i := sides - 1; i >= 0; i-- { // Reverse winding for top
 		topIndices = append(topIndices, i+sides)
 	}
-	faces = append(faces, Face{indices: topIndices, color: color})
+	faces = append(faces, Face{indices: topIndices, r: r, g: g, b: b, alpha: a})
 
 	return &Mesh{vertices: verts, faces: faces}
 }
 
-// Generates a beautiful 20-sided sphere (Icosahedron) for the canopy
-func CreateIcosahedronMesh(radius float64, color string) *Mesh {
+func CreateIcosahedronMesh(radius float64, r, g, b, a float64) *Mesh {
 	t := (1.0 + math.Sqrt(5.0)) / 2.0
 	verts := []Vector3{
 		{-1, t, 0}, {1, t, 0}, {-1, -t, 0}, {1, -t, 0},
@@ -127,7 +125,7 @@ func CreateIcosahedronMesh(radius float64, color string) *Mesh {
 
 	var faces []Face
 	for _, idx := range indices {
-		faces = append(faces, Face{indices: idx, color: color})
+		faces = append(faces, Face{indices: idx, r: r, g: g, b: b, alpha: a})
 	}
 	return &Mesh{vertices: verts, faces: faces}
 }
@@ -175,11 +173,14 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	time := timeMs * 0.001
 	dt := 0.016
 
-	// Orbit the entire world instead of strafing the camera sideways!
 	worldAngle += 0.3 * dt
-	
-	// Keep camera statically looking down the Z axis
 	scene.camera.position = Vector3{0, 6, 20}
+
+	// Light Setup
+	lightDir := Vector3{-0.5, 1.0, -0.5} // Light from top-left-front
+	lightLen := math.Sqrt(lightDir.x*lightDir.x + lightDir.y*lightDir.y + lightDir.z*lightDir.z)
+	lightDir.x /= lightLen; lightDir.y /= lightLen; lightDir.z /= lightLen
+	ambientLight := 0.3
 
 	for _, p := range petals {
 		ent := p.entity
@@ -187,7 +188,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		rot := &ent.transform.rotation
 
 		if p.landedTime == 0 {
-			// Falling state
 			pos.y -= 1.8 * dt
 			pos.x += math.Sin(time*2.0+p.seed) * 1.5 * dt
 			pos.z += math.Cos(time*1.5+p.seed) * 1.5 * dt
@@ -195,17 +195,15 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			rot.y += 2.0 * dt
 			rot.z += 1.0 * dt
 
-			// Check for impact
 			landHeight := -0.15 + (p.seed * 0.0001)
 			if pos.y <= landHeight {
 				pos.y = landHeight
 				rot.x = 0
-				rot.y = p.seed // lay flat, random yaw
+				rot.y = p.seed
 				rot.z = 0
 				p.landedTime = time
 			}
 		} else {
-			// Landed state (respawn after 6 seconds)
 			if time-p.landedTime > 6.0 {
 				pos.y = p.startY
 				pos.x = (rand.Float64() - 0.5) * 8
@@ -228,14 +226,57 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			v.z *= ent.transform.scale.z
 			v = v.Rotate(ent.transform.rotation.x, ent.transform.rotation.y, ent.transform.rotation.z)
 			v = v.Add(ent.transform.position)
-			
-			// Apply world rotation to revolve everything around center perfectly
 			v = v.Rotate(0, worldAngle, 0)
-			
 			transformed[j] = v
 		}
 
+		isDoubleSided := len(ent.mesh.faces) == 1
+
 		for _, f := range ent.mesh.faces {
+			if len(f.indices) < 3 { continue }
+			
+			// 1. Calculate Face Normal in 3D Space
+			p0 := transformed[f.indices[0]]
+			p1 := transformed[f.indices[1]]
+			p2 := transformed[f.indices[2]]
+			
+			v1 := Vector3{p1.x - p0.x, p1.y - p0.y, p1.z - p0.z}
+			v2 := Vector3{p2.x - p0.x, p2.y - p0.y, p2.z - p0.z}
+			
+			nx := v1.y*v2.z - v1.z*v2.y
+			ny := v1.z*v2.x - v1.x*v2.z
+			nz := v1.x*v2.y - v1.y*v2.x
+			
+			nl := math.Sqrt(nx*nx + ny*ny + nz*nz)
+			if nl > 0 { nx /= nl; ny /= nl; nz /= nl }
+
+			// 2. Backface Culling using 3D normal
+			if !isDoubleSided {
+				// Vector from camera to face
+				viewDirX := scene.camera.position.x - p0.x
+				viewDirY := scene.camera.position.y - p0.y
+				viewDirZ := scene.camera.position.z - p0.z
+				if (nx*viewDirX + ny*viewDirY + nz*viewDirZ) < 0 {
+					continue // Face is pointing away from camera
+				}
+			}
+
+			// 3. Flat Shading (Dot product with light)
+			diffuse := nx*lightDir.x + ny*lightDir.y + nz*lightDir.z
+			if isDoubleSided {
+				diffuse = math.Abs(diffuse) // Petals are lit from both sides
+			}
+			if diffuse < 0 { diffuse = 0 }
+			
+			intensity := ambientLight + (diffuse * 0.7)
+			if intensity > 1.0 { intensity = 1.0 }
+
+			finalR := int(f.r * intensity)
+			finalG := int(f.g * intensity)
+			finalB := int(f.b * intensity)
+			colorStr := fmt.Sprintf("rgba(%d, %d, %d, %.2f)", finalR, finalG, finalB, f.alpha)
+
+			// 4. Project
 			var pts []Vector3
 			avgZ := 0.0
 			for _, idx := range f.indices {
@@ -245,25 +286,15 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			}
 			avgZ /= float64(len(pts))
 
-			// Simple Backface Culling (only for polygons with 3+ vertices)
-			if len(ent.mesh.faces) > 1 && len(pts) >= 3 {
-				v1x, v1y := pts[1].x-pts[0].x, pts[1].y-pts[0].y
-				v2x, v2y := pts[2].x-pts[1].x, pts[2].y-pts[1].y
-				if (v1x*v2y)-(v1y*v2x) < 0 {
-					continue
-				}
-			}
-
-			pFaces = append(pFaces, ProjectedFace{points: pts, color: f.color, z: avgZ})
+			pFaces = append(pFaces, ProjectedFace{points: pts, color: colorStr, z: avgZ})
 		}
 	}
 
-	// Sort by average Z (Painter's Algorithm)
 	sort.Slice(pFaces, func(i, j int) bool {
 		return pFaces[i].z < pFaces[j].z
 	})
 
-	ctx.Set("lineWidth", 1.5)
+	ctx.Set("lineWidth", 1.2)
 	ctx.Set("lineJoin", "round")
 
 	for _, pf := range pFaces {
@@ -309,31 +340,27 @@ func main() {
 		camera: Camera{position: Vector3{0, 6, 20}, fov: 700},
 	}
 
-	// 1. Procedural Models (Much better than basic boxes!)
-	
-	// Large circular grass base
-	grass := CreateCylinderMesh(15.0, 0.4, 20, "rgba(74, 93, 35, 1.0)")
+	// 1. Procedural Models with Base RGB Colors
+	grass := CreateCylinderMesh(15.0, 0.4, 20, 74, 93, 35, 1.0)
 	scene.entities = append(scene.entities, &Entity{
 		mesh:      grass,
 		transform: Transform{position: Vector3{0, -0.2, 0}, scale: Vector3{1, 1, 1}},
 	})
 
-	// Hexagonal tapered trunk
-	trunk := CreateCylinderMesh(0.8, 6.0, 6, "rgba(92, 64, 51, 1.0)")
+	trunk := CreateCylinderMesh(0.8, 6.0, 6, 92, 64, 51, 1.0)
 	scene.entities = append(scene.entities, &Entity{
 		mesh:      trunk,
 		transform: Transform{position: Vector3{0, 3.0, 0}, scale: Vector3{1, 1, 1}},
 	})
 
-	// Icosahedron (20-sided) canopy
-	canopy := CreateIcosahedronMesh(4.5, "rgba(255, 105, 180, 0.95)")
+	canopy := CreateIcosahedronMesh(4.5, 255, 105, 180, 0.95)
 	scene.entities = append(scene.entities, &Entity{
 		mesh:      canopy,
-		transform: Transform{position: Vector3{0, 7.5, 0}, scale: Vector3{1, 0.8, 1}}, // squish canopy slightly
+		transform: Transform{position: Vector3{0, 7.5, 0}, scale: Vector3{1, 0.8, 1}},
 	})
 
 	// 2. Petals
-	petalMesh := CreateQuadMesh(0.4, "rgba(255, 183, 197, 0.95)")
+	petalMesh := CreateQuadMesh(0.4, 255, 183, 197, 0.95)
 	for i := 0; i < 300; i++ {
 		startY := 6.0 + rand.Float64()*4.0
 		ent := &Entity{
