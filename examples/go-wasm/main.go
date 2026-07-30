@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"strconv"
+	"strings"
 	"syscall/js"
 )
 
@@ -87,7 +89,6 @@ func CreateCylinderMesh(radius, h float64, sides int, r, g, b, a float64) *Mesh 
 
 	for i := 0; i < sides; i++ {
 		next_i := (i + 1) % sides
-		// CCW winding
 		faces = append(faces, Face{
 			indices: []int{i, next_i, next_i + sides, i + sides},
 			r: r, g: g, b: b, alpha: a,
@@ -128,6 +129,53 @@ func CreateIcosahedronMesh(radius float64, r, g, b, a float64) *Mesh {
 		faces = append(faces, Face{indices: idx, r: r, g: g, b: b, alpha: a})
 	}
 	return &Mesh{vertices: verts, faces: faces}
+}
+
+// --- OBJ Parser ---
+
+func parseOBJ(data string, r, g, b, a float64) *Mesh {
+	lines := strings.Split(data, "\n")
+	var verts []Vector3
+	var faces []Face
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "v ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 4 {
+				px, _ := strconv.ParseFloat(parts[1], 64)
+				py, _ := strconv.ParseFloat(parts[2], 64)
+				pz, _ := strconv.ParseFloat(parts[3], 64)
+				verts = append(verts, Vector3{px, py, pz})
+			}
+		} else if strings.HasPrefix(line, "f ") {
+			parts := strings.Fields(line)
+			var indices []int
+			for i := 1; i < len(parts); i++ {
+				idxStr := strings.Split(parts[i], "/")[0]
+				idx, _ := strconv.Atoi(idxStr)
+				indices = append(indices, idx-1) // 1-based to 0-based
+			}
+			if len(indices) >= 3 {
+				faces = append(faces, Face{indices: indices, r: r, g: g, b: b, alpha: a})
+			}
+		}
+	}
+	return &Mesh{vertices: verts, faces: faces}
+}
+
+func loadOBJFromURL(url string, r, g, b, alpha float64, pos, scale Vector3) {
+	js.Global().Call("fetch", url).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return args[0].Call("text")
+	})).Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		data := args[0].String()
+		mesh := parseOBJ(data, r, g, b, alpha)
+		scene.entities = append(scene.entities, &Entity{
+			mesh:      mesh,
+			transform: Transform{position: pos, rotation: Vector3{0, 0, 0}, scale: scale},
+		})
+		return nil
+	}))
 }
 
 // --- Global State ---
@@ -174,11 +222,9 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	if lastTime == 0 {
 		lastTime = timeMs
 	}
-	// Real delta time for perfectly smooth movement!
 	dt := (timeMs - lastTime) * 0.001
 	lastTime = timeMs
 	
-	// Cap dt to prevent huge jumps if tab was inactive
 	if dt > 0.1 {
 		dt = 0.1
 	}
@@ -188,12 +234,11 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	worldAngle += 0.3 * dt
 	scene.camera.position = Vector3{0, 6, 20}
 
-	// Light Setup (Brighter!)
 	lightDir := Vector3{-0.5, 1.0, -0.5} 
 	lightLen := math.Sqrt(lightDir.x*lightDir.x + lightDir.y*lightDir.y + lightDir.z*lightDir.z)
 	lightDir.x /= lightLen; lightDir.y /= lightLen; lightDir.z /= lightLen
-	ambientLight := 0.6 // Increased from 0.3 for a much brighter scene
-	diffusePower := 0.6 // Max intensity will be 1.2, nicely overexposing the highlights
+	ambientLight := 0.6 
+	diffusePower := 0.6 
 
 	for _, p := range petals {
 		ent := p.entity
@@ -248,7 +293,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		for _, f := range ent.mesh.faces {
 			if len(f.indices) < 3 { continue }
 			
-			// 1. Calculate Face Normal
 			p0 := transformed[f.indices[0]]
 			p1 := transformed[f.indices[1]]
 			p2 := transformed[f.indices[2]]
@@ -263,7 +307,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			nl := math.Sqrt(nx*nx + ny*ny + nz*nz)
 			if nl > 0 { nx /= nl; ny /= nl; nz /= nl }
 
-			// 2. Backface Culling
 			if !isDoubleSided {
 				viewDirX := scene.camera.position.x - p0.x
 				viewDirY := scene.camera.position.y - p0.y
@@ -273,7 +316,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 				}
 			}
 
-			// 3. Flat Shading
 			diffuse := nx*lightDir.x + ny*lightDir.y + nz*lightDir.z
 			if isDoubleSided {
 				diffuse = math.Abs(diffuse)
@@ -288,7 +330,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			finalB := int(f.b * intensity)
 			colorStr := fmt.Sprintf("rgba(%d, %d, %d, %.2f)", finalR, finalG, finalB, f.alpha)
 
-			// 4. Project
 			var pts []Vector3
 			avgZ := 0.0
 			for _, idx := range f.indices {
@@ -302,7 +343,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	// Use Stable Sort to avoid Z-fighting flickering between faces of identical depth!
 	sort.SliceStable(pFaces, func(i, j int) bool {
 		return pFaces[i].z < pFaces[j].z
 	})
@@ -353,7 +393,7 @@ func main() {
 		camera: Camera{position: Vector3{0, 6, 20}, fov: 700},
 	}
 
-	// 1. Procedural Models with Base RGB Colors
+	// Base Environment
 	grass := CreateCylinderMesh(15.0, 0.4, 20, 74, 93, 35, 1.0)
 	scene.entities = append(scene.entities, &Entity{
 		mesh:      grass,
@@ -372,7 +412,17 @@ func main() {
 		transform: Transform{position: Vector3{0, 7.5, 0}, scale: Vector3{1, 0.8, 1}},
 	})
 
-	// 2. Petals
+	// 2. Load Premade Models Async!
+	// Load a few rocks
+	loadOBJFromURL("../../models/rock.obj", 150, 150, 160, 1.0, Vector3{-4, 0.5, 3}, Vector3{1.2, 1.2, 1.2})
+	loadOBJFromURL("../../models/rock.obj", 140, 130, 130, 1.0, Vector3{5, 0.2, -2}, Vector3{0.8, 0.8, 0.8})
+	loadOBJFromURL("../../models/rock.obj", 120, 120, 120, 1.0, Vector3{-2, 0.4, -5}, Vector3{1.5, 1.0, 1.5})
+	
+	// Load some magical crystals
+	loadOBJFromURL("../../models/crystal.obj", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6})
+	loadOBJFromURL("../../models/crystal.obj", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4})
+
+	// 3. Petals
 	petalMesh := CreateQuadMesh(0.4, 255, 183, 197, 0.95)
 	for i := 0; i < 300; i++ {
 		startY := 6.0 + rand.Float64()*4.0
