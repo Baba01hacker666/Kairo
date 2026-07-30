@@ -71,8 +71,8 @@ function initThreeJS() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.enablePan = false;
-  controls.minDistance = 2;
-  controls.maxDistance = 10;
+  controls.minDistance = 4;
+  controls.maxDistance = 15;
   controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
   // Lighting
@@ -305,14 +305,15 @@ function startGameLoop() {
       }
       mixer.update(delta);
 
-      // Smoothly track target
-      const idealTarget = new THREE.Vector3(playerObj.position.x, playerObj.position.y + 1, playerObj.position.z);
+      // Hard lock the target to the player's head area
+      const idealTarget = new THREE.Vector3(playerObj.position.x, playerObj.position.y + 1.5, playerObj.position.z);
+      
+      // Calculate how much the target moved this frame
       const targetDiff = idealTarget.clone().sub(controls.target);
-      // Lerp the target to smooth it out
-      const moveDelta = targetDiff.clone().multiplyScalar(10 * delta);
-      controls.target.add(moveDelta);
-      // Move camera by the exact same delta so it doesn't zoom in/out
-      camera.position.add(moveDelta);
+      
+      // Move both target and camera by the exact difference to prevent zooming in/out
+      controls.target.copy(idealTarget);
+      camera.position.add(targetDiff);
     }
 
     controls.update();

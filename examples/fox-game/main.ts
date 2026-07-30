@@ -26,8 +26,8 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = false;
-controls.minDistance = 2;
-controls.maxDistance = 10;
+controls.minDistance = 4;
+controls.maxDistance = 15;
 controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't go below ground
 
 // Lighting
@@ -338,12 +338,15 @@ function animate() {
 
     mixer.update(delta);
 
-    // Camera follow
-    const idealTarget = new THREE.Vector3(fox.position.x, fox.position.y + 1, fox.position.z);
+    // Camera follow - Hard lock target to player's head area
+    const idealTarget = new THREE.Vector3(fox.position.x, fox.position.y + 1.5, fox.position.z);
+    
+    // Calculate how much the target moved this frame
     const targetDiff = idealTarget.clone().sub(controls.target);
-    const moveDelta = targetDiff.clone().multiplyScalar(10 * delta);
-    controls.target.add(moveDelta);
-    camera.position.add(moveDelta);
+    
+    // Move both target and camera by the exact difference to prevent zooming in/out
+    controls.target.copy(idealTarget);
+    camera.position.add(targetDiff);
     
     // Check collisions with collectibles
     for (const item of collectibles) {
