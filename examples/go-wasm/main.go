@@ -472,8 +472,6 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	if dt > 0.1 {
 		dt = 0.1
 	}
-	
-	time := timeMs * 0.001
 
 	// --- Player Movement & Game Logic ---
 	var player *Entity
