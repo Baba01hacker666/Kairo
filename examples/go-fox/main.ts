@@ -58,6 +58,7 @@ function initThreeJS() {
   scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 3, -6);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -304,12 +305,14 @@ function startGameLoop() {
       }
       mixer.update(delta);
 
-      const idealOffset = new THREE.Vector3(0, 2, -5);
-      idealOffset.applyQuaternion(playerObj.quaternion);
-      idealOffset.add(playerObj.position);
-
-      camera.position.lerp(idealOffset, 5 * delta);
-      controls.target.lerp(new THREE.Vector3(playerObj.position.x, playerObj.position.y + 1, playerObj.position.z), 5 * delta);
+      // Smoothly track target
+      const idealTarget = new THREE.Vector3(playerObj.position.x, playerObj.position.y + 1, playerObj.position.z);
+      const targetDiff = idealTarget.clone().sub(controls.target);
+      // Lerp the target to smooth it out
+      const moveDelta = targetDiff.clone().multiplyScalar(10 * delta);
+      controls.target.add(moveDelta);
+      // Move camera by the exact same delta so it doesn't zoom in/out
+      camera.position.add(moveDelta);
     }
 
     controls.update();

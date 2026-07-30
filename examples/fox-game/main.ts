@@ -12,6 +12,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 3, -6);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -338,12 +339,11 @@ function animate() {
     mixer.update(delta);
 
     // Camera follow
-    const idealOffset = new THREE.Vector3(0, 2, -5); // Behind and slightly up
-    idealOffset.applyQuaternion(fox.quaternion);
-    idealOffset.add(fox.position);
-
-    camera.position.lerp(idealOffset, 5 * delta);
-    controls.target.lerp(new THREE.Vector3(fox.position.x, fox.position.y + 1, fox.position.z), 5 * delta);
+    const idealTarget = new THREE.Vector3(fox.position.x, fox.position.y + 1, fox.position.z);
+    const targetDiff = idealTarget.clone().sub(controls.target);
+    const moveDelta = targetDiff.clone().multiplyScalar(10 * delta);
+    controls.target.add(moveDelta);
+    camera.position.add(moveDelta);
     
     // Check collisions with collectibles
     for (const item of collectibles) {
