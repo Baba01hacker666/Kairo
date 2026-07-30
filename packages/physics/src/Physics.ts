@@ -1,4 +1,5 @@
 import { Vector3, BoundingBox, Ray } from '../../core/src/index.ts';
+import * as CANNON from 'cannon-es';
 
 export const RigidBodyType = {
   Dynamic: 'DYNAMIC',
@@ -20,23 +21,37 @@ export type ColliderTypeValue = typeof ColliderType[keyof typeof ColliderType];
 export class RigidBody {
   public type: RigidBodyTypeValue = RigidBodyType.Dynamic;
   public mass: number = 1.0;
-  public velocity: Vector3 = new Vector3();
-  public angularVelocity: Vector3 = new Vector3();
   public useGravity: boolean = true;
   public linearDamping: number = 0.05;
   public angularDamping: number = 0.05;
   public collisionLayer: number = 1;
   public collisionMask: number = 0xFFFFFFFF;
+  public fixedRotation: boolean = false;
+
+  // Reference to cannon-es body
+  public cannonBody: CANNON.Body | null = null;
 
   applyForce(force: Vector3): void {
-    if (this.type !== RigidBodyType.Dynamic || this.mass <= 0) return;
-    const accel = force.clone().scale(1 / this.mass);
-    this.velocity.add(accel);
+    if (this.cannonBody) {
+      this.cannonBody.applyForce(new CANNON.Vec3(force.x, force.y, force.z), this.cannonBody.position);
+    }
   }
 
   applyImpulse(impulse: Vector3): void {
-    if (this.type !== RigidBodyType.Dynamic || this.mass <= 0) return;
-    this.velocity.add(impulse.clone().scale(1 / this.mass));
+    if (this.cannonBody) {
+      this.cannonBody.applyImpulse(new CANNON.Vec3(impulse.x, impulse.y, impulse.z), this.cannonBody.position);
+    }
+  }
+
+  get velocity(): Vector3 {
+    if (this.cannonBody) return new Vector3(this.cannonBody.velocity.x, this.cannonBody.velocity.y, this.cannonBody.velocity.z);
+    return new Vector3();
+  }
+
+  set velocity(v: Vector3) {
+    if (this.cannonBody) {
+      this.cannonBody.velocity.set(v.x, v.y, v.z);
+    }
   }
 }
 
@@ -48,6 +63,9 @@ export class Collider {
   public friction: number = 0.4;
   public restitution: number = 0.2;
 
+  // Reference to cannon-es shape
+  public cannonShape: CANNON.Shape | null = null;
+
   getBoundingBox(position: Vector3): BoundingBox {
     const halfSize = this.size.clone().scale(0.5);
     const pos = position.clone().add(this.centerOffset);
@@ -58,116 +76,124 @@ export class Collider {
   }
 }
 
-export class CharacterController {
-  public stepHeight: number = 0.3;
-  public slopeLimit: number = 45;
-  public isGrounded: boolean = false;
-  public moveVelocity: Vector3 = new Vector3();
-  public jumpSpeed: number = 5.0;
-  public gravity: number = -9.81;
-
-  move(direction: Vector3, dt: number): Vector3 {
-    const displacement = direction.clone().scale(dt);
-    if (!this.isGrounded) {
-      this.moveVelocity.y += this.gravity * dt;
-    } else {
-      this.moveVelocity.y = 0;
-    }
-    displacement.y += this.moveVelocity.y * dt;
-    return displacement;
-  }
-
-  jump(): void {
-    if (this.isGrounded) {
-      this.moveVelocity.y = this.jumpSpeed;
-      this.isGrounded = false;
-    }
-  }
-}
-
-export interface RaycastHit {
-  distance: number;
-  point: Vector3;
-  normal: Vector3;
-  collider: Collider;
-  rigidbody: RigidBody | null;
-}
-
 export class PhysicsWorld {
-  public gravity: Vector3 = new Vector3(0, -9.81, 0);
-
+  public cannonWorld: CANNON.World;
   private bodies: { body: RigidBody; collider: Collider; position: Vector3 }[] = [];
+  private defaultMaterial: CANNON.Material;
+
+  constructor() {
+    this.cannonWorld = new CANNON.World({
+      gravity: new CANNON.Vec3(0, -9.81, 0)
+    });
+    this.defaultMaterial = new CANNON.Material('default');
+    const defaultContactMaterial = new CANNON.ContactMaterial(
+      this.defaultMaterial, this.defaultMaterial,
+      { friction: 0.1, restitution: 0.0 }
+    );
+    this.cannonWorld.addContactMaterial(defaultContactMaterial);
+  }
+
+  set gravity(g: Vector3) {
+    this.cannonWorld.gravity.set(g.x, g.y, g.z);
+  }
+
+  get gravity(): Vector3 {
+    return new Vector3(this.cannonWorld.gravity.x, this.cannonWorld.gravity.y, this.cannonWorld.gravity.z);
+  }
 
   registerBody(body: RigidBody, collider: Collider, position: Vector3): void {
+    let shape: CANNON.Shape;
+    if (collider.type === ColliderType.Box) {
+      shape = new CANNON.Box(new CANNON.Vec3(collider.size.x * 0.5, collider.size.y * 0.5, collider.size.z * 0.5));
+    } else if (collider.type === ColliderType.Sphere) {
+      shape = new CANNON.Sphere(collider.size.x * 0.5);
+    } else {
+      shape = new CANNON.Box(new CANNON.Vec3(collider.size.x * 0.5, collider.size.y * 0.5, collider.size.z * 0.5));
+    }
+    
+    collider.cannonShape = shape;
+
+    let mass = body.type === RigidBodyType.Dynamic ? body.mass : 0;
+    if (body.type === RigidBodyType.Kinematic) mass = 0; // Or kinematic specific settings
+
+    const cBody = new CANNON.Body({
+      mass: mass,
+      material: this.defaultMaterial,
+      position: new CANNON.Vec3(position.x, position.y, position.z),
+      fixedRotation: body.fixedRotation,
+      linearDamping: body.linearDamping,
+      angularDamping: body.angularDamping,
+    });
+    
+    if (body.type === RigidBodyType.Kinematic) {
+      cBody.type = CANNON.Body.KINEMATIC;
+    } else if (body.type === RigidBodyType.Static) {
+      cBody.type = CANNON.Body.STATIC;
+    } else {
+      cBody.type = CANNON.Body.DYNAMIC;
+    }
+
+    cBody.addShape(shape, new CANNON.Vec3(collider.centerOffset.x, collider.centerOffset.y, collider.centerOffset.z));
+    
+    if (!body.useGravity) {
+      cBody.preStep = () => {
+        cBody.force.y -= this.cannonWorld.gravity.y * cBody.mass;
+      };
+    }
+
+    this.cannonWorld.addBody(cBody);
+    body.cannonBody = cBody;
+
     this.bodies.push({ body, collider, position });
   }
 
   unregisterBody(body: RigidBody): void {
+    if (body.cannonBody) {
+      this.cannonWorld.removeBody(body.cannonBody);
+      body.cannonBody = null;
+    }
     this.bodies = this.bodies.filter(b => b.body !== body);
   }
 
   step(dt: number): void {
+    // Sync external positional changes to cannon
     for (const b of this.bodies) {
-      if (b.body.type === RigidBodyType.Dynamic) {
-        if (b.body.useGravity) {
-          b.body.velocity.add(this.gravity.clone().scale(dt));
-        }
-        b.body.velocity.scale(1 - b.body.linearDamping * dt);
-        b.position.add(b.body.velocity.clone().scale(dt));
+      if (b.body.cannonBody && b.body.type !== RigidBodyType.Dynamic) {
+         b.body.cannonBody.position.set(b.position.x, b.position.y, b.position.z);
+      }
+    }
 
-        if (b.position.y - b.collider.size.y * 0.5 <= 0) {
-          b.position.y = b.collider.size.y * 0.5;
-          b.body.velocity.y = -b.body.velocity.y * b.collider.restitution;
-          if (Math.abs(b.body.velocity.y) < 0.1) b.body.velocity.y = 0;
-        }
+    // Step physics
+    this.cannonWorld.step(1/60, dt, 3);
+
+    // Sync cannon results back to ECS
+    for (const b of this.bodies) {
+      if (b.body.cannonBody && b.body.type === RigidBodyType.Dynamic) {
+        b.position.set(b.body.cannonBody.position.x, b.body.cannonBody.position.y, b.body.cannonBody.position.z);
       }
     }
   }
 
-  raycast(ray: Ray, maxDistance: number = 100): RaycastHit | null {
-    let closestHit: RaycastHit | null = null;
-    let minDistance = maxDistance;
-
-    for (const b of this.bodies) {
-      const box = b.collider.getBoundingBox(b.position);
-      const t = this.intersectRayBox(ray, box);
-      if (t !== null && t >= 0 && t < minDistance) {
-        minDistance = t;
-        closestHit = {
-          distance: t,
-          point: ray.origin.clone().add(ray.direction.clone().scale(t)),
-          normal: new Vector3(0, 1, 0),
-          collider: b.collider,
-          rigidbody: b.body
-        };
-      }
-    }
-
-    return closestHit;
-  }
-
-  private intersectRayBox(ray: Ray, box: BoundingBox): number | null {
-    const invDir = new Vector3(
-      1 / (ray.direction.x || 0.0001),
-      1 / (ray.direction.y || 0.0001),
-      1 / (ray.direction.z || 0.0001)
+  // Simplified raycast via cannon
+  raycast(ray: Ray, maxDistance: number = 100): { hasHit: boolean, point: Vector3, distance: number } | null {
+    const from = new CANNON.Vec3(ray.origin.x, ray.origin.y, ray.origin.z);
+    const to = new CANNON.Vec3(
+      ray.origin.x + ray.direction.x * maxDistance,
+      ray.origin.y + ray.direction.y * maxDistance,
+      ray.origin.z + ray.direction.z * maxDistance
     );
-
-    let t1 = (box.min.x - ray.origin.x) * invDir.x;
-    let t2 = (box.max.x - ray.origin.x) * invDir.x;
-    let tmin = Math.min(t1, t2);
-    let tmax = Math.max(t1, t2);
-
-    t1 = (box.min.y - ray.origin.y) * invDir.y;
-    t2 = (box.max.y - ray.origin.y) * invDir.y;
-    tmin = Math.max(tmin, Math.min(t1, t2));
-    tmax = Math.min(tmax, Math.max(t1, t2));
-
-    t1 = (box.min.z - ray.origin.z) * invDir.z;
-    t2 = (box.max.z - ray.origin.z) * invDir.z;
-    tmin = Math.max(tmin, Math.min(t1, t2));
-    tmax = Math.min(tmax, Math.max(t1, t2));
-
-    return tmax >= Math.max(0, tmin) ? tmin : null;
+    
+    const result = new CANNON.RaycastResult();
+    const cannonRay = new CANNON.Ray(from, to);
+    this.cannonWorld.raycastClosest(from, to, {}, result);
+    
+    if (result.hasHit) {
+      return {
+        hasHit: true,
+        point: new Vector3(result.hitPointWorld.x, result.hitPointWorld.y, result.hitPointWorld.z),
+        distance: result.distance
+      };
+    }
+    return null;
   }
 }

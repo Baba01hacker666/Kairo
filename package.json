@@ -27,5 +27,10 @@
     "monorepo"
   ],
   "author": "Kairo Engine Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "motion": "^12.43.0",
+    "three": "^0.185.1"
+  }
 }
