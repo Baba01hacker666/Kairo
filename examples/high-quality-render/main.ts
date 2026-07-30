@@ -7,31 +7,32 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.25, 100);
-camera.position.set(-1.8, 0.6, 2.7);
+camera.position.set(0, 1.5, 5.0); // Move camera back and center it
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1;
+renderer.toneMappingExposure = 1.2; // Brighter exposure
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0, 0);
+controls.target.set(0, 0.5, 0); // Look slightly up
 controls.update();
 
 // Add realistic lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // Much brighter ambient
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-dirLight.position.set(5, 5, -5);
+const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); // Brighter sun
+dirLight.position.set(5, 10, 5); // Sun in front/above, casting shadow behind
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
 // Setup Animation Mixer
@@ -46,7 +47,8 @@ gltfLoader.load(
     
     // Scale and position
     model.scale.set(0.015, 0.015, 0.015);
-    model.position.set(-1, -0.5, 0);
+    model.position.set(-1.5, 0, 0); // Put on floor and further left
+    model.rotation.y = Math.PI / 6;
     
     // Enable shadows for the model
     model.traverse((child) => {
@@ -71,8 +73,9 @@ gltfLoader.load(
   (import.meta as any).env.BASE_URL + 'models/DamagedHelmet.glb',
   (gltf) => {
     const helmet = gltf.scene;
-    helmet.scale.set(0.8, 0.8, 0.8);
-    helmet.position.set(1, 0, 0);
+    helmet.scale.set(1.2, 1.2, 1.2);
+    helmet.position.set(1.5, 0.6, 0);
+    helmet.rotation.y = -Math.PI / 4;
     
     helmet.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -85,15 +88,15 @@ gltfLoader.load(
 );
 
 // Add a floor for shadows
-const floorGeo = new THREE.PlaneGeometry(20, 20);
+const floorGeo = new THREE.PlaneGeometry(50, 50);
 const floorMat = new THREE.MeshStandardMaterial({ 
-    color: 0x444444,
-    roughness: 0.1,
-    metalness: 0.2
+    color: 0x999999, // Lighter grey
+    roughness: 0.8,
+    metalness: 0.1
 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
-floor.position.y = -0.5;
+floor.position.y = 0;
 floor.receiveShadow = true;
 scene.add(floor);
 
