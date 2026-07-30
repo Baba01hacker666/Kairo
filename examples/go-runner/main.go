@@ -416,17 +416,20 @@ var (
 	lastMouseX float64 = 0.0
 	lastMouseY float64 = 0.0
 	
+	touchLeft  bool = false
+	touchRight bool = false
+	
 	keys map[string]bool = make(map[string]bool)
 	
-	petals     []*PetalState
+	obstacles  []*ObstacleState
 	lastTime   float64 = 0
+	gameOver   bool = false
+	score      int = 0
 )
 
-type PetalState struct {
-	entity     *Entity
-	seed       float64
-	startY     float64
-	landedTime float64
+type ObstacleState struct {
+	entity *Entity
+	speed  float64
 }
 
 type ProjectedFace struct {
@@ -469,10 +472,8 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 	if dt > 0.1 {
 		dt = 0.1
 	}
-	
-	time := timeMs * 0.001
 
-	// --- Player Movement & Collision ---
+	// --- Player Movement & Game Logic ---
 	var player *Entity
 	for _, e := range scene.entities {
 		if e.isPlayer {
@@ -481,104 +482,79 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 		}
 	}
 	
-	if player != nil {
-		speed := 5.0 * dt
+	if player != nil && !gameOver {
+		speed := 15.0 * dt
 		velX := 0.0
-		velZ := 0.0
 		
-		// WASD Movement relative to camera angle
-		if keys["w"] || keys["ArrowUp"] {
-			velX += math.Sin(-camAngleX) * speed
-			velZ -= math.Cos(-camAngleX) * speed
+		// AD Movement and Mobile Touch Support
+		if keys["a"] || keys["ArrowLeft"] || touchLeft {
+			velX -= speed
 		}
-		if keys["s"] || keys["ArrowDown"] {
-			velX -= math.Sin(-camAngleX) * speed
-			velZ += math.Cos(-camAngleX) * speed
-		}
-		if keys["a"] || keys["ArrowLeft"] {
-			velX -= math.Cos(-camAngleX) * speed
-			velZ -= math.Sin(-camAngleX) * speed
-		}
-		if keys["d"] || keys["ArrowRight"] {
-			velX += math.Cos(-camAngleX) * speed
-			velZ += math.Sin(-camAngleX) * speed
+		if keys["d"] || keys["ArrowRight"] || touchRight {
+			velX += speed
 		}
 		
-		if velX != 0 || velZ != 0 {
-			origX := player.transform.position.x
-			origZ := player.transform.position.z
+		player.transform.position.x += velX
+		
+		// Bound player to the track
+		if player.transform.position.x < -8.0 { player.transform.position.x = -8.0 }
+		if player.transform.position.x > 8.0 { player.transform.position.x = 8.0 }
+
+		// Move obstacles towards player
+		for _, obs := range obstacles {
+			obs.entity.transform.position.z += obs.speed * dt
 			
-			// Try moving X
-			player.transform.position.x += velX
-			for _, e := range scene.entities {
-				if e != player && checkCollision(player, e) {
-					player.transform.position.x = origX // Revert X on collision
-					break
-				}
+			// Collision detection
+			if checkCollision(player, obs.entity) {
+				gameOver = true
+				fmt.Println("GAME OVER! Score:", score)
 			}
 			
-			// Try moving Z
-			player.transform.position.z += velZ
-			for _, e := range scene.entities {
-				if e != player && checkCollision(player, e) {
-					player.transform.position.z = origZ // Revert Z on collision
-					break
-				}
+			// Respawn obstacle if it goes behind camera
+			if obs.entity.transform.position.z > 10.0 {
+				obs.entity.transform.position.z = -50.0 - (rand.Float64() * 20.0)
+				obs.entity.transform.position.x = (rand.Float64() - 0.5) * 16.0
+				obs.speed = 20.0 + (rand.Float64() * 10.0) + float64(score)*0.5 // Gets faster!
+				score++
 			}
-			
-			// Rotate player mesh based on movement for visual flair
-			player.transform.rotation.y += (math.Abs(velX) + math.Abs(velZ))
 		}
 		
-		// Camera follows player smoothly
-		scene.camera.position.x = player.transform.position.x
-		scene.camera.position.z = player.transform.position.z + 20
-	} else {
-		scene.camera.position = Vector3{0, 6, 20}
+		// Camera locked behind player
+		scene.camera.position.x = player.transform.position.x * 0.5 // slight tracking
+		scene.camera.position.y = 4.0
+		scene.camera.position.z = player.transform.position.z + 12.0
+		
+		// Make player box rotate slightly as it runs
+		player.transform.rotation.x += 2.0 * dt
+	} else if player != nil {
+		// Game Over state - camera pulls back
+		scene.camera.position.y += 2.0 * dt
+		scene.camera.position.z += 2.0 * dt
 	}
 
 	lightDir := Vector3{-0.5, 1.0, -0.5} 
 	lightLen := math.Sqrt(lightDir.x*lightDir.x + lightDir.y*lightDir.y + lightDir.z*lightDir.z)
 	lightDir.x /= lightLen; lightDir.y /= lightLen; lightDir.z /= lightLen
 	
-	// Brighter lighting as requested
+	// Brighter lighting
 	ambientLight := 0.75 
 	diffusePower := 0.8 
 
-	for _, p := range petals {
-		ent := p.entity
-		pos := &ent.transform.position
-		rot := &ent.transform.rotation
-
-		if p.landedTime == 0 {
-			pos.y -= 1.8 * dt
-			pos.x += math.Sin(time*2.0+p.seed) * 1.5 * dt
-			pos.z += math.Cos(time*1.5+p.seed) * 1.5 * dt
-			rot.x += 1.5 * dt
-			rot.y += 2.0 * dt
-			rot.z += 1.0 * dt
-
-			// Give petals distinctly different land heights to prevent Z-fighting (vibration)
-			landHeight := -0.15 + (p.seed * 0.002) - (rand.Float64() * 0.05)
-			if pos.y <= landHeight {
-				pos.y = landHeight
-				rot.x = 0
-				rot.y = p.seed
-				rot.z = 0
-				p.landedTime = time
-			}
-		} else {
-			if time-p.landedTime > 6.0 {
-				pos.y = p.startY
-				pos.x = (rand.Float64() - 0.5) * 8
-				pos.z = (rand.Float64() - 0.5) * 8
-				p.landedTime = 0
-			}
-		}
-	}
-
 	ctx.Set("fillStyle", "#09090b")
 	ctx.Call("fillRect", 0, 0, width, height)
+	
+	if gameOver {
+		ctx.Set("fillStyle", "red")
+		ctx.Set("font", "48px Inter")
+		ctx.Call("fillText", "GAME OVER", width/2 - 130, height/2)
+		ctx.Set("fillStyle", "white")
+		ctx.Set("font", "24px Inter")
+		ctx.Call("fillText", fmt.Sprintf("Score: %d", score), width/2 - 50, height/2 + 40)
+	} else {
+		ctx.Set("fillStyle", "white")
+		ctx.Set("font", "24px Inter")
+		ctx.Call("fillText", fmt.Sprintf("Score: %d", score), 20, 40)
+	}
 
 	var pFaces []ProjectedFace
 
@@ -591,8 +567,8 @@ func renderFrame(this js.Value, args []js.Value) interface{} {
 			v = v.Rotate(ent.transform.rotation.x, ent.transform.rotation.y, ent.transform.rotation.z)
 			v = v.Add(ent.transform.position)
 			
-			// Rotate the entire world based on mouse drag!
-			v = v.Rotate(camAngleY, camAngleX, 0)
+			// In runner game, we don't let mouse rotate the world, keep it straight
+			// v = v.Rotate(camAngleY, camAngleX, 0)
 			
 			transformed[j] = v
 		}
@@ -702,12 +678,20 @@ func main() {
 	onDown := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		isDragging = true
 		e := args[0]
+		
+		var clientX float64
 		if e.Get("touches").Truthy() && e.Get("touches").Get("length").Int() > 0 {
-			lastMouseX = e.Get("touches").Index(0).Get("clientX").Float()
-			lastMouseY = e.Get("touches").Index(0).Get("clientY").Float()
+			clientX = e.Get("touches").Index(0).Get("clientX").Float()
 		} else {
-			lastMouseX = e.Get("clientX").Float()
-			lastMouseY = e.Get("clientY").Float()
+			clientX = e.Get("clientX").Float()
+		}
+		
+		if clientX < width/2.0 {
+			touchLeft = true
+			touchRight = false
+		} else {
+			touchRight = true
+			touchLeft = false
 		}
 		return nil
 	})
@@ -715,29 +699,29 @@ func main() {
 	onMove := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if !isDragging { return nil }
 		e := args[0]
-		var curX, curY float64
+		
+		var clientX float64
 		if e.Get("touches").Truthy() && e.Get("touches").Get("length").Int() > 0 {
-			curX = e.Get("touches").Index(0).Get("clientX").Float()
-			curY = e.Get("touches").Index(0).Get("clientY").Float()
+			clientX = e.Get("touches").Index(0).Get("clientX").Float()
 		} else {
-			curX = e.Get("clientX").Float()
-			curY = e.Get("clientY").Float()
+			clientX = e.Get("clientX").Float()
 		}
 		
-		dx := curX - lastMouseX
-		dy := curY - lastMouseY
-		lastMouseX = curX
-		lastMouseY = curY
-		
-		camAngleX -= dx * 0.01
-		camAngleY += dy * 0.01
-		if camAngleY > math.Pi/2.2 { camAngleY = math.Pi/2.2 }
-		if camAngleY < -math.Pi/4.0 { camAngleY = -math.Pi/4.0 }
+		// Update touch side if they drag across the middle
+		if clientX < width/2.0 {
+			touchLeft = true
+			touchRight = false
+		} else {
+			touchRight = true
+			touchLeft = false
+		}
 		return nil
 	})
 	
 	onUp := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		isDragging = false
+		touchLeft = false
+		touchRight = false
 		return nil
 	})
 
@@ -767,68 +751,64 @@ func main() {
 		camera: Camera{position: Vector3{0, 6, 20}, fov: 700},
 	}
 
-	// Base Environment
-	grass := CreateCylinderMesh(15.0, 0.4, 20, 74, 93, 35, 1.0)
+	// The track / ground
+	track := CreateQuadMesh(50.0, 74, 93, 35, 1.0)
 	scene.entities = append(scene.entities, &Entity{
-		mesh:      grass,
-		transform: Transform{position: Vector3{0, -0.2, 0}, scale: Vector3{1, 1, 1}},
+		mesh:      track,
+		transform: Transform{position: Vector3{0, 0, -20}, scale: Vector3{1, 1, 3}},
 	})
 
-	trunk := CreateCylinderMesh(0.8, 6.0, 6, 92, 64, 51, 1.0)
-	scene.entities = append(scene.entities, &Entity{
-		mesh:      trunk,
-		transform: Transform{position: Vector3{0, 3.0, 0}, scale: Vector3{1, 1, 1}},
-		collider:  0.8, // Tree trunk collider
-	})
-
-	canopy := CreateIcosahedronMesh(4.5, 255, 105, 180, 0.95)
-	scene.entities = append(scene.entities, &Entity{
-		mesh:      canopy,
-		transform: Transform{position: Vector3{0, 7.5, 0}, scale: Vector3{1, 0.8, 1}},
-	})
-
-	// 2. Load Premade Models Async!
-	// Load a few rocks with collision bounds
-	loadOBJFromURL("../../models/rock.obj", "", 150, 150, 160, 1.0, Vector3{-4, 0.5, 3}, Vector3{1.2, 1.2, 1.2}, 1.0)
-	loadOBJFromURL("../../models/rock.obj", "", 140, 130, 130, 1.0, Vector3{5, 0.2, -2}, Vector3{0.8, 0.8, 0.8}, 0.7)
-	loadOBJFromURL("../../models/rock.obj", "", 120, 120, 120, 1.0, Vector3{-2, 0.4, -5}, Vector3{1.5, 1.0, 1.5}, 1.2)
-	
-	// Load some magical crystals
-	loadOBJFromURL("../../models/crystal.obj", "", 0, 255, 255, 0.8, Vector3{3, 1.2, 3}, Vector3{0.6, 0.6, 0.6}, 0.5)
-	loadOBJFromURL("../../models/crystal.obj", "", 255, 50, 255, 0.8, Vector3{-5, 1.0, -1}, Vector3{0.4, 0.5, 0.4}, 0.4)
-
-	// Load a GLTF Box!
-	loadGLTFFromURL("../../models/box.gltf", 200, 100, 100, 1.0, Vector3{5, 0.5, 5}, Vector3{1, 1, 1}, 1.0)
-
-	// Add a Player Entity!
-	playerMesh := CreateIcosahedronMesh(0.6, 255, 215, 0, 1.0) // Golden glowing orb
+	// Add the Player Box Entity (Green Box)
+	// We use the procedural box mesh so we have immediate access to flag it as the player
+	playerMesh := CreateBoxMesh(1.2, 0, 255, 150, 1.0) 
 	scene.entities = append(scene.entities, &Entity{
 		mesh:      playerMesh,
-		transform: Transform{position: Vector3{0, 0.6, 6}, scale: Vector3{1, 1, 1}},
-		collider:  0.6,
+		transform: Transform{position: Vector3{0, 0.6, 0}, scale: Vector3{1, 1, 1}},
+		collider:  0.8,
 		isPlayer:  true,
 	})
 
-	// 3. Petals
-	petalMesh := CreateQuadMesh(0.4, 255, 183, 197, 0.95)
-	for i := 0; i < 300; i++ {
-		startY := 6.0 + rand.Float64()*4.0
-		ent := &Entity{
-			mesh: petalMesh,
-			transform: Transform{
-				position: Vector3{(rand.Float64() - 0.5) * 8, startY, (rand.Float64() - 0.5) * 8},
-				rotation: Vector3{rand.Float64() * math.Pi, rand.Float64() * math.Pi, rand.Float64() * math.Pi},
-				scale:    Vector3{1, 1, 1},
-			},
+	// Obstacles - Spawning 10 Boxes at different Z distances
+	for i := 0; i < 10; i++ {
+		startZ := -20.0 - float64(i)*15.0
+		startX := (rand.Float64() - 0.5) * 16.0
+		
+		obsMesh := CreateBoxMesh(1.5, 255, 50, 50, 1.0) // Red enemy box
+		
+		obsEnt := &Entity{
+			mesh:      obsMesh,
+			transform: Transform{position: Vector3{startX, 0.75, startZ}, scale: Vector3{1, 1, 1}},
+			collider:  1.0,
 		}
-		scene.entities = append(scene.entities, ent)
-		petals = append(petals, &PetalState{
-			entity: ent,
-			seed:   rand.Float64() * 100,
-			startY: startY,
+		scene.entities = append(scene.entities, obsEnt)
+		obstacles = append(obstacles, &ObstacleState{
+			entity: obsEnt,
+			speed:  20.0,
 		})
 	}
-
+	
+	// Wait! The user explicitly said: "use box as the obstcale and player".
+	// Since loadGLTFFromURL is async, I can modify it to return a Promise or take a callback.
+	// But it's easier to just build a procedural Box mesh in Go!
+	
 	js.Global().Call("requestAnimationFrame", js.FuncOf(renderFrame))
 	<-c
+}
+
+// Procedural Box Mesh Generator
+func CreateBoxMesh(s float64, r, g, b, a float64) *Mesh {
+	hs := s / 2.0
+	verts := []Vector3{
+		{-hs, -hs, -hs}, {hs, -hs, -hs}, {hs, hs, -hs}, {-hs, hs, -hs}, // Front
+		{-hs, -hs, hs}, {hs, -hs, hs}, {hs, hs, hs}, {-hs, hs, hs}, // Back
+	}
+	faces := []Face{
+		{indices: []int{0, 1, 2, 3}, r: r, g: g, b: b, alpha: a}, // Front
+		{indices: []int{5, 4, 7, 6}, r: r, g: g, b: b, alpha: a}, // Back
+		{indices: []int{4, 0, 3, 7}, r: r, g: g, b: b, alpha: a}, // Left
+		{indices: []int{1, 5, 6, 2}, r: r, g: g, b: b, alpha: a}, // Right
+		{indices: []int{3, 2, 6, 7}, r: r, g: g, b: b, alpha: a}, // Top
+		{indices: []int{4, 5, 1, 0}, r: r, g: g, b: b, alpha: a}, // Bottom
+	}
+	return &Mesh{vertices: verts, faces: faces}
 }
