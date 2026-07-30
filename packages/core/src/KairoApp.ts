@@ -82,7 +82,7 @@ export class KairoApp {
     });
 
     this.engine.events.on('render', () => {
-      this.renderer.render(this.scene, this.camera);
+      this.renderer.renderAsync(this.scene, this.camera);
     });
   }
 
@@ -106,7 +106,8 @@ export class KairoApp {
     this.engine.events.on('update', callback);
   }
 
-  public start() {
+  public async start() {
+    await this.renderer.init();
     this.engine.start();
   }
 

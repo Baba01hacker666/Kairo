@@ -306,7 +306,7 @@ engine.events.on('update', (dt: number) => {
 });
 
 engine.events.on('render', () => {
-  renderer.render(scene, camera);
+  renderer.renderAsync(scene, camera);
 });
 
 window.addEventListener('resize', () => {
@@ -315,6 +315,9 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Start Kairo Engine!
-engine.start();
+// --- Start Engine ---
+(async () => {
+  await renderer.init();
+  engine.start();
+})();
 console.log('Kairo Engine + Cannon-ES + Motion.dev Started');
