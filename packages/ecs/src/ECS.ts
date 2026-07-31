@@ -253,8 +253,33 @@ export class World {
   }
 
   query(queryDesc: Query): EntityId[] {
+    let candidateEntities: Iterable<EntityId>;
+
+    // ⚡ Bolt Optimization:
+    // If we require specific components, iterate only over the entities that have
+    // the least common required component, instead of ALL active entities.
+    // This turns an O(N_Total_Entities) operation into an O(N_Smallest_Component_Set) operation.
+    if (queryDesc.all.length > 0) {
+      let minSize = Infinity;
+      let smallestStorage: Map<EntityId, any> | undefined;
+
+      for (const compType of queryDesc.all) {
+        const storage = this.components.get(compType);
+        if (!storage || storage.size === 0) {
+          return []; // If any required component is missing, no entity can match
+        }
+        if (storage.size < minSize) {
+          minSize = storage.size;
+          smallestStorage = storage;
+        }
+      }
+      candidateEntities = smallestStorage!.keys();
+    } else {
+      candidateEntities = this.activeEntities;
+    }
+
     const results: EntityId[] = [];
-    for (const entity of this.activeEntities) {
+    for (const entity of candidateEntities) {
       if (queryDesc.matches(this, entity)) {
         results.push(entity);
       }
