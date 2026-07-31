@@ -77,8 +77,13 @@ export class World {
   private children: Map<EntityId, Set<EntityId>> = new Map();
 
   private systems: System[] = [];
+  private queryCache: Map<string, EntityId[]> = new Map();
+  private dirtyQueries: boolean = true;
+  private currentQueryKey: string = '';
 
   createEntity(name?: string): EntityId {
+    this.dirtyQueries = true;
+    this.queryCache.clear();
     const id = this.nextEntityId++;
     this.activeEntities.add(id);
     this.tags.set(id, new Set());
@@ -100,6 +105,8 @@ export class World {
 
   destroyEntity(entity: EntityId): void {
     if (!this.activeEntities.has(entity)) return;
+    this.dirtyQueries = true;
+    this.queryCache.clear();
 
     // Destroy children recursively
     const childSet = this.children.get(entity);
@@ -160,6 +167,8 @@ export class World {
   }
 
   addComponent<T>(entity: EntityId, component: T): T {
+    this.dirtyQueries = true;
+    this.queryCache.clear();
     const cType = (component as any).constructor as ComponentType<T>;
     if (!this.components.has(cType)) {
       this.components.set(cType, new Map());
@@ -174,6 +183,8 @@ export class World {
   }
 
   removeComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
+    this.dirtyQueries = true;
+    this.queryCache.clear();
     const storage = this.components.get(componentType);
     if (storage && storage.has(entity)) {
       const comp = storage.get(entity);
@@ -253,6 +264,11 @@ export class World {
   }
 
   query(queryDesc: Query): EntityId[] {
+    const key = (queryDesc.all?.map(c=>c.name).join(',') || '') + '|' + (queryDesc.any?.map(c=>c.name).join(',') || '') + '|' + (queryDesc.none?.map(c=>c.name).join(',') || '');
+    if (!this.dirtyQueries && this.queryCache.has(key)) {
+      return this.queryCache.get(key)!;
+    }
+
     let candidateEntities: Iterable<EntityId>;
 
     // ⚡ Bolt Optimization:
@@ -284,6 +300,8 @@ export class World {
         results.push(entity);
       }
     }
+    this.queryCache.set(key, results);
+    this.dirtyQueries = false;
     return results;
   }
 
