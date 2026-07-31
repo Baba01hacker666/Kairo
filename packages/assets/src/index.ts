@@ -1,1 +1,2 @@
-export * from './Assets.js';
+export * from './Assets.ts';
+export * from './MemoryManager.ts';

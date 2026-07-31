@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KairoApp } from '@kairo/core';
 import { AnimationStateMachine } from '@kairo/animation';
 import { ParticleSystem } from '@kairo/renderer';
+import { MemoryManager } from '@kairo/assets';
 import { Serializer } from '@kairo/core';
 import { ALL_LEVELS, LevelDefinition, LevelElement, WORLD_NAMES } from './levels.ts';
 
@@ -46,6 +47,9 @@ function saveProgress(progress: GameProgress): void {
   }
 }
 
+// Mobile Device Performance Detection
+const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
 // Game State
 let progress: GameProgress = loadProgress();
 let currentLevelIndex = 0;
@@ -74,7 +78,8 @@ let animStateMachine: AnimationStateMachine | null = null;
 const levelObjectsGroup = new THREE.Group();
 const elementMeshMap: Map<string, THREE.Object3D> = new Map();
 
-const particleSys = new ParticleSystem(1200);
+// Optimized Particle System (Lower particle count on mobile devices)
+const particleSys = new ParticleSystem(isMobile ? 300 : 1200);
 
 // Grid dimensions & positioning
 const TILE_SIZE = 2.0;
@@ -86,15 +91,20 @@ const mirrorRotations: Map<string, number> = new Map();
 const doorStates: Map<string, boolean> = new Map();
 const collectedItems: Set<string> = new Set();
 
-// Initialize Kairo App Engine
+// Initialize Kairo App Engine with Mobile Performance Optimizations
 const app = new KairoApp({
   canvas: 'game-canvas',
   background: 0x09090b,
-  shadows: true,
+  shadows: !isMobile, // Disable heavy shadow maps on mobile devices
   fogColor: 0x09090b,
   fogNear: 20,
   fogFar: 80
 });
+
+if (isMobile) {
+  // Clamp canvas resolution to 1.0 to prevent 4K/Retina mobile rendering lag
+  app.renderer.setPixelRatio(1.0);
+}
 
 app.scene.add(levelObjectsGroup);
 app.scene.add(particleSys.mesh);
@@ -113,8 +123,8 @@ gltfLoader.load(
     foxGroup.scale.set(0.022, 0.022, 0.022);
     foxGroup.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
       }
     });
 
@@ -137,8 +147,8 @@ gltfLoader.load(
     avocadoTemplate.scale.set(12, 12, 12);
     avocadoTemplate.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
       }
     });
     buildLevelVisuals();
@@ -153,8 +163,8 @@ gltfLoader.load(
     helmetTemplate.scale.set(0.6, 0.6, 0.6);
     helmetTemplate.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
       }
     });
   }
@@ -167,8 +177,10 @@ function gridToWorld(x: number, y: number, height: number = 0): THREE.Vector3 {
   return new THREE.Vector3(offsetX + x * TILE_SIZE, height, offsetZ + y * TILE_SIZE);
 }
 
-// Build 3D Level Architecture & Visual Environment
+// Build 3D Level Architecture & Visual Environment with Instanced Rendering & Memory Cleanup
 function buildLevelVisuals(): void {
+  // Dispose old level GPU resources to prevent memory leaks in VRAM
+  MemoryManager.disposeHierarchy(levelObjectsGroup);
   while (levelObjectsGroup.children.length > 0) {
     const child = levelObjectsGroup.children[0];
     levelObjectsGroup.remove(child);
@@ -201,7 +213,7 @@ function buildLevelVisuals(): void {
     app.setLighting({ sunPosition: [-10, 20, -10], sunColor: 0xec4899, sunIntensity: 2.5, ambientColor: 0x3f3f46, ambientIntensity: 0.8 });
   }
 
-  // Floor Tiles
+  // Instanced Floor Tiles (Reduces draw calls from 200+ down to 2!)
   const floorGeo = new THREE.BoxGeometry(TILE_SIZE * 0.96, 0.4, TILE_SIZE * 0.96);
   const tileMatA = new THREE.MeshStandardMaterial({
     color: currentLevel.world === 1 ? 0x4a7c59 : currentLevel.world === 2 ? 0x1e293b : currentLevel.world === 3 ? 0x78350f : currentLevel.world === 4 ? 0x4338ca : 0x3f3f46,
@@ -214,35 +226,63 @@ function buildLevelVisuals(): void {
     metalness: 0.1
   });
 
+  const totalTiles = cols * rows;
+  const floorMeshA = new THREE.InstancedMesh(floorGeo, tileMatA, totalTiles);
+  const floorMeshB = new THREE.InstancedMesh(floorGeo, tileMatB, totalTiles);
+  floorMeshA.receiveShadow = !isMobile;
+  floorMeshB.receiveShadow = !isMobile;
+
+  const dummy = new THREE.Object3D();
+  let countA = 0;
+  let countB = 0;
+
   for (let x = 0; x < cols; x++) {
     for (let y = 0; y < rows; y++) {
-      const tileMesh = new THREE.Mesh(floorGeo, (x + y) % 2 === 0 ? tileMatA : tileMatB);
-      const pos = gridToWorld(x, y, -0.2);
-      tileMesh.position.copy(pos);
-      tileMesh.receiveShadow = true;
-      levelObjectsGroup.add(tileMesh);
+      dummy.position.copy(gridToWorld(x, y, -0.2));
+      dummy.updateMatrix();
+
+      if ((x + y) % 2 === 0) {
+        floorMeshA.setMatrixAt(countA++, dummy.matrix);
+      } else {
+        floorMeshB.setMatrixAt(countB++, dummy.matrix);
+      }
     }
   }
 
-  // Boundary Walls
+  floorMeshA.count = countA;
+  floorMeshB.count = countB;
+  floorMeshA.instanceMatrix.needsUpdate = true;
+  floorMeshB.instanceMatrix.needsUpdate = true;
+
+  levelObjectsGroup.add(floorMeshA);
+  levelObjectsGroup.add(floorMeshB);
+
+  // Instanced Boundary Walls (1 InstancedMesh for all boundary walls!)
   const wallGeo = new THREE.BoxGeometry(TILE_SIZE, 2.0, TILE_SIZE);
   const wallMat = new THREE.MeshStandardMaterial({
     color: currentLevel.world === 1 ? 0x2d4c1e : currentLevel.world === 2 ? 0x334155 : currentLevel.world === 3 ? 0x57534e : currentLevel.world === 4 ? 0x312e81 : 0x18181b,
     roughness: 0.8
   });
 
+  const maxWalls = (cols + 2) * (rows + 2);
+  const wallInstancedMesh = new THREE.InstancedMesh(wallGeo, wallMat, maxWalls);
+  wallInstancedMesh.castShadow = !isMobile;
+  wallInstancedMesh.receiveShadow = !isMobile;
+
+  let wallCount = 0;
   for (let x = -1; x <= cols; x++) {
     for (let y = -1; y <= rows; y++) {
       if (x === -1 || y === -1 || x === cols || y === rows) {
-        const wall = new THREE.Mesh(wallGeo, wallMat);
-        wall.position.copy(gridToWorld(x, y, 1.0));
-        wall.castShadow = true;
-        wall.receiveShadow = true;
-        levelObjectsGroup.add(wall);
-        app.registerObstacle(wall);
+        dummy.position.copy(gridToWorld(x, y, 1.0));
+        dummy.updateMatrix();
+        wallInstancedMesh.setMatrixAt(wallCount++, dummy.matrix);
       }
     }
   }
+
+  wallInstancedMesh.count = wallCount;
+  wallInstancedMesh.instanceMatrix.needsUpdate = true;
+  levelObjectsGroup.add(wallInstancedMesh);
 
   // Goal Exit Portal
   const goalGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.1, 16);
@@ -262,8 +302,8 @@ function buildLevelVisuals(): void {
       );
       const currentPos = crateGridPositions.get(elemId) || elem.pos;
       crateMesh.position.copy(gridToWorld(currentPos[0], currentPos[1], 0.75));
-      crateMesh.castShadow = true;
-      crateMesh.receiveShadow = true;
+      crateMesh.castShadow = !isMobile;
+      crateMesh.receiveShadow = !isMobile;
       levelObjectsGroup.add(crateMesh);
       elementMeshMap.set(elemId, crateMesh);
 
@@ -275,7 +315,7 @@ function buildLevelVisuals(): void {
         );
         const currentPos = tntGridPositions.get(elemId) || elem.pos;
         tntMesh.position.copy(gridToWorld(currentPos[0], currentPos[1], 0.7));
-        tntMesh.castShadow = true;
+        tntMesh.castShadow = !isMobile;
         levelObjectsGroup.add(tntMesh);
         elementMeshMap.set(elemId, tntMesh);
       }
@@ -312,7 +352,7 @@ function buildLevelVisuals(): void {
         new THREE.MeshStandardMaterial({ color: doorColor, metalness: 0.7, roughness: 0.3 })
       );
       doorMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 1.25));
-      doorMesh.castShadow = true;
+      doorMesh.castShadow = !isMobile;
       levelObjectsGroup.add(doorMesh);
       elementMeshMap.set(elemId, doorMesh);
       app.registerObstacle(doorMesh);
@@ -551,11 +591,10 @@ function tryMovePlayer(dx: number, dy: number): void {
     if (crateMesh) crateMesh.position.copy(gridToWorld(crateNextX, crateNextY, 0.75));
 
   } else if (pushedTntId) {
-    // TNT explosion on push impact
     pushUndoState();
     tntDestroyedSet.add(pushedTntId);
     const worldPos = gridToWorld(targetX, targetY, 0.8);
-    particleSys.emitBurst(worldPos, 'explosion', 45);
+    particleSys.emitBurst(worldPos, 'explosion', isMobile ? 20 : 45);
     app.audio.playSynthesizedSound('explosion');
     app.cameraController.shake({ intensity: 0.5, duration: 0.4 });
     app.ui.showToast('BOOM! TNT Exploded! 💥', 2000, 'warning');
@@ -584,8 +623,7 @@ function tryMovePlayer(dx: number, dy: number): void {
     }
   }
   if (isIce) {
-    particleSys.emitBurst(gridToWorld(playerGridPos[0], playerGridPos[1], 0.1), 'dust_footstep', 10);
-    // Slide 1 extra tile in movement direction if clear
+    particleSys.emitBurst(gridToWorld(playerGridPos[0], playerGridPos[1], 0.1), 'dust_footstep', 6);
     const slideX = playerGridPos[0] + dx;
     const slideY = playerGridPos[1] + dy;
     if (slideX >= 0 && slideX < cols && slideY >= 0 && slideY < rows) {
@@ -610,7 +648,7 @@ function tryMovePlayer(dx: number, dy: number): void {
       if (playerGridPos[0] === elem.pos[0] && playerGridPos[1] === elem.pos[1]) {
         playerGridPos = [...elem.targetPos];
         const portalPos = gridToWorld(playerGridPos[0], playerGridPos[1], 0.5);
-        particleSys.emitBurst(portalPos, 'teleport_flash', 35);
+        particleSys.emitBurst(portalPos, 'teleport_flash', isMobile ? 15 : 35);
         app.audio.playSynthesizedSound('teleport');
         app.ui.showToast('Warped through Teleporter! 🌀', 1500, 'info');
       }
@@ -658,11 +696,11 @@ function checkCollectibles(): void {
 
         if (elem.type === 'avocado') {
           avocadosCollected++;
-          particleSys.emitBurst(worldPos, 'collect_burst', 30);
+          particleSys.emitBurst(worldPos, 'collect_burst', isMobile ? 15 : 30);
           app.audio.playSynthesizedSound('coin');
           app.ui.showToast('Collected Avocado! 🥑', 1500, 'success');
         } else if (elem.type === 'helmet') {
-          particleSys.emitBurst(worldPos, 'sparkle', 40);
+          particleSys.emitBurst(worldPos, 'sparkle', isMobile ? 20 : 40);
           app.audio.playSynthesizedSound('key');
           app.ui.showToast('Found Secret Golden Helmet! 🪖', 2500, 'success');
         } else if (elem.type === 'key') {
@@ -680,7 +718,7 @@ function checkGoalCondition(): void {
   if (playerGridPos[0] === currentLevel.goalPos[0] && playerGridPos[1] === currentLevel.goalPos[1]) {
     isLevelCleared = true;
     const goalPosWorld = gridToWorld(currentLevel.goalPos[0], currentLevel.goalPos[1], 0.5);
-    particleSys.emitBurst(goalPosWorld, 'sparkle', 60);
+    particleSys.emitBurst(goalPosWorld, 'sparkle', isMobile ? 30 : 60);
     app.audio.playSynthesizedSound('fanfare');
 
     const stars = avocadosCollected >= 3 ? (moveCount <= currentLevel.parMoves ? 3 : 2) : 1;
@@ -774,8 +812,9 @@ function showSettingsModal(): void {
       <div>
         <label style="font-weight: 600; display: block; margin-bottom: 6px;">Graphics Quality</label>
         <select onchange="window.setGraphicsQuality(this.value)" style="width: 100%; padding: 8px; border-radius: 8px; background: #27272a; color: white;">
-          <option value="high">High (PBR + PCF Soft Shadows)</option>
-          <option value="medium">Medium (Standard Lighting)</option>
+          <option value="${isMobile ? 'medium' : 'high'}">${isMobile ? 'Mobile Optimized (Performance Default)' : 'High (PBR + PCF Soft Shadows)'}</option>
+          <option value="high">High (PBR + Soft Shadows)</option>
+          <option value="medium">Performance (Optimized)</option>
         </select>
       </div>
     </div>
