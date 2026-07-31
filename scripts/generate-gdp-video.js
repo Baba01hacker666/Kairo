@@ -43,7 +43,10 @@ const server = app.listen(PORT, async () => {
   });
 
   console.log('Navigating to GDP Explainer...');
-  await page.goto(`http://localhost:${PORT}/examples/gdp-explainer/index.html`, { waitUntil: 'networkidle2' });
+  await page.goto(`http://localhost:${PORT}/examples/gdp-explainer/index.html`, { waitUntil: 'domcontentloaded' });
+
+  // Wait a bit for the scene to initialize
+  await new Promise(r => setTimeout(r, 2000));
 
   console.log('Starting video sequence...');
   // Click the start button which triggers KairoAPI and the video sequence
