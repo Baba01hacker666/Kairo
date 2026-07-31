@@ -21,13 +21,27 @@ export type ParticleEffectPreset =
   | 'dust_footstep'
   | 'teleport_flash';
 
+
 export class ParticleSystem {
   public mesh: THREE.InstancedMesh;
   public maxParticles: number;
   private dummy: THREE.Object3D = new THREE.Object3D();
 
-  private activeParticles: Particle[] = [];
-  private pool: Particle[] = [];
+  // SoA (Structure of Arrays) layout for cache locality & GC elimination
+  private positionsX: Float32Array;
+  private positionsY: Float32Array;
+  private positionsZ: Float32Array;
+
+  private velocitiesX: Float32Array;
+  private velocitiesY: Float32Array;
+  private velocitiesZ: Float32Array;
+
+  private colors: Int32Array; // Stored as Hex
+  private sizes: Float32Array;
+  private lives: Float32Array;
+  private maxLives: Float32Array;
+
+  private activeCount: number = 0;
 
   constructor(maxParticles: number = 1000, color: number = 0xffffff) {
     this.maxParticles = maxParticles;
@@ -46,18 +60,19 @@ export class ParticleSystem {
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.count = 0;
 
-    // Pre-fill pool
-    for (let i = 0; i < maxParticles; i++) {
-      this.pool.push({
-        position: new THREE.Vector3(),
-        velocity: new THREE.Vector3(),
-        color: new THREE.Color(),
-        size: 1.0,
-        alpha: 1.0,
-        life: 0,
-        maxLife: 1.0
-      });
-    }
+    // Pre-allocate flat arrays
+    this.positionsX = new Float32Array(maxParticles);
+    this.positionsY = new Float32Array(maxParticles);
+    this.positionsZ = new Float32Array(maxParticles);
+
+    this.velocitiesX = new Float32Array(maxParticles);
+    this.velocitiesY = new Float32Array(maxParticles);
+    this.velocitiesZ = new Float32Array(maxParticles);
+
+    this.colors = new Int32Array(maxParticles);
+    this.sizes = new Float32Array(maxParticles);
+    this.lives = new Float32Array(maxParticles);
+    this.maxLives = new Float32Array(maxParticles);
   }
 
   public emitBurst(
@@ -65,92 +80,116 @@ export class ParticleSystem {
     preset: ParticleEffectPreset,
     count: number = 30
   ): void {
-    const origin = Array.isArray(pos) ? new THREE.Vector3(...pos) : pos;
+    const ox = Array.isArray(pos) ? pos[0] : pos.x;
+    const oy = Array.isArray(pos) ? pos[1] : pos.y;
+    const oz = Array.isArray(pos) ? pos[2] : pos.z;
 
     for (let i = 0; i < count; i++) {
-      if (this.pool.length === 0) break;
-      const p = this.pool.pop()!;
+      if (this.activeCount >= this.maxParticles) break;
+      const idx = this.activeCount++;
 
-      p.position.copy(origin);
-      p.life = 0;
+      this.positionsX[idx] = ox;
+      this.positionsY[idx] = oy;
+      this.positionsZ[idx] = oz;
+      this.lives[idx] = 0;
 
       if (preset === 'collect_burst') {
-        p.maxLife = 0.6 + Math.random() * 0.4;
-        p.velocity.set(
-          (Math.random() - 0.5) * 6,
-          Math.random() * 5 + 2,
-          (Math.random() - 0.5) * 6
-        );
-        p.color.setHex(0x10b981);
-        p.size = 0.2 + Math.random() * 0.2;
+        this.maxLives[idx] = 0.6 + Math.random() * 0.4;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 6;
+        this.velocitiesY[idx] = Math.random() * 5 + 2;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 6;
+        this.colors[idx] = 0x10b981;
+        this.sizes[idx] = 0.2 + Math.random() * 0.2;
       } else if (preset === 'explosion') {
-        p.maxLife = 0.5 + Math.random() * 0.5;
-        p.velocity.set(
-          (Math.random() - 0.5) * 12,
-          Math.random() * 8 + 3,
-          (Math.random() - 0.5) * 12
-        );
-        p.color.setHex(Math.random() > 0.5 ? 0xef4444 : 0xf59e0b);
-        p.size = 0.3 + Math.random() * 0.3;
+        this.maxLives[idx] = 0.5 + Math.random() * 0.5;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 12;
+        this.velocitiesY[idx] = Math.random() * 8 + 3;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 12;
+        this.colors[idx] = Math.random() > 0.5 ? 0xef4444 : 0xf59e0b;
+        this.sizes[idx] = 0.3 + Math.random() * 0.3;
       } else if (preset === 'teleport_flash') {
-        p.maxLife = 0.8;
+        this.maxLives[idx] = 0.8;
         const angle = Math.random() * Math.PI * 2;
         const rad = Math.random() * 1.5;
-        p.velocity.set(Math.cos(angle) * rad, Math.random() * 6 + 2, Math.sin(angle) * rad);
-        p.color.setHex(0xa855f7);
-        p.size = 0.25;
+        this.velocitiesX[idx] = Math.cos(angle) * rad;
+        this.velocitiesY[idx] = Math.random() * 6 + 2;
+        this.velocitiesZ[idx] = Math.sin(angle) * rad;
+        this.colors[idx] = 0xa855f7;
+        this.sizes[idx] = 0.25;
       } else if (preset === 'dust_footstep') {
-        p.maxLife = 0.4;
-        p.velocity.set((Math.random() - 0.5) * 1.5, Math.random() * 1.0, (Math.random() - 0.5) * 1.5);
-        p.color.setHex(0xd4d4d8);
-        p.size = 0.15;
+        this.maxLives[idx] = 0.4;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 1.5;
+        this.velocitiesY[idx] = Math.random() * 1.0;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 1.5;
+        this.colors[idx] = 0xd4d4d8;
+        this.sizes[idx] = 0.15;
       } else if (preset === 'portal_swirl') {
-        p.maxLife = 1.2;
+        this.maxLives[idx] = 1.2;
         const angle = Math.random() * Math.PI * 2;
-        p.velocity.set(Math.cos(angle) * 2, Math.random() * 3 + 1, Math.sin(angle) * 2);
-        p.color.setHex(0x3b82f6);
-        p.size = 0.2;
+        this.velocitiesX[idx] = Math.cos(angle) * 2;
+        this.velocitiesY[idx] = Math.random() * 3 + 1;
+        this.velocitiesZ[idx] = Math.sin(angle) * 2;
+        this.colors[idx] = 0x3b82f6;
+        this.sizes[idx] = 0.2;
       } else {
         // Default Sparkle
-        p.maxLife = 0.7;
-        p.velocity.set((Math.random() - 0.5) * 3, Math.random() * 4, (Math.random() - 0.5) * 3);
-        p.color.setHex(0xfacc15);
-        p.size = 0.2;
+        this.maxLives[idx] = 0.7;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 3;
+        this.velocitiesY[idx] = Math.random() * 4;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 3;
+        this.colors[idx] = 0xfacc15;
+        this.sizes[idx] = 0.2;
       }
-
-      this.activeParticles.push(p);
     }
   }
 
   public update(dt: number): void {
-    let count = 0;
+    let aliveCount = 0;
 
-    for (let i = this.activeParticles.length - 1; i >= 0; i--) {
-      const p = this.activeParticles[i];
-      p.life += dt;
+    for (let i = 0; i < this.activeCount; i++) {
+      this.lives[i] += dt;
 
-      if (p.life >= p.maxLife) {
-        this.activeParticles.splice(i, 1);
-        this.pool.push(p);
-        continue;
+      if (this.lives[i] >= this.maxLives[i]) {
+        continue; // Dead, skip and don't copy over
       }
 
       // Physics update
-      p.position.addScaledVector(p.velocity, dt);
-      p.velocity.y -= 9.81 * dt * 0.3; // Gentle gravity
+      this.positionsX[i] += this.velocitiesX[i] * dt;
+      this.positionsY[i] += this.velocitiesY[i] * dt;
+      this.positionsZ[i] += this.velocitiesZ[i] * dt;
 
-      const progress = p.life / p.maxLife;
-      const currentScale = p.size * (1 - progress);
+      this.velocitiesY[i] -= 9.81 * dt * 0.3; // Gentle gravity
 
-      this.dummy.position.copy(p.position);
+      const progress = this.lives[i] / this.maxLives[i];
+      const currentScale = this.sizes[i] * (1 - progress);
+
+      this.dummy.position.set(this.positionsX[i], this.positionsY[i], this.positionsZ[i]);
       this.dummy.scale.set(currentScale, currentScale, currentScale);
       this.dummy.updateMatrix();
 
-      this.mesh.setMatrixAt(count, this.dummy.matrix);
-      count++;
+      this.mesh.setMatrixAt(aliveCount, this.dummy.matrix);
+
+      // Pack active particles to the front
+      if (aliveCount !== i) {
+        this.positionsX[aliveCount] = this.positionsX[i];
+        this.positionsY[aliveCount] = this.positionsY[i];
+        this.positionsZ[aliveCount] = this.positionsZ[i];
+
+        this.velocitiesX[aliveCount] = this.velocitiesX[i];
+        this.velocitiesY[aliveCount] = this.velocitiesY[i];
+        this.velocitiesZ[aliveCount] = this.velocitiesZ[i];
+
+        this.colors[aliveCount] = this.colors[i];
+        this.sizes[aliveCount] = this.sizes[i];
+        this.lives[aliveCount] = this.lives[i];
+        this.maxLives[aliveCount] = this.maxLives[i];
+      }
+
+      aliveCount++;
     }
 
-    this.mesh.count = count;
+    this.activeCount = aliveCount;
+    this.mesh.count = aliveCount;
     this.mesh.instanceMatrix.needsUpdate = true;
   }
 }
