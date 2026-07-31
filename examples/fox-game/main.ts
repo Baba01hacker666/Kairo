@@ -1207,19 +1207,6 @@ app.onUpdate((dt) => {
     animStateMachine.update(dt);
   }
 
-  // Smooth Fox Position Lerp
-  if (foxGroup) {
-    const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
-    foxGroup.position.lerp(targetWorld, Math.min(1.0, 14 * dt));
-
-    const distToTarget = foxGroup.position.distanceTo(targetWorld);
-    if (distToTarget > 0.1 && animStateMachine) {
-      animStateMachine.setState('Walk');
-    } else if (animStateMachine) {
-      animStateMachine.setState('Idle');
-    }
-  }
-
   // AI Gameplay Agent Loop: Continuous 60 FPS Fluid Movement (Zero stutter/pauses)
   if (isAiAutoPlay) {
     const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
@@ -1246,6 +1233,19 @@ app.onUpdate((dt) => {
     if (app.input.isActionJustPressed('Hint')) {
       app.audio.playSynthesizedSound('hint');
       app.ui.createModal('💡 Dynamic Level Hint', currentLevel.hint, [{ text: 'Got it!', primary: true, onClick: () => {} }]);
+    }
+  }
+
+  // Smooth Fox Position Lerp
+  if (foxGroup) {
+    const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
+    foxGroup.position.lerp(targetWorld, Math.min(1.0, 9 * dt));
+
+    const distToTarget = foxGroup.position.distanceTo(targetWorld);
+    if (distToTarget > 0.1 && animStateMachine) {
+      animStateMachine.setState('Walk');
+    } else if (animStateMachine) {
+      animStateMachine.setState('Idle');
     }
   }
 });
