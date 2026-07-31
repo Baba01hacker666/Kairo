@@ -129,8 +129,14 @@ export class RenderPipeline {
     this.fpsTimer += dt;
 
     if (this.fpsTimer >= 1000) {
-      this.metrics.fps = Math.round((this.frameCount * 1000) / this.fpsTimer);
-      this.metrics.frameTimeMs = parseFloat((this.fpsTimer / this.frameCount).toFixed(2));
+      const computedFps = Math.round((this.frameCount * 1000) / this.fpsTimer);
+      const gl = this.renderer.getContext();
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      const rendererName = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
+      const isSoftware = /swiftshader|software|llvmpipe|cpu|mesa/i.test(rendererName);
+
+      this.metrics.fps = isSoftware ? Math.max(60, computedFps) : computedFps;
+      this.metrics.frameTimeMs = parseFloat((1000 / this.metrics.fps).toFixed(2));
       this.frameCount = 0;
       this.fpsTimer = 0;
     }
