@@ -667,6 +667,37 @@ function toggleAiAutoPlay(): void {
   }
 }
 
+let isManualRecording = false;
+function toggleManualRecording(): void {
+  const btn = document.getElementById('btn-record');
+  if (!isManualRecording) {
+    if (app.startRecording(60)) {
+      isManualRecording = true;
+      app.ui.showToast('🎥 Recording Started', 2000, 'info');
+      if (btn) {
+        btn.innerText = '⏹️ Stop Rec';
+        btn.style.borderColor = '#ef4444';
+        btn.style.background = 'rgba(239, 68, 68, 0.2)';
+      }
+    } else {
+      app.ui.showToast('❌ Failed to start recording. Ensure MediaRecorder is supported.', 2500, 'warning');
+    }
+  } else {
+    isManualRecording = false;
+    app.stopRecording(`kairo-gameplay-${Date.now()}.webm`).then((blob) => {
+      if (blob) {
+        app.ui.showToast('✅ Recording Saved to Downloads', 3000, 'success');
+      }
+    });
+    
+    if (btn) {
+      btn.innerText = '🎥 Record';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      btn.style.background = 'rgba(255, 255, 255, 0.1)';
+    }
+  }
+}
+
 (window as any).runAiTestLevel1Record = toggleAiAutoPlay;
 
 // AOT Pre-Compiled Optimal Move Sequences for Zero-CPU Pathfinding Overhead
@@ -1009,6 +1040,7 @@ function updateHUD(): void {
 
 // UI Button Listeners (Desktop & Touch)
 document.getElementById('btn-ai-autoplay')?.addEventListener('click', toggleAiAutoPlay);
+document.getElementById('btn-record')?.addEventListener('click', toggleManualRecording);
 document.getElementById('btn-undo')?.addEventListener('click', performUndo);
 document.getElementById('btn-restart')?.addEventListener('click', () => loadLevel(currentLevelIndex));
 document.getElementById('btn-hint')?.addEventListener('click', () => {
