@@ -132,15 +132,15 @@ export class InputManager {
     const vec = new Vector2(0, 0);
 
     if (this.touchJoystickActive) {
-      vec.x = this.touchJoystickVector.x;
+      vec.x = -this.touchJoystickVector.x;
       vec.y = -this.touchJoystickVector.y;
       return vec;
     }
 
     if (this.isActionActive('MoveForward')) vec.y += 1;
     if (this.isActionActive('MoveBackward')) vec.y -= 1;
-    if (this.isActionActive('MoveRight')) vec.x += 1;
-    if (this.isActionActive('MoveLeft')) vec.x -= 1;
+    if (this.isActionActive('MoveRight')) vec.x -= 1;
+    if (this.isActionActive('MoveLeft')) vec.x += 1;
 
     // Check Gamepad Left Stick
     if (typeof navigator !== 'undefined' && navigator.getGamepads) {
@@ -149,7 +149,7 @@ export class InputManager {
         if (!gp) continue;
         const axisX = gp.axes[0];
         const axisY = gp.axes[1];
-        if (Math.abs(axisX) > 0.15) vec.x = axisX;
+        if (Math.abs(axisX) > 0.15) vec.x = -axisX;
         if (Math.abs(axisY) > 0.15) vec.y = -axisY;
       }
     }
