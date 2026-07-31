@@ -68,30 +68,31 @@ const capitaGroup = new THREE.Group();
 capitaGroup.position.set(10, 0, 0);
 app.scene.add(capitaGroup);
 
-// Materials
-const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+// Materials & Textures
+const textureLoader = new THREE.TextureLoader();
+const goldTexture = textureLoader.load('./assets/gold_coin.jpg');
+const personTexture = textureLoader.load('./assets/person_icon.jpg');
 
-const personGeo = new THREE.SphereGeometry(0.5, 16, 16);
-const personMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
+const goldMat = new THREE.SpriteMaterial({ map: goldTexture, color: 0xffffff });
+const personMat = new THREE.SpriteMaterial({ map: personTexture, color: 0xffffff });
 
 // Scene 1: GDP
 // A large country with a huge pile of money, but lots of people.
 const country1Wealth = new THREE.Group();
 for (let i = 0; i < 20; i++) {
-  const mesh = new THREE.Mesh(boxGeo, goldMat);
-  mesh.position.set((Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 4);
-  mesh.castShadow = true;
-  country1Wealth.add(mesh);
+  const sprite = new THREE.Sprite(goldMat);
+  sprite.scale.set(1.5, 1.5, 1);
+  sprite.position.set((Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 4);
+  country1Wealth.add(sprite);
 }
 gdpGroup.add(country1Wealth);
 
 const country1People = new THREE.Group();
 for (let i = 0; i < 15; i++) {
-  const mesh = new THREE.Mesh(personGeo, personMat);
-  mesh.position.set((Math.random() - 0.5) * 8, 0.5, (Math.random() - 0.5) * 8 + 4);
-  mesh.castShadow = true;
-  country1People.add(mesh);
+  const sprite = new THREE.Sprite(personMat);
+  sprite.scale.set(1.5, 1.5, 1);
+  sprite.position.set((Math.random() - 0.5) * 8, 1.0, (Math.random() - 0.5) * 8 + 4);
+  country1People.add(sprite);
 }
 gdpGroup.add(country1People);
 
@@ -102,19 +103,19 @@ gdpGroup.add(gdpLabel);
 // A small country with less money, but very few people.
 const country2Wealth = new THREE.Group();
 for (let i = 0; i < 10; i++) {
-  const mesh = new THREE.Mesh(boxGeo, goldMat);
-  mesh.position.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3);
-  mesh.castShadow = true;
-  country2Wealth.add(mesh);
+  const sprite = new THREE.Sprite(goldMat);
+  sprite.scale.set(1.5, 1.5, 1);
+  sprite.position.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3);
+  country2Wealth.add(sprite);
 }
 capitaGroup.add(country2Wealth);
 
 const country2People = new THREE.Group();
 for (let i = 0; i < 2; i++) {
-  const mesh = new THREE.Mesh(personGeo, personMat);
-  mesh.position.set((Math.random() - 0.5) * 4, 0.5, (Math.random() - 0.5) * 4 + 4);
-  mesh.castShadow = true;
-  country2People.add(mesh);
+  const sprite = new THREE.Sprite(personMat);
+  sprite.scale.set(1.5, 1.5, 1);
+  sprite.position.set((Math.random() - 0.5) * 4, 1.0, (Math.random() - 0.5) * 4 + 4);
+  country2People.add(sprite);
 }
 capitaGroup.add(country2People);
 
