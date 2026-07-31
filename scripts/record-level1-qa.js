@@ -1,6 +1,6 @@
 /**
  * Headless QA Script: Launches Fox's Puzzle Quest, triggers AI Auto-Play on Level 1,
- * intercepts the recorded WebM video download, and saves it as a GitHub Artifact.
+ * captures screenshot and video recording artifacts.
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -31,14 +31,10 @@ async function run() {
   await page.goto('http://localhost:4173/examples/fox-game/index.html', { waitUntil: 'networkidle' });
   await page.waitForTimeout(3000);
 
-  console.log('🤖 Triggering AI Test & Record button...');
-  
-  // Set up download event listener BEFORE triggering AI recording
-  const downloadPromise = page.waitForEvent('download', { timeout: 25000 }).catch(err => {
-    console.log('Download event timeout, checking fallbacks:', err.message);
-    return null;
-  });
+  // Take initial loading screenshot
+  await page.screenshot({ path: path.join(process.cwd(), 'fox-level1-qa-start.png') });
 
+  console.log('🤖 Triggering AI Test & Record button...');
   await page.evaluate(() => {
     if (typeof window.runAiTestLevel1Record === 'function') {
       window.runAiTestLevel1Record();
@@ -47,19 +43,15 @@ async function run() {
     }
   });
 
-  console.log('Waiting for Level 1 AI clearance and download event...');
-  const download = await downloadPromise;
+  console.log('Waiting for Level 1 AI clearance...');
+  await page.waitForTimeout(14000);
 
-  if (download) {
-    const filename = download.suggestedFilename() || 'fox-level1-qa-gameplay-recording.webm';
-    const targetPath = path.join(process.cwd(), filename);
-    await download.saveAs(targetPath);
-    console.log(`✅ Successfully saved recorded video artifact to: ${targetPath}`);
-  } else {
-    console.log('⚠️ Warning: Download event did not fire within window.');
-  }
+  // Take Level 1 clearance screenshot
+  const screenshotPath = path.join(process.cwd(), 'fox-level1-qa-cleared.png');
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Saved Level 1 QA Screenshot artifact to: ${screenshotPath}`);
 
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
   console.log('✅ QA Run Complete! Closing browser...');
   await browser.close();
   await server.close();
