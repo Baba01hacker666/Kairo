@@ -1,7 +1,0 @@
-💡 What: Optimized `ECS.ts` `world.query()` by finding the required component with the minimum number of entities, and only iterating over those candidates.
-
-🎯 Why: In ECS queries, iterating over all active entities and checking if they match a query (e.g. `O(N_Total_Entities)`) can be a major bottleneck when the entity count is large, but only a small subset matches.
-
-📊 Impact: Reduces the query time to `O(min_comp_size)`. In benchmark, querying 100000 entities with 1000 matching reduced from ~6000ms down to ~100ms.
-
-🔬 Measurement: Check the benchmark performance in `tests/ecs.test.js`.
