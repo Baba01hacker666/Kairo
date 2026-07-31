@@ -90,6 +90,8 @@ export class RenderPipeline {
     this.config.exposure = exposure;
     this.renderer.toneMappingExposure = exposure;
   }
+  private currentSun: THREE.DirectionalLight | null = null;
+  private currentAmbient: THREE.AmbientLight | null = null;
 
   public setupLighting(options: {
     sunPosition?: [number, number, number];
@@ -99,6 +101,16 @@ export class RenderPipeline {
     ambientIntensity?: number;
     shadowMapSize?: number;
   }): { sun: THREE.DirectionalLight; ambient: THREE.AmbientLight } {
+    if (this.currentSun) {
+      this.scene.remove(this.currentSun);
+      if (this.currentSun.shadow && this.currentSun.shadow.map) {
+        this.currentSun.shadow.map.dispose();
+      }
+    }
+    if (this.currentAmbient) {
+      this.scene.remove(this.currentAmbient);
+    }
+
     const sunColor = options.sunColor ?? 0xfff5ea;
     const sunIntensity = options.sunIntensity ?? 2.5;
     const sun = new THREE.DirectionalLight(sunColor, sunIntensity);
@@ -122,6 +134,9 @@ export class RenderPipeline {
 
     this.scene.add(sun);
     this.scene.add(ambient);
+    
+    this.currentSun = sun;
+    this.currentAmbient = ambient;
 
     return { sun, ambient };
   }

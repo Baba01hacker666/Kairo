@@ -158,6 +158,8 @@ export class UIManager {
       btn.onmouseenter = () => btn.style.transform = 'scale(1.04)';
       btn.onmouseleave = () => btn.style.transform = 'scale(1)';
       btn.onclick = () => {
+        if (btn.disabled) return;
+        btnRow.querySelectorAll('button').forEach(button => (button as HTMLButtonElement).disabled = true);
         backdrop.style.opacity = '0';
         card.style.transform = 'scale(0.9)';
         setTimeout(() => backdrop.remove(), 250);
