@@ -618,6 +618,8 @@ function toggleAiAutoPlay(): void {
   }
 }
 
+(window as any).runAiTestLevel1Record = toggleAiAutoPlay;
+
 function stepAiAgent(): void {
   if (isLevelCleared) {
     // Auto proceed to next level when cleared

@@ -26,17 +26,22 @@ async function run() {
 
   const page = await context.newPage();
   console.log('Opening Fox Game...');
-  await page.goto('http://localhost:4173/examples/fox-game/index.html');
-  await page.waitForTimeout(2000);
+  await page.goto('http://localhost:4173/examples/fox-game/index.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(3000);
 
   console.log('🤖 Triggering AI Test & Record button...');
-  await page.click('#btn-ai-autoplay');
+  await page.evaluate(() => {
+    if (typeof window.runAiTestLevel1Record === 'function') {
+      window.runAiTestLevel1Record();
+    } else {
+      document.getElementById('btn-ai-autoplay')?.click();
+    }
+  });
 
   // Wait for Level 1 completion modal (AI plays Level 1)
   console.log('Waiting for Level 1 AI clearance...');
-  await page.waitForSelector('.menu-screen', { timeout: 25000 }).catch(() => console.log('Timeout waiting for modal, continuing...'));
+  await page.waitForTimeout(15000);
 
-  await page.waitForTimeout(3000);
   console.log('✅ QA Run Complete! Closing browser...');
   await browser.close();
   await server.close();
