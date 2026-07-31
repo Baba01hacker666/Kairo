@@ -4,7 +4,6 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-import path from 'path';
 
 async function run() {
   console.log('🚀 Starting Vite preview server...');
@@ -17,7 +16,7 @@ async function run() {
   console.log('🌐 Launching Headless Chromium browser...');
   const browser = await chromium.launch({
     headless: true,
-    args: ['--use-gl=angle', '--use-angle=gl', '--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--use-gl=swiftshader', '--no-sandbox', '--disable-setuid-sandbox', '--ignore-gpu-blocklist']
   });
 
   const context = await browser.newContext({
@@ -35,7 +34,7 @@ async function run() {
 
   // Wait for Level 1 completion modal (AI plays Level 1)
   console.log('Waiting for Level 1 AI clearance...');
-  await page.waitForSelector('.menu-screen', { timeout: 20000 }).catch(() => console.log('Timeout waiting for modal, continuing...'));
+  await page.waitForSelector('.menu-screen', { timeout: 25000 }).catch(() => console.log('Timeout waiting for modal, continuing...'));
 
   await page.waitForTimeout(3000);
   console.log('✅ QA Run Complete! Closing browser...');
