@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 
@@ -15,7 +15,7 @@ const VIEWS = [
 
 (async () => {
   console.log('Launching browser...');
-  const browser = await puppeteer.launch({ 
+  const browser = await chromium.launch({ 
     args: ['--no-sandbox', '--disable-setuid-sandbox'] 
   });
   
