@@ -46,10 +46,10 @@ This file serves as a knowledge base and instruction manual for future AI agents
    - Every time you modify `.go` files in an example, you must recompile it to the `public/wasm` directory. Example:
      `GOOS=js GOARCH=wasm go build -o ../../public/wasm/go-fox.wasm main.go`
 
-2. **Testing**
+2. **Testing & Execution**
    - Run `npm run dev` to test locally.
    - Visually confirm changes using the frontend.
-   - **Never run arbitrary installation commands (e.g. puppeteer)** unless explicitly requested. 
+   - **Never run arbitrary execution scripts (e.g., puppeteer video generators) locally.** Always prefer using **GitHub Workflows** for automated tasks. If a task requires heavy environments (like headless browsers), write a GitHub Action and run it there.
 
 3. **Commit Messages**
    - Use conventional commits (`feat:`, `fix:`, `docs:`) and push directly to `main` so the GitHub Actions deployment workflow can pick it up.
