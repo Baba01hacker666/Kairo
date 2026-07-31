@@ -6,7 +6,7 @@ import { CameraController, RenderPipeline } from '@kairo/renderer';
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
-import { GlobalDebugInspector, DebugInspector } from '@kairo/tools';
+import { GlobalDebugInspector, DebugInspector, ScreenRecorder } from '@kairo/tools';
 import { Serializer } from './Serializer.ts';
 import { animate } from 'motion';
 
@@ -22,7 +22,7 @@ export interface KairoAppConfig {
 
 /**
  * Modern High-Level Production Game Engine Wrapper
- * Manages Rendering, Camera, Physics, Input, Audio, UI, Profiler, and Scene Lifecycle.
+ * Manages Rendering, Camera, Physics, Input, Audio, UI, Profiler, ScreenRecorder, and Scene Lifecycle.
  */
 export class KairoApp {
   public engine: Engine;
@@ -32,6 +32,7 @@ export class KairoApp {
   public cameraController: CameraController;
   public renderer: THREE.WebGLRenderer;
   public pipeline: RenderPipeline;
+  public screenRecorder!: ScreenRecorder;
 
   public input: InputManager = GlobalInput;
   public audio: AudioManager = GlobalAudio;
@@ -75,10 +76,13 @@ export class KairoApp {
       canvas: canvasObj,
       antialias: true,
       powerPreference: 'high-performance',
-      alpha: true
+      alpha: true,
+      preserveDrawingBuffer: true // Retain WebGL pixel buffer for instant high-res screenshot capture
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    this.screenRecorder = new ScreenRecorder(canvasObj);
 
     // Setup Camera & Controller
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -200,5 +204,26 @@ export class KairoApp {
       return { mesh, rb, col };
     }
     return { mesh };
+  }
+
+  /**
+   * Capture instant high-res WebGL canvas screenshot
+   */
+  public captureScreenshot(filename?: string): string {
+    return this.screenRecorder.captureScreenshot(filename);
+  }
+
+  /**
+   * Start 60 FPS video recording of WebGL canvas stream
+   */
+  public startRecording(fps: number = 60): boolean {
+    return this.screenRecorder.startRecording(fps);
+  }
+
+  /**
+   * Stop video recording and download video file
+   */
+  public stopRecording(filename?: string): Promise<Blob | null> {
+    return this.screenRecorder.stopRecording(filename);
   }
 }
