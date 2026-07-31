@@ -16,6 +16,12 @@ export default defineConfig({
         hqrender: 'examples/high-quality-render/index.html',
         foxgame: 'examples/fox-game/index.html',
         gofox: 'examples/go-fox/index.html'
+      },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three')) return 'three';
+          if (id.includes('node_modules')) return 'vendor';
+        }
       }
     }
   },
