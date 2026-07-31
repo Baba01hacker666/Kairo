@@ -597,16 +597,6 @@ function toggleAiAutoPlay(): void {
       btn.style.background = 'rgba(239, 68, 68, 0.2)';
     }
 
-    // Detect software renderer (SwiftShader / CPU emulation)
-    const gl = app.renderer.getContext();
-    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-    const rendererName = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
-    const isSoftware = /swiftshader|software|llvmpipe|cpu|mesa/i.test(rendererName);
-
-    if (isSoftware) {
-      app.renderer.setPixelRatio(0.15);
-    }
-
     app.ui.showToast('🤖 AI Gameplay Agent Active! Recording 60 FPS video test...', 3500, 'info');
     app.startRecording(60);
 

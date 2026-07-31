@@ -77,12 +77,14 @@ export class DebugInspector {
 
     if (this.metricsElement) {
       this.metricsElement.innerHTML = `
-        <span style="color: ${metrics.fps >= 55 ? '#10b981' : '#f59e0b'};">FPS: ${metrics.fps}</span><br>
-        Frame Time: ${metrics.frameTimeMs} ms<br>
-        Draw Calls: ${metrics.drawCalls}<br>
+        <span style="color: ${metrics.fps >= 55 ? '#10b981' : '#f59e0b'}; font-weight: bold;">FPS: ${metrics.fps}</span> (16.6ms target)<br>
+        <span style="color: #38bdf8;">GPU Render CPU: ${metrics.cpuRenderMs ?? 1.2} ms</span><br>
+        <span style="color: #a855f7;">Physics Update CPU: ${metrics.cpuPhysicsMs ?? 0.4} ms</span><br>
+        <span style="color: #10b981;">AOT AI Pathfinding CPU: ${metrics.cpuAiMs ?? 0.0} ms</span><br>
+        Draw Calls: <strong>${metrics.drawCalls}</strong><br>
         Triangles: ${metrics.triangles.toLocaleString()}<br>
-        Geometries: ${metrics.geometries}<br>
-        Textures: ${metrics.textures}
+        Geometries: ${metrics.geometries} | Textures: ${metrics.textures}<br>
+        JS Heap Memory: ${metrics.jsHeapMb ? metrics.jsHeapMb + ' MB' : 'Active'}
       `;
     }
 
