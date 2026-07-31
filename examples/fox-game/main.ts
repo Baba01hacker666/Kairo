@@ -78,6 +78,51 @@ let foxGroup: THREE.Group | null = null;
 let animStateMachine: AnimationStateMachine | null = null;
 const levelObjectsGroup = new THREE.Group();
 const elementMeshMap: Map<string, THREE.Object3D> = new Map();
+const foxFallbackMaterial = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.75, metalness: 0.05 });
+const foxFallbackAccentMaterial = new THREE.MeshStandardMaterial({ color: 0xfff7ed, roughness: 0.8, metalness: 0.02 });
+
+function createFallbackFoxModel(): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'FoxFallbackModel';
+
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.72, 4, 8), foxFallbackMaterial);
+  body.rotation.z = Math.PI / 2;
+  body.position.y = 0.5;
+  body.castShadow = !isMobile;
+  body.receiveShadow = !isMobile;
+  group.add(body);
+
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.55, 4), foxFallbackMaterial);
+  head.rotation.y = Math.PI / 4;
+  head.position.set(0, 0.72, 0.48);
+  head.castShadow = !isMobile;
+  group.add(head);
+
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), foxFallbackAccentMaterial);
+  chest.scale.set(0.8, 1.1, 0.45);
+  chest.position.set(0, 0.52, 0.36);
+  chest.castShadow = !isMobile;
+  group.add(chest);
+
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.85, 8), foxFallbackMaterial);
+  tail.rotation.x = Math.PI / 2.9;
+  tail.position.set(0, 0.54, -0.62);
+  tail.castShadow = !isMobile;
+  group.add(tail);
+
+  return group;
+}
+
+function installFoxModel(model: THREE.Group, instant: boolean = true): void {
+  if (foxGroup) {
+    app.scene.remove(foxGroup);
+  }
+
+  foxGroup = model;
+  app.scene.add(foxGroup);
+  updatePlayerPositionVisuals(instant);
+}
+
 
 // Particle System
 const particleSys = new ParticleSystem(isMobile ? 300 : 1200);
@@ -126,27 +171,35 @@ const gltfLoader = new GLTFLoader();
 let avocadoTemplate: THREE.Group | null = null;
 let helmetTemplate: THREE.Group | null = null;
 
-// Load Fox Model & Skeletal Animations
+// Load Fox Model & Skeletal Animations. Keep a visible fallback in the scene so
+// movement/camera changes never leave the level without a player model while the GLB
+// downloads or if the asset fails to load.
+installFoxModel(createFallbackFoxModel());
 gltfLoader.load(
   (import.meta as any).env.BASE_URL + 'models/Fox.glb',
   (gltf) => {
-    foxGroup = gltf.scene;
-    foxGroup.scale.set(0.022, 0.022, 0.022);
-    foxGroup.traverse((child) => {
+    const loadedFox = gltf.scene;
+    loadedFox.scale.set(0.022, 0.022, 0.022);
+    loadedFox.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = !isMobile;
         child.receiveShadow = !isMobile;
       }
     });
 
-    animStateMachine = new AnimationStateMachine(foxGroup);
+    animStateMachine = new AnimationStateMachine(loadedFox);
     animStateMachine.registerState('Idle', gltf.animations[0], { fadeDuration: 0.2 });
     animStateMachine.registerState('Walk', gltf.animations[1], { fadeDuration: 0.15 });
     animStateMachine.registerState('Run', gltf.animations[2], { fadeDuration: 0.15 });
     animStateMachine.setState('Idle');
 
-    app.scene.add(foxGroup);
-    updatePlayerPositionVisuals(true);
+    installFoxModel(loadedFox);
+  },
+  undefined,
+  (error) => {
+    console.error('Could not load Fox.glb; using fallback fox model.', error);
+    animStateMachine = null;
+    if (!foxGroup) installFoxModel(createFallbackFoxModel());
   }
 );
 
