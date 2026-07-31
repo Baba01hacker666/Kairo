@@ -1,6 +1,6 @@
-import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
+import { execFileSync } from 'child_process';
 
 const VIEWS = [
   { name: 'hub', url: 'http://localhost:4173/Kairo/' },
@@ -15,9 +15,32 @@ const VIEWS = [
 
 (async () => {
   console.log('Launching browser...');
-  const browser = await chromium.launch({ 
-    args: ['--no-sandbox', '--disable-setuid-sandbox'] 
-  });
+  let chromium;
+  try {
+    ({ chromium } = await import('playwright'));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Playwright is not installed. Run `npm install` before taking screenshots.');
+    throw new Error(message);
+  }
+
+  let browser;
+  try {
+    browser = await chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("Executable doesn't exist") && !message.includes('Please run the following command to download new browsers')) {
+      throw error;
+    }
+
+    console.log('Playwright Chromium is not installed; running `npx playwright install chromium` and retrying...');
+    execFileSync('npx', ['playwright', 'install', 'chromium'], { stdio: 'inherit' });
+    browser = await chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+  }
   
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
