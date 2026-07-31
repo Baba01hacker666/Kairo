@@ -61,7 +61,7 @@ export class RenderPipeline {
 
     if (isSoftware) {
       this.renderer.shadowMap.enabled = false;
-      this.renderer.setPixelRatio(1.0);
+      this.renderer.setPixelRatio(0.5);
     } else {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
