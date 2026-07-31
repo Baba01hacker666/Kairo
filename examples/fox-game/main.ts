@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KairoApp } from '@kairo/core';
 import { AnimationStateMachine } from '@kairo/animation';
+import { ParticleSystem } from '@kairo/renderer';
 import { Serializer } from '@kairo/core';
 import { ALL_LEVELS, LevelDefinition, LevelElement, WORLD_NAMES } from './levels.ts';
 
@@ -58,6 +59,8 @@ let isLevelCleared = false;
 interface GridSnapshot {
   playerGridPos: [number, number];
   cratesPos: Map<string, [number, number]>;
+  tntPos: Map<string, [number, number]>;
+  tntDestroyed: Set<string>;
   mirrorsRotation: Map<string, number>;
   doorsOpen: Map<string, boolean>;
   collectedItems: Set<string>;
@@ -65,16 +68,20 @@ interface GridSnapshot {
 
 const undoStack: GridSnapshot[] = [];
 
-// Visual Objects
+// Visual Objects & Particle System
 let foxGroup: THREE.Group | null = null;
 let animStateMachine: AnimationStateMachine | null = null;
 const levelObjectsGroup = new THREE.Group();
 const elementMeshMap: Map<string, THREE.Object3D> = new Map();
 
+const particleSys = new ParticleSystem(1200);
+
 // Grid dimensions & positioning
 const TILE_SIZE = 2.0;
 let playerGridPos: [number, number] = [1, 1];
 const crateGridPositions: Map<string, [number, number]> = new Map();
+const tntGridPositions: Map<string, [number, number]> = new Map();
+const tntDestroyedSet: Set<string> = new Set();
 const mirrorRotations: Map<string, number> = new Map();
 const doorStates: Map<string, boolean> = new Map();
 const collectedItems: Set<string> = new Set();
@@ -90,6 +97,7 @@ const app = new KairoApp({
 });
 
 app.scene.add(levelObjectsGroup);
+app.scene.add(particleSys.mesh);
 
 // Load 3D Models
 const gltfLoader = new GLTFLoader();
@@ -111,7 +119,6 @@ gltfLoader.load(
     });
 
     animStateMachine = new AnimationStateMachine(foxGroup);
-    // Fox animations: 0: Idle/Survey, 1: Walk, 2: Run
     animStateMachine.registerState('Idle', gltf.animations[0], { fadeDuration: 0.2 });
     animStateMachine.registerState('Walk', gltf.animations[1], { fadeDuration: 0.15 });
     animStateMachine.registerState('Run', gltf.animations[2], { fadeDuration: 0.15 });
@@ -134,7 +141,6 @@ gltfLoader.load(
         child.receiveShadow = true;
       }
     });
-    // Refresh level items if loaded after level build
     buildLevelVisuals();
   }
 );
@@ -163,7 +169,6 @@ function gridToWorld(x: number, y: number, height: number = 0): THREE.Vector3 {
 
 // Build 3D Level Architecture & Visual Environment
 function buildLevelVisuals(): void {
-  // Clear previous level meshes
   while (levelObjectsGroup.children.length > 0) {
     const child = levelObjectsGroup.children[0];
     levelObjectsGroup.remove(child);
@@ -219,7 +224,7 @@ function buildLevelVisuals(): void {
     }
   }
 
-  // Perimeter Boundary Walls
+  // Boundary Walls
   const wallGeo = new THREE.BoxGeometry(TILE_SIZE, 2.0, TILE_SIZE);
   const wallMat = new THREE.MeshStandardMaterial({
     color: currentLevel.world === 1 ? 0x2d4c1e : currentLevel.world === 2 ? 0x334155 : currentLevel.world === 3 ? 0x57534e : currentLevel.world === 4 ? 0x312e81 : 0x18181b,
@@ -249,7 +254,6 @@ function buildLevelVisuals(): void {
   // Level Interactive Elements
   currentLevel.elements.forEach((elem, index) => {
     const elemId = elem.id || `elem_${index}_${elem.type}`;
-    const key = `${elem.pos[0]}_${elem.pos[1]}`;
 
     if (elem.type === 'crate') {
       const crateMesh = new THREE.Mesh(
@@ -262,6 +266,35 @@ function buildLevelVisuals(): void {
       crateMesh.receiveShadow = true;
       levelObjectsGroup.add(crateMesh);
       elementMeshMap.set(elemId, crateMesh);
+
+    } else if (elem.type === 'tnt') {
+      if (!tntDestroyedSet.has(elemId)) {
+        const tntMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.7, 0.7, 1.4, 16),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 0.3, roughness: 0.3 })
+        );
+        const currentPos = tntGridPositions.get(elemId) || elem.pos;
+        tntMesh.position.copy(gridToWorld(currentPos[0], currentPos[1], 0.7));
+        tntMesh.castShadow = true;
+        levelObjectsGroup.add(tntMesh);
+        elementMeshMap.set(elemId, tntMesh);
+      }
+
+    } else if (elem.type === 'ice') {
+      const iceMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.9, 0.05, 1.9),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.0, transparent: true, opacity: 0.85, emissive: 0x0284c7, emissiveIntensity: 0.2 })
+      );
+      iceMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.02));
+      levelObjectsGroup.add(iceMesh);
+
+    } else if (elem.type === 'conveyor') {
+      const conveyorMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.06, 1.8),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 })
+      );
+      conveyorMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.03));
+      levelObjectsGroup.add(conveyorMesh);
 
     } else if (elem.type === 'plate') {
       const plateMesh = new THREE.Mesh(
@@ -328,15 +361,15 @@ function buildLevelVisuals(): void {
         elementMeshMap.set(elemId, helmetMesh);
       }
 
-    } else if (elem.type === 'mirror') {
+    } else if (elem.type === 'mirror' || elem.type === 'prism') {
       const mirrorGroup = new THREE.Group();
       const frame = new THREE.Mesh(
         new THREE.BoxGeometry(1.6, 1.8, 0.2),
-        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 })
+        new THREE.MeshStandardMaterial({ color: elem.type === 'prism' ? 0x0284c7 : 0x475569, metalness: 0.8 })
       );
       const glass = new THREE.Mesh(
         new THREE.PlaneGeometry(1.4, 1.6),
-        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 1.0, roughness: 0.0, transparent: true, opacity: 0.9 })
+        new THREE.MeshStandardMaterial({ color: elem.type === 'prism' ? 0x38bdf8 : 0x60a5fa, metalness: 1.0, roughness: 0.0, transparent: true, opacity: 0.9 })
       );
       glass.position.z = 0.11;
       mirrorGroup.add(frame);
@@ -363,7 +396,7 @@ function buildLevelVisuals(): void {
   updateHUD();
 }
 
-// Load Selected Level State
+// Load Level State
 function loadLevel(levelIndex: number): void {
   currentLevelIndex = Math.max(0, Math.min(ALL_LEVELS.length - 1, levelIndex));
   currentLevel = ALL_LEVELS[currentLevelIndex];
@@ -374,17 +407,20 @@ function loadLevel(levelIndex: number): void {
   isLevelCleared = false;
 
   crateGridPositions.clear();
+  tntGridPositions.clear();
+  tntDestroyedSet.clear();
   mirrorRotations.clear();
   doorStates.clear();
   collectedItems.clear();
   undoStack.length = 0;
 
-  // Initialize elements state
   currentLevel.elements.forEach((elem, index) => {
     const elemId = elem.id || `elem_${index}_${elem.type}`;
     if (elem.type === 'crate') {
       crateGridPositions.set(elemId, [...elem.pos]);
-    } else if (elem.type === 'mirror') {
+    } else if (elem.type === 'tnt') {
+      tntGridPositions.set(elemId, [...elem.pos]);
+    } else if (elem.type === 'mirror' || elem.type === 'prism') {
       mirrorRotations.set(elemId, elem.rotation || 0);
     } else if (elem.type === 'door') {
       doorStates.set(elemId, false);
@@ -402,16 +438,21 @@ function pushUndoState(): void {
   const crateCopy = new Map<string, [number, number]>();
   crateGridPositions.forEach((v, k) => crateCopy.set(k, [...v]));
 
+  const tntCopy = new Map<string, [number, number]>();
+  tntGridPositions.forEach((v, k) => tntCopy.set(k, [...v]));
+
   undoStack.push({
     playerGridPos: [...playerGridPos],
     cratesPos: crateCopy,
+    tntPos: tntCopy,
+    tntDestroyed: new Set(tntDestroyedSet),
     mirrorsRotation: new Map(mirrorRotations),
     doorsOpen: new Map(doorStates),
     collectedItems: new Set(collectedItems)
   });
 }
 
-// Execute Undo Move
+// Perform Undo
 function performUndo(): void {
   if (undoStack.length === 0 || isLevelCleared) {
     app.ui.showToast('Nothing to undo!', 1500, 'warning');
@@ -423,6 +464,12 @@ function performUndo(): void {
   
   crateGridPositions.clear();
   snapshot.cratesPos.forEach((v, k) => crateGridPositions.set(k, [...v]));
+
+  tntGridPositions.clear();
+  snapshot.tntPos.forEach((v, k) => tntGridPositions.set(k, [...v]));
+
+  tntDestroyedSet.clear();
+  snapshot.tntDestroyed.forEach(v => tntDestroyedSet.add(v));
 
   mirrorRotations.clear();
   snapshot.mirrorsRotation.forEach((v, k) => mirrorRotations.set(k, v));
@@ -447,8 +494,6 @@ function updatePlayerPositionVisuals(instant: boolean = false): void {
   const targetWorldPos = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
   if (instant) {
     foxGroup.position.copy(targetWorldPos);
-  } else {
-    // Smooth lerp is updated in main tick
   }
 
   app.cameraController.setTargetPosition(targetWorldPos);
@@ -461,11 +506,10 @@ function tryMovePlayer(dx: number, dy: number): void {
   const targetX = playerGridPos[0] + dx;
   const targetY = playerGridPos[1] + dy;
 
-  // Boundary check
   const [cols, rows] = currentLevel.gridSize;
   if (targetX < 0 || targetX >= cols || targetY < 0 || targetY >= rows) return;
 
-  // Check Door blockers
+  // Check Doors
   for (const elem of currentLevel.elements) {
     if (elem.type === 'door' && elem.pos[0] === targetX && elem.pos[1] === targetY) {
       const elemId = elem.id || `door_${elem.pos[0]}_${elem.pos[1]}`;
@@ -477,54 +521,101 @@ function tryMovePlayer(dx: number, dy: number): void {
     }
   }
 
-  // Check Crate pushing
+  // Check Crate Pushing
   let pushedCrateId: string | null = null;
   crateGridPositions.forEach((pos, id) => {
-    if (pos[0] === targetX && pos[1] === targetY) {
-      pushedCrateId = id;
-    }
+    if (pos[0] === targetX && pos[1] === targetY) pushedCrateId = id;
+  });
+
+  // Check TNT Pushing
+  let pushedTntId: string | null = null;
+  tntGridPositions.forEach((pos, id) => {
+    if (pos[0] === targetX && pos[1] === targetY && !tntDestroyedSet.has(id)) pushedTntId = id;
   });
 
   if (pushedCrateId) {
     const crateNextX = targetX + dx;
     const crateNextY = targetY + dy;
-
-    // Check crate boundary & obstacle
     if (crateNextX < 0 || crateNextX >= cols || crateNextY < 0 || crateNextY >= rows) return;
 
-    // Check if another crate exists at crateNext
-    let blockedByCrate = false;
-    crateGridPositions.forEach((pos) => {
-      if (pos[0] === crateNextX && pos[1] === crateNextY) blockedByCrate = true;
-    });
-    if (blockedByCrate) return;
+    let blocked = false;
+    crateGridPositions.forEach((pos) => { if (pos[0] === crateNextX && pos[1] === crateNextY) blocked = true; });
+    tntGridPositions.forEach((pos, id) => { if (pos[0] === crateNextX && pos[1] === crateNextY && !tntDestroyedSet.has(id)) blocked = true; });
+    if (blocked) return;
 
-    // Save Undo State before push
     pushUndoState();
-
-    // Perform crate push
     crateGridPositions.set(pushedCrateId, [crateNextX, crateNextY]);
     app.audio.playSynthesizedSound('push');
 
-    // Smoothly animate crate mesh
     const crateMesh = elementMeshMap.get(pushedCrateId);
-    if (crateMesh) {
-      const newPos = gridToWorld(crateNextX, crateNextY, 0.75);
-      crateMesh.position.copy(newPos);
-    }
+    if (crateMesh) crateMesh.position.copy(gridToWorld(crateNextX, crateNextY, 0.75));
+
+  } else if (pushedTntId) {
+    // TNT explosion on push impact
+    pushUndoState();
+    tntDestroyedSet.add(pushedTntId);
+    const worldPos = gridToWorld(targetX, targetY, 0.8);
+    particleSys.emitBurst(worldPos, 'explosion', 45);
+    app.audio.playSynthesizedSound('explosion');
+    app.cameraController.shake({ intensity: 0.5, duration: 0.4 });
+    app.ui.showToast('BOOM! TNT Exploded! 💥', 2000, 'warning');
+
+    const tntMesh = elementMeshMap.get(pushedTntId);
+    if (tntMesh) tntMesh.visible = false;
   } else {
     pushUndoState();
   }
 
   // Rotate Fox towards movement direction
   if (foxGroup) {
-    const targetAngle = Math.atan2(dx, dy);
-    foxGroup.rotation.y = targetAngle;
+    foxGroup.rotation.y = Math.atan2(dx, dy);
   }
 
   // Move player
   playerGridPos = [targetX, targetY];
   moveCount++;
+
+  // Handle Ice sliding
+  let isIce = false;
+  for (const elem of currentLevel.elements) {
+    if (elem.type === 'ice' && elem.pos[0] === playerGridPos[0] && elem.pos[1] === playerGridPos[1]) {
+      isIce = true;
+      break;
+    }
+  }
+  if (isIce) {
+    particleSys.emitBurst(gridToWorld(playerGridPos[0], playerGridPos[1], 0.1), 'dust_footstep', 10);
+    // Slide 1 extra tile in movement direction if clear
+    const slideX = playerGridPos[0] + dx;
+    const slideY = playerGridPos[1] + dy;
+    if (slideX >= 0 && slideX < cols && slideY >= 0 && slideY < rows) {
+      playerGridPos = [slideX, slideY];
+    }
+  }
+
+  // Handle Conveyor belts
+  for (const elem of currentLevel.elements) {
+    if (elem.type === 'conveyor' && elem.pos[0] === playerGridPos[0] && elem.pos[1] === playerGridPos[1]) {
+      const shiftX = elem.dir === 'E' ? 1 : elem.dir === 'W' ? -1 : 0;
+      const shiftY = elem.dir === 'S' ? 1 : elem.dir === 'N' ? -1 : 0;
+      playerGridPos[0] = Math.max(0, Math.min(cols - 1, playerGridPos[0] + shiftX));
+      playerGridPos[1] = Math.max(0, Math.min(rows - 1, playerGridPos[1] + shiftY));
+      app.audio.playSynthesizedSound('switch');
+    }
+  }
+
+  // Handle Teleporters
+  for (const elem of currentLevel.elements) {
+    if (elem.type === 'teleporter' && elem.targetPos) {
+      if (playerGridPos[0] === elem.pos[0] && playerGridPos[1] === elem.pos[1]) {
+        playerGridPos = [...elem.targetPos];
+        const portalPos = gridToWorld(playerGridPos[0], playerGridPos[1], 0.5);
+        particleSys.emitBurst(portalPos, 'teleport_flash', 35);
+        app.audio.playSynthesizedSound('teleport');
+        app.ui.showToast('Warped through Teleporter! 🌀', 1500, 'info');
+      }
+    }
+  }
 
   updatePlayerPositionVisuals();
   checkPressurePlates();
@@ -537,12 +628,9 @@ function tryMovePlayer(dx: number, dy: number): void {
 function checkPressurePlates(): void {
   currentLevel.elements.forEach((elem, index) => {
     if (elem.type === 'plate' && elem.linkedId) {
-      // Check if player or any crate is on plate
       const isPlayerOn = playerGridPos[0] === elem.pos[0] && playerGridPos[1] === elem.pos[1];
       let isCrateOn = false;
-      crateGridPositions.forEach((pos) => {
-        if (pos[0] === elem.pos[0] && pos[1] === elem.pos[1]) isCrateOn = true;
-      });
+      crateGridPositions.forEach((pos) => { if (pos[0] === elem.pos[0] && pos[1] === elem.pos[1]) isCrateOn = true; });
 
       const active = isPlayerOn || isCrateOn;
       const targetDoor = elementMeshMap.get(elem.linkedId);
@@ -550,15 +638,13 @@ function checkPressurePlates(): void {
       if (targetDoor) {
         doorStates.set(elem.linkedId, active);
         targetDoor.visible = !active;
-        if (active) {
-          app.audio.playSynthesizedSound('switch');
-        }
+        if (active) app.audio.playSynthesizedSound('switch');
       }
     }
   });
 }
 
-// Collectible Items Check
+// Collectibles Check
 function checkCollectibles(): void {
   currentLevel.elements.forEach((elem, index) => {
     const elemId = elem.id || `elem_${index}_${elem.type}`;
@@ -568,11 +654,15 @@ function checkCollectibles(): void {
         const mesh = elementMeshMap.get(elemId);
         if (mesh) mesh.visible = false;
 
+        const worldPos = gridToWorld(elem.pos[0], elem.pos[1], 0.6);
+
         if (elem.type === 'avocado') {
           avocadosCollected++;
+          particleSys.emitBurst(worldPos, 'collect_burst', 30);
           app.audio.playSynthesizedSound('coin');
           app.ui.showToast('Collected Avocado! 🥑', 1500, 'success');
         } else if (elem.type === 'helmet') {
+          particleSys.emitBurst(worldPos, 'sparkle', 40);
           app.audio.playSynthesizedSound('key');
           app.ui.showToast('Found Secret Golden Helmet! 🪖', 2500, 'success');
         } else if (elem.type === 'key') {
@@ -585,16 +675,16 @@ function checkCollectibles(): void {
   });
 }
 
-// Goal Exit Condition Check
+// Goal Exit Check
 function checkGoalCondition(): void {
   if (playerGridPos[0] === currentLevel.goalPos[0] && playerGridPos[1] === currentLevel.goalPos[1]) {
     isLevelCleared = true;
+    const goalPosWorld = gridToWorld(currentLevel.goalPos[0], currentLevel.goalPos[1], 0.5);
+    particleSys.emitBurst(goalPosWorld, 'sparkle', 60);
     app.audio.playSynthesizedSound('fanfare');
 
-    // Calculate Stars: 3 stars if all avocados collected & moves <= parMoves
     const stars = avocadosCollected >= 3 ? (moveCount <= currentLevel.parMoves ? 3 : 2) : 1;
 
-    // Save Progress
     if (progress.unlockedLevel <= currentLevelIndex + 1 && currentLevelIndex + 1 < ALL_LEVELS.length) {
       progress.unlockedLevel = currentLevelIndex + 2;
     }
@@ -705,6 +795,8 @@ let lastInputTime = 0;
 const INPUT_COOLDOWN = 180; // ms
 
 app.onUpdate((dt) => {
+  particleSys.update(dt);
+
   if (animStateMachine) {
     animStateMachine.update(dt);
   }

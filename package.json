@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && cp -r examples/go-wasm/*.wasm examples/go-wasm/*.js dist/examples/go-wasm/ && cp -r examples/go-runner/*.wasm examples/go-runner/*.js dist/examples/go-runner/",
-    "test": "node --import tsx --test tests/ai.test.js tests/ecs.test.js tests/math.test.js tests/physics.test.js tests/serializer.test.js tests/animation.test.js",
+    "test": "node --import tsx --test tests/ai.test.js tests/ecs.test.js tests/math.test.js tests/physics.test.js tests/serializer.test.js tests/animation.test.js tests/particles.test.js",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
