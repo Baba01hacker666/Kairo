@@ -603,7 +603,7 @@ function toggleAiAutoPlay(): void {
     const isSoftware = /swiftshader|software|llvmpipe|cpu|mesa/i.test(rendererName);
 
     if (isSoftware) {
-      app.renderer.setPixelRatio(0.25);
+      app.renderer.setPixelRatio(0.15);
     }
 
     app.ui.showToast('🤖 AI Gameplay Agent Active! Recording 60 FPS video test...', 3500, 'info');
