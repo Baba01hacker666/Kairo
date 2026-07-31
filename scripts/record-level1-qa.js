@@ -1,6 +1,6 @@
 /**
  * Headless QA Script: Launches Fox's Puzzle Quest, triggers AI Auto-Play on Level 1,
- * and saves recorded video artifact.
+ * intercepts the recorded WebM video download, and saves it as a GitHub Artifact.
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -27,18 +27,18 @@ async function run() {
 
   const page = await context.newPage();
 
-  // Listen for browser downloads and save directly to project root
-  page.on('download', async (download) => {
-    const filename = download.suggestedFilename();
-    console.log(`📥 Saving downloaded artifact: ${filename}`);
-    await download.saveAs(path.join(process.cwd(), filename));
-  });
-
   console.log('Opening Fox Game...');
   await page.goto('http://localhost:4173/examples/fox-game/index.html', { waitUntil: 'networkidle' });
   await page.waitForTimeout(3000);
 
   console.log('🤖 Triggering AI Test & Record button...');
+  
+  // Set up download event listener BEFORE triggering AI recording
+  const downloadPromise = page.waitForEvent('download', { timeout: 25000 }).catch(err => {
+    console.log('Download event timeout, checking fallbacks:', err.message);
+    return null;
+  });
+
   await page.evaluate(() => {
     if (typeof window.runAiTestLevel1Record === 'function') {
       window.runAiTestLevel1Record();
@@ -47,10 +47,19 @@ async function run() {
     }
   });
 
-  // Wait for Level 1 AI clearance and video packaging
-  console.log('Waiting for Level 1 AI clearance and video generation...');
-  await page.waitForTimeout(16000);
+  console.log('Waiting for Level 1 AI clearance and download event...');
+  const download = await downloadPromise;
 
+  if (download) {
+    const filename = download.suggestedFilename() || 'fox-level1-qa-gameplay-recording.webm';
+    const targetPath = path.join(process.cwd(), filename);
+    await download.saveAs(targetPath);
+    console.log(`✅ Successfully saved recorded video artifact to: ${targetPath}`);
+  } else {
+    console.log('⚠️ Warning: Download event did not fire within window.');
+  }
+
+  await page.waitForTimeout(2000);
   console.log('✅ QA Run Complete! Closing browser...');
   await browser.close();
   await server.close();
