@@ -63,6 +63,7 @@ export class Query {
     const hasNone = !this.none.some(c => world.hasComponent(entity, c));
     return hasNone;
   }
+
 }
 
 export class World {
@@ -252,6 +253,8 @@ export class World {
     this.tags.get(entity)?.delete(tag);
   }
 
+
+
   query(queryDesc: Query): EntityId[] {
     let candidateEntities: Iterable<EntityId>;
 
@@ -286,6 +289,8 @@ export class World {
     }
     return results;
   }
+
+
 
   addSystem(system: System): this {
     this.systems.push(system);

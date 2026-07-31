@@ -61,7 +61,7 @@ export class SceneNode {
   updateMatrix(): void {
     this.localMatrix.compose(this.position, this.rotation, this.scale);
     if (this.parent) {
-      this.worldMatrix.copy(this.localMatrix); 
+      this.worldMatrix.multiplyMatrices(this.parent.worldMatrix, this.localMatrix);
     } else {
       this.worldMatrix.copy(this.localMatrix);
     }

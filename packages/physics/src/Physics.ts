@@ -198,19 +198,43 @@ export class PhysicsWorld {
     return result.hasHit ? this.toRaycastHit(result) : null;
   }
 
-  sphereCast(origin: Vector3, radius: number, direction: Vector3, maxDistance = 100): RaycastHit | null {
-    const normalized = direction.clone().normalize();
-    const steps = Math.max(1, Math.ceil(maxDistance / Math.max(radius, 0.1)));
-    for (let i = 0; i <= steps; i++) {
-      const distance = (i / steps) * maxDistance;
-      const center = origin.clone().add(normalized.clone().scale(distance));
-      const body = this.overlapSphere(center, radius)[0];
-      if (body) {
-        const entry = this.bodies.find(candidate => candidate.body === body);
-        return { hasHit: true, body, collider: entry?.collider ?? null, point: center, normal: normalized.clone().scale(-1), distance };
+sphereCast(origin: Vector3, radius: number, direction: Vector3, maxDistance = 100): RaycastHit | null {
+    const from = toCannonVec3(origin);
+
+    // We modify direction in place instead of clone()
+    const dirLen = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+    const dirX = direction.x / dirLen;
+    const dirY = direction.y / dirLen;
+    const dirZ = direction.z / dirLen;
+
+    const to = new CANNON.Vec3(from.x + dirX * maxDistance, from.y + dirY * maxDistance, from.z + dirZ * maxDistance);
+
+    // Quick hack for sphere cast using raycast closest - not perfect but Cannon.js doesn't have native sweep test
+    // Real implementation would need a ghost object sweep or custom broadphase/narrowphase intersection test
+    const result = new CANNON.RaycastResult();
+    this.cannonWorld.raycastClosest(from, to, { skipBackfaces: false }, result);
+
+    // Fallback if no exact ray hit, check using steps to simulate a sphere cast
+    if (!result.hasHit) {
+      const steps = Math.max(1, Math.ceil(maxDistance / Math.max(radius, 0.1)));
+
+      const center = new Vector3(0, 0, 0); // Re-use this vector in loop
+
+      for (let i = 0; i <= steps; i++) {
+        const distance = (i / steps) * maxDistance;
+        center.set(origin.x + dirX * distance, origin.y + dirY * distance, origin.z + dirZ * distance);
+
+        const body = this.overlapSphere(center, radius)[0];
+        if (body) {
+          const entry = this.bodies.find(candidate => candidate.body === body);
+          return { hasHit: true, body, collider: entry?.collider ?? null, point: new Vector3(center.x, center.y, center.z), normal: new Vector3(-dirX, -dirY, -dirZ), distance };
+        }
       }
+      return null;
     }
-    return null;
+
+    // Approximate sphere cast hit using raycast hit
+    return this.toRaycastHit(result);
   }
 
   overlapBox(center: Vector3, size: Vector3): RigidBody[] {
