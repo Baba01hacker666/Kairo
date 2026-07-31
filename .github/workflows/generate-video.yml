@@ -9,15 +9,15 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -47,7 +47,7 @@ jobs:
           ffmpeg -i "$FILE" -i examples/gdp-explainer/voiceover.mp3 -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 output/gdp_explainer_final.mp4
 
       - name: Upload Video Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: GDP-Explainer-Video
           path: output/gdp_explainer_final.mp4
