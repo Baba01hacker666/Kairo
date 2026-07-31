@@ -15,7 +15,8 @@ export default defineConfig({
         gorunner: 'examples/go-runner/index.html',
         hqrender: 'examples/high-quality-render/index.html',
         foxgame: 'examples/fox-game/index.html',
-        gofox: 'examples/go-fox/index.html'
+        gofox: 'examples/go-fox/index.html',
+        gdp: 'examples/gdp-explainer/index.html'
       },
       output: {
         manualChunks(id) {

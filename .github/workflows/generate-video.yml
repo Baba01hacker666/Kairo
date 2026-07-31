@@ -1,0 +1,53 @@
+name: Generate GDP Explainer Video
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-video:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install puppeteer express
+          pip install edge-tts
+
+      - name: Generate Voiceover (edge-tts)
+        run: |
+          edge-tts --text "Welcome to this quick explanation of GDP versus GDP per capita. GDP is the total wealth of a country. Notice the large pile of wealth in Country A. But Country A has a huge population. GDP per Capita is the total wealth divided by the number of people. Country B has less total wealth, but very few people. So, on average, citizens in Country B are much wealthier!" --write-media examples/gdp-explainer/voiceover.mp3 --voice en-US-AriaNeural
+
+      - name: Build Engine and Examples
+        run: |
+          npm run build
+          mkdir -p dist/examples/gdp-explainer
+          cp examples/gdp-explainer/voiceover.mp3 dist/examples/gdp-explainer/
+
+      - name: Run Puppeteer Video Generator
+        run: node scripts/generate-gdp-video.js
+        
+      - name: Merge Audio and Video (ffmpeg)
+        run: |
+          # The downloaded webm has no audio, we merge it with the mp3 voiceover
+          FILE=$(ls output/*.webm | head -n 1)
+          ffmpeg -i "$FILE" -i examples/gdp-explainer/voiceover.mp3 -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 output/gdp_explainer_final.mp4
+
+      - name: Upload Video Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: GDP-Explainer-Video
+          path: output/gdp_explainer_final.mp4
