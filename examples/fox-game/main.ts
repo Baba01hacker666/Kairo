@@ -1217,16 +1217,123 @@ app.onUpdate((dt) => {
     }
   }
 
-  // Keyboard / Touch Movement Input
+  // Keyboard / Touch Movement Input (Free 360 Movement)
   const now = performance.now();
-  if (!isAiAutoPlay && canAcceptMoveInput(now, lastInputTime, INPUT_COOLDOWN, getFoxDistanceToGridTarget())) {
+  if (!isAiAutoPlay && foxGroup && !isLevelCleared) {
     const move = app.input.getMovementVector();
-    if (Math.abs(move.x) > 0.3 || Math.abs(move.y) > 0.3) {
-      const [dx, dy] = toCardinalMove(move);
-      tryMovePlayer(dx, dy);
-      lastInputTime = now;
-    }
+    let isMoving = false;
+    
+    if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
+      isMoving = true;
+      const speed = 7.0;
+      let nextX = foxGroup.position.x + move.x * speed * dt;
+      let nextZ = foxGroup.position.z + move.y * speed * dt;
 
+      // 3D Collision Detection & Grid interactions
+      const radius = 0.5; // Fox collision radius
+      const [cols, rows] = currentLevel.gridSize;
+      const offsetX = -(cols * TILE_SIZE) / 2 + TILE_SIZE / 2;
+      const offsetZ = -(rows * TILE_SIZE) / 2 + TILE_SIZE / 2;
+      
+      const isBlocked = (wx: number, wz: number): boolean => {
+         const gx = Math.round((wx - offsetX) / TILE_SIZE);
+         const gy = Math.round((wz - offsetZ) / TILE_SIZE);
+         if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true;
+         
+         let blocked = false;
+         for (const elem of currentLevel.elements) {
+           if (elem.type === 'door' && elem.pos[0] === gx && elem.pos[1] === gy) {
+             const elemId = elem.id || `door_${gx}_${gy}`;
+             if (!doorStates.get(elemId)) blocked = true;
+           }
+         }
+         
+         let hitCrate = false;
+         let hitTnt = false;
+         crateGridPositions.forEach((pos) => { if (pos[0] === gx && pos[1] === gy) hitCrate = true; });
+         tntGridPositions.forEach((pos, id) => { if (pos[0] === gx && pos[1] === gy && !tntDestroyedSet.has(id)) hitTnt = true; });
+         
+         if (hitCrate || hitTnt) {
+           blocked = true;
+           // Try pushing if we press against it
+           if (now - lastInputTime > INPUT_COOLDOWN) {
+             const [dx, dy] = toCardinalMove({ x: move.x, y: move.y });
+             if (Math.abs(dx) + Math.abs(dy) === 1) {
+               // Temporarily align playerGridPos to trigger push in tryMovePlayer
+               const oldPlayerGrid = [...playerGridPos] as [number, number];
+               playerGridPos = [gx - dx, gy - dy];
+               tryMovePlayer(dx, dy);
+               playerGridPos = oldPlayerGrid;
+               lastInputTime = now;
+             }
+           }
+         }
+         return blocked;
+      };
+
+      // X-Axis Collision
+      if (isBlocked(nextX + radius, foxGroup.position.z) || isBlocked(nextX - radius, foxGroup.position.z)) {
+        nextX = foxGroup.position.x;
+      }
+      // Z-Axis Collision
+      if (isBlocked(nextX, nextZ + radius) || isBlocked(nextX, nextZ - radius)) {
+        nextZ = foxGroup.position.z;
+      }
+
+      foxGroup.position.x = nextX;
+      foxGroup.position.z = nextZ;
+
+      // Smooth Rotation
+      const targetRot = Math.atan2(move.x, move.y);
+      let diff = targetRot - foxGroup.rotation.y;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      foxGroup.rotation.y += diff * Math.min(1.0, 10 * dt);
+
+      // Logical Grid Updates (Trigger Goal, Plates, Collectibles)
+      const newGx = Math.max(0, Math.min(cols - 1, Math.round((nextX - offsetX) / TILE_SIZE)));
+      const newGy = Math.max(0, Math.min(rows - 1, Math.round((nextZ - offsetZ) / TILE_SIZE)));
+
+      if (newGx !== playerGridPos[0] || newGy !== playerGridPos[1]) {
+        playerGridPos = [newGx, newGy];
+        moveCount++;
+        checkPressurePlates();
+        checkCollectibles();
+        
+        let snapped = false;
+        // Snap/Physics for special grid tiles
+        for (const elem of currentLevel.elements) {
+          if (elem.type === 'teleporter' && elem.targetPos && elem.pos[0] === newGx && elem.pos[1] === newGy) {
+            playerGridPos = [...elem.targetPos];
+            snapped = true;
+            particleSys.emitBurst(gridToWorld(playerGridPos[0], playerGridPos[1], 0.5), 'teleport_flash', 35);
+            app.audio.playSynthesizedSound('teleport');
+            app.ui.showToast('Warped through Teleporter! 🌀', 1500, 'info');
+          } else if (elem.type === 'conveyor' && elem.pos[0] === newGx && elem.pos[1] === newGy) {
+            const shiftX = elem.dir === 'E' ? 1 : elem.dir === 'W' ? -1 : 0;
+            const shiftY = elem.dir === 'S' ? 1 : elem.dir === 'N' ? -1 : 0;
+            playerGridPos[0] = Math.max(0, Math.min(cols - 1, playerGridPos[0] + shiftX));
+            playerGridPos[1] = Math.max(0, Math.min(rows - 1, playerGridPos[1] + shiftY));
+            snapped = true;
+            app.audio.playSynthesizedSound('switch');
+          } else if (elem.type === 'ice' && elem.pos[0] === newGx && elem.pos[1] === newGy) {
+            const [dx, dy] = toCardinalMove({ x: move.x, y: move.y });
+            playerGridPos[0] = Math.max(0, Math.min(cols - 1, playerGridPos[0] + dx));
+            playerGridPos[1] = Math.max(0, Math.min(rows - 1, playerGridPos[1] + dy));
+            snapped = true;
+          }
+        }
+        
+        if (snapped) {
+           foxGroup.position.copy(gridToWorld(playerGridPos[0], playerGridPos[1], 0));
+        }
+        
+        checkGoalCondition();
+        updateHUD();
+      }
+    }
+    
+    // Keybinds
     if (app.input.isActionJustPressed('Interact')) performInteract();
     if (app.input.isActionJustPressed('Undo')) performUndo();
     if (app.input.isActionJustPressed('Restart')) loadLevel(currentLevelIndex);
@@ -1234,19 +1341,24 @@ app.onUpdate((dt) => {
       app.audio.playSynthesizedSound('hint');
       app.ui.createModal('💡 Dynamic Level Hint', currentLevel.hint, [{ text: 'Got it!', primary: true, onClick: () => {} }]);
     }
-  }
 
-  // Smooth Fox Position Lerp
-  if (foxGroup) {
+    if (animStateMachine) {
+      if (isMoving) animStateMachine.setState('Walk');
+      else animStateMachine.setState('Idle');
+    }
+    
+    app.cameraController.setTargetPosition(foxGroup.position);
+  } else if (foxGroup && isAiAutoPlay) {
+    // AI still uses grid movement lerp
     const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
     foxGroup.position.lerp(targetWorld, Math.min(1.0, 9 * dt));
-
     const distToTarget = foxGroup.position.distanceTo(targetWorld);
     if (distToTarget > 0.1 && animStateMachine) {
       animStateMachine.setState('Walk');
     } else if (animStateMachine) {
       animStateMachine.setState('Idle');
     }
+    app.cameraController.setTargetPosition(targetWorld);
   }
 });
 
