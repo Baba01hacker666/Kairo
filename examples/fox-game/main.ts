@@ -896,6 +896,25 @@ function checkGoalCondition(): void {
           { text: 'Next Level ➡️', primary: true, onClick: () => loadLevel(currentLevelIndex + 1) }
         ]
       );
+    } else {
+      // AI Level clearance handling: If Level 1 cleared, stop recording and package video artifact
+      setTimeout(async () => {
+        isAiAutoPlay = false;
+        const blob = await app.stopRecording('fox-level1-qa-gameplay-recording.webm');
+        app.ui.createModal(
+          `🎉 Level 1 Cleared by AI!`,
+          `
+            <div style="text-align: center;">
+              <p style="color: #10b981; font-weight: bold; font-size: 18px;">Level 1 QA Video Recording Complete 💯</p>
+              <div style="font-size: 36px; margin-bottom: 12px;">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
+              <p>Moves: <strong>${moveCount}</strong> | Avocados: <strong>${avocadosCollected} / 3</strong> 🥑</p>
+              <p>Video File: <strong>fox-level1-qa-gameplay-recording.webm</strong> (${blob ? (blob.size / 1024).toFixed(1) + ' KB' : 'Saved'})</p>
+              <p style="font-size: 12px; color: #a1a1aa;">Recording saved to downloads & GitHub Artifacts!</p>
+            </div>
+          `,
+          [{ text: 'Awesome!', primary: true, onClick: () => {} }]
+        );
+      }, 800);
     }
   }
 }

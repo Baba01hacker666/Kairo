@@ -1,0 +1,48 @@
+name: On-Demand Level 1 QA Video Recording
+
+# ON-DEMAND ONLY: Runs only when manually triggered via GitHub Actions "Run workflow" button
+on:
+  workflow_dispatch:
+    inputs:
+      target_level:
+        description: 'Level to test & record'
+        required: true
+        default: 'Level 1'
+
+jobs:
+  record-qa-video:
+    name: Run AI Auto-Play & Capture Level 1 Video Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Execute Headless AI Gameplay & Video Capture (xvfb)
+        run: |
+          xvfb-run node scripts/record-level1-qa.js
+
+      - name: Upload Level 1 QA Video Recording Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fox-level1-qa-gameplay-recording
+          path: |
+            *.webm
+            *.png
+            *.mp4
+          retention-days: 30
