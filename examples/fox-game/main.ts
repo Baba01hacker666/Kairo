@@ -6,6 +6,7 @@ import { ParticleSystem } from '@kairo/renderer';
 import { MemoryManager } from '@kairo/assets';
 import { Serializer } from '@kairo/core';
 import { ALL_LEVELS, LevelDefinition, LevelElement, WORLD_NAMES } from './levels.ts';
+import { MOVE_ARRIVAL_EPSILON, canAcceptMoveInput, toCardinalMove } from './movement.ts';
 
 // Save state format
 interface GameProgress {
@@ -1128,7 +1129,11 @@ function showSettingsModal(): void {
 
 // Input & AI Update Loop
 let lastInputTime = 0;
-const INPUT_COOLDOWN = 180; // ms
+const INPUT_COOLDOWN = 260; // ms; keep grid steps readable and avoid re-targeting mid-animation
+function getFoxDistanceToGridTarget(): number {
+  if (!foxGroup) return 0;
+  return foxGroup.position.distanceTo(gridToWorld(playerGridPos[0], playerGridPos[1], 0));
+}
 
 app.onUpdate((dt) => {
   particleSys.update(dt);
@@ -1155,18 +1160,17 @@ app.onUpdate((dt) => {
     const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
     const distToTarget = foxGroup ? foxGroup.position.distanceTo(targetWorld) : 0;
 
-    if (distToTarget < 0.08) {
+    if (distToTarget < MOVE_ARRIVAL_EPSILON) {
       stepAiAgent();
     }
   }
 
   // Keyboard / Touch Movement Input
   const now = performance.now();
-  if (now - lastInputTime > INPUT_COOLDOWN && !isAiAutoPlay) {
+  if (!isAiAutoPlay && canAcceptMoveInput(now, lastInputTime, INPUT_COOLDOWN, getFoxDistanceToGridTarget())) {
     const move = app.input.getMovementVector();
     if (Math.abs(move.x) > 0.3 || Math.abs(move.y) > 0.3) {
-      const dx = Math.round(move.x);
-      const dy = Math.round(move.y);
+      const [dx, dy] = toCardinalMove(move);
       tryMovePlayer(dx, dy);
       lastInputTime = now;
     }
