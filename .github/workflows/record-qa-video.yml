@@ -45,4 +45,5 @@ jobs:
             *.webm
             *.png
             *.mp4
+            *.json
           retention-days: 30

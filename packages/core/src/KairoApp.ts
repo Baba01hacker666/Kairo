@@ -226,4 +226,70 @@ export class KairoApp {
   public stopRecording(filename?: string): Promise<Blob | null> {
     return this.screenRecorder.stopRecording(filename);
   }
+
+  /**
+   * Generate & Export Complete Engine Memory Map Dump
+   */
+  public getMemoryMapDump(): {
+    timestamp: string;
+    metrics: any;
+    gpuMemory: { geometries: number; textures: number; estimatedVramBytes: number; estimatedVramMb: string };
+    jsHeap: { usedHeapBytes: number; totalHeapBytes: number; heapLimitBytes: number; usedHeapMb: string };
+    sceneGraph: { totalNodes: number; meshesCount: number; instancedMeshesCount: number; lightsCount: number };
+    memoryMapBreakdown: Array<{ subsystem: string; description: string; bytes: number; formatted: string }>;
+  } {
+    const info = this.renderer.info;
+    let nodesCount = 0;
+    let meshesCount = 0;
+    let instancedMeshesCount = 0;
+    let lightsCount = 0;
+
+    this.scene.traverse((obj) => {
+      nodesCount++;
+      if (obj.type === 'Mesh') meshesCount++;
+      if (obj.type === 'InstancedMesh') instancedMeshesCount++;
+      if (obj.type.includes('Light')) lightsCount++;
+    });
+
+    const perfMem = typeof performance !== 'undefined' ? (performance as any).memory : null;
+    const usedHeap = perfMem ? perfMem.usedJSHeapSize : 0;
+    const totalHeap = perfMem ? perfMem.totalJSHeapSize : 0;
+    const heapLimit = perfMem ? perfMem.jsHeapSizeLimit : 0;
+
+    // Estimate VRAM consumption based on active WebGL geometries and textures
+    const estimatedGeoBytes = info.memory.geometries * 45000;
+    const estimatedTexBytes = info.memory.textures * 1024 * 1024;
+    const totalVramBytes = estimatedGeoBytes + estimatedTexBytes;
+
+    const breakdown = [
+      { subsystem: 'WebGL Geometries', description: `${info.memory.geometries} active buffer geometries`, bytes: estimatedGeoBytes, formatted: (estimatedGeoBytes / 1024).toFixed(1) + ' KB' },
+      { subsystem: 'WebGL Textures', description: `${info.memory.textures} active GPU texture maps`, bytes: estimatedTexBytes, formatted: (estimatedTexBytes / (1024 * 1024)).toFixed(1) + ' MB' },
+      { subsystem: 'JS Engine Heap', description: 'Active V8 JavaScript heap allocation', bytes: usedHeap, formatted: (usedHeap / (1024 * 1024)).toFixed(1) + ' MB' },
+      { subsystem: 'Scene Graph Nodes', description: `${nodesCount} active 3D object nodes`, bytes: nodesCount * 256, formatted: (nodesCount * 256 / 1024).toFixed(1) + ' KB' }
+    ];
+
+    return {
+      timestamp: new Date().toISOString(),
+      metrics: this.pipeline.metrics,
+      gpuMemory: {
+        geometries: info.memory.geometries,
+        textures: info.memory.textures,
+        estimatedVramBytes: totalVramBytes,
+        estimatedVramMb: (totalVramBytes / (1024 * 1024)).toFixed(2) + ' MB'
+      },
+      jsHeap: {
+        usedHeapBytes: usedHeap,
+        totalHeapBytes: totalHeap,
+        heapLimitBytes: heapLimit,
+        usedHeapMb: (usedHeap / (1024 * 1024)).toFixed(2) + ' MB'
+      },
+      sceneGraph: {
+        totalNodes: nodesCount,
+        meshesCount,
+        instancedMeshesCount,
+        lightsCount
+      },
+      memoryMapBreakdown: breakdown
+    };
+  }
 }

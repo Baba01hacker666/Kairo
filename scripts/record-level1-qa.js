@@ -67,7 +67,15 @@ async function run() {
   await page.screenshot({ path: screenshotPath, fullPage: true });
   console.log(`📸 Saved Level 1 QA Screenshot artifact to: ${screenshotPath}`);
 
-  await page.waitForTimeout(1000);
+  // Trigger memory map dump export
+  console.log('🧠 Exporting Engine Memory Map Dump JSON artifact...');
+  await page.evaluate(() => {
+    if (typeof window.getMemoryMapDump === 'function') {
+      window.getMemoryMapDump();
+    }
+  });
+
+  await page.waitForTimeout(2000);
   console.log('✅ QA Run Complete! Closing browser...');
   await browser.close();
   await server.close();

@@ -1150,11 +1150,12 @@ app.onUpdate((dt) => {
     }
   }
 
-  // AI Gameplay Agent Loop
+  // AI Gameplay Agent Loop: Continuous 60 FPS Fluid Movement (Zero stutter/pauses)
   if (isAiAutoPlay) {
-    aiTimer += dt;
-    if (aiTimer > 0.25) {
-      aiTimer = 0;
+    const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
+    const distToTarget = foxGroup ? foxGroup.position.distanceTo(targetWorld) : 0;
+
+    if (distToTarget < 0.08) {
       stepAiAgent();
     }
   }
@@ -1179,6 +1180,22 @@ app.onUpdate((dt) => {
     }
   }
 });
+
+// Expose Engine Memory Map Dump API globally on window
+(window as any).getMemoryMapDump = () => {
+  const dump = app.getMemoryMapDump();
+  console.log('[Kairo Engine Memory Dump]', dump);
+  
+  // Download as JSON file
+  const str = JSON.stringify(dump, null, 2);
+  const blob = new Blob([str], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kairo-memory-map-dump-${Date.now()}.json`;
+  a.click();
+  
+  return dump;
+};
 
 // Start Initial Level
 loadLevel(0);
