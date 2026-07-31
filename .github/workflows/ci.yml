@@ -1,40 +1,54 @@
-name: Kairo CI/CD Pipeline
+name: Kairo Engine Build, Test & QA Video Artifacts
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build-test-and-artifact:
+    name: Build Engine, Run QA & Upload Artifacts
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Codebase
         uses: actions/checkout@v4
 
-      - name: Setup Node.js environment
+      - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Install Monorepo Dependencies
+        run: npm ci
 
-      - name: Check TypeScript Compilation
-        run: npx tsc --noEmit
+      - name: Run TypeScript Linter & Type Check
+        run: npm run lint
 
-      - name: Run Engine Unit Tests
+      - name: Run Automated Engine Unit Tests
         run: npm test
 
-  publish-docs:
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Verify Documentation & Specs
-        run: |
-          echo "Verifying architecture documentation and API specs..."
-          ls -la docs/
+      - name: Build Production Distribution Bundle (dist/)
+        run: npm run build
+
+      - name: Upload Production Web Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kairo-engine-dist-bundle
+          path: dist/
+          retention-days: 14
+
+      - name: Upload Recorded QA Media & Test Reports Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kairo-qa-test-recordings
+          path: |
+            *.webm
+            *.png
+            *.mp4
+            dist/examples/fox-game/
+          if-no-files-found: ignore
+          retention-days: 30
