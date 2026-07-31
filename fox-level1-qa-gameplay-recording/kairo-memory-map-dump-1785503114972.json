@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-07-31T13:05:14.971Z",
+  "metrics": {
+    "fps": 60,
+    "frameTimeMs": 16.67,
+    "cpuRenderMs": 0.7,
+    "cpuPhysicsMs": 0.5,
+    "cpuAiMs": 0,
+    "drawCalls": 20,
+    "triangles": 6984,
+    "geometries": 8,
+    "textures": 12,
+    "jsHeapMb": 24.8
+  },
+  "gpuMemory": {
+    "geometries": 8,
+    "textures": 12,
+    "estimatedVramBytes": 12942912,
+    "estimatedVramMb": "12.34 MB"
+  },
+  "jsHeap": {
+    "usedHeapBytes": 26000000,
+    "totalHeapBytes": 29400000,
+    "heapLimitBytes": 3760000000,
+    "usedHeapMb": "24.80 MB"
+  },
+  "sceneGraph": {
+    "totalNodes": 48,
+    "meshesCount": 10,
+    "instancedMeshesCount": 0,
+    "lightsCount": 6
+  },
+  "memoryMapBreakdown": [
+    {
+      "subsystem": "WebGL Geometries",
+      "description": "8 active buffer geometries",
+      "bytes": 360000,
+      "formatted": "351.6 KB"
+    },
+    {
+      "subsystem": "WebGL Textures",
+      "description": "12 active GPU texture maps",
+      "bytes": 12582912,
+      "formatted": "12.0 MB"
+    },
+    {
+      "subsystem": "JS Engine Heap",
+      "description": "Active V8 JavaScript heap allocation",
+      "bytes": 26000000,
+      "formatted": "24.8 MB"
+    },
+    {
+      "subsystem": "Scene Graph Nodes",
+      "description": "48 active 3D object nodes",
+      "bytes": 12288,
+      "formatted": "12.0 KB"
+    }
+  ]
+}

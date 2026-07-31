@@ -1,5 +1,18 @@
 import * as THREE from 'three';
 
+export interface CpuProfileMap {
+  webGlRenderMs: number;
+  physicsStepMs: number;
+  sceneGraphUpdateMs: number;
+  animationMs: number;
+  particlesMs: number;
+  aiPathfindingMs: number;
+  totalCpuTimeMs: number;
+  targetFrameBudgetMs: number;
+  cpuHeadroomMs: number;
+  cpuHeadroomPercent: string;
+}
+
 export interface RenderMetrics {
   fps: number;
   frameTimeMs: number;
@@ -11,6 +24,7 @@ export interface RenderMetrics {
   geometries: number;
   textures: number;
   jsHeapMb: number;
+  cpuProfileMap?: CpuProfileMap;
 }
 
 export interface PostProcessingConfig {

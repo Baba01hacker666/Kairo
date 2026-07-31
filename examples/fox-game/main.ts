@@ -1181,17 +1181,18 @@ app.onUpdate((dt) => {
   }
 });
 
-// Expose Engine Memory Map Dump API globally on window
+// Expose Engine Memory Map & CPU Profile Dump APIs globally on window
+(window as any).getCpuProfileMap = () => app.getCpuProfileMap();
 (window as any).getMemoryMapDump = () => {
   const dump = app.getMemoryMapDump();
-  console.log('[Kairo Engine Memory Dump]', dump);
+  console.log('[Kairo Engine Memory & CPU Dump]', dump);
   
   // Download as JSON file
   const str = JSON.stringify(dump, null, 2);
   const blob = new Blob([str], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `kairo-memory-map-dump-${Date.now()}.json`;
+  a.download = `kairo-memory-and-cpu-map-dump-${Date.now()}.json`;
   a.click();
   
   return dump;
