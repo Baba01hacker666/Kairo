@@ -17,7 +17,14 @@ async function run() {
   console.log('🌐 Launching Headless Chromium browser...');
   const browser = await chromium.launch({
     headless: true,
-    args: ['--use-gl=swiftshader', '--no-sandbox', '--disable-setuid-sandbox', '--ignore-gpu-blocklist']
+    args: [
+      '--use-gl=swiftshader',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--ignore-gpu-blocklist',
+      '--disable-dev-shm-usage',
+      '--disable-web-security'
+    ]
   });
 
   const context = await browser.newContext({
@@ -35,9 +42,8 @@ async function run() {
     console.log(`📥 Saved downloaded recording artifact: ${targetPath}`);
   });
 
-  // Real URL with Vite base '/Kairo/' prefix
-  const targetUrl = 'http://localhost:4173/Kairo/examples/fox-game/index.html';
-  console.log(`Opening Fox Game at real URL: ${targetUrl}...`);
+  const targetUrl = 'http://localhost:4173/examples/fox-game/index.html';
+  console.log(`Opening Fox Game at target URL: ${targetUrl}...`);
   await page.goto(targetUrl, { waitUntil: 'networkidle' });
   await page.waitForTimeout(3000);
 
