@@ -31,7 +31,9 @@ export default defineConfig({
       '@kairo/ai': '/packages/ai/src/index.ts',
       '@kairo/network': '/packages/network/src/index.ts',
       '@kairo/assets': '/packages/assets/src/index.ts',
-      '@kairo/plugins': '/packages/plugins/src/index.ts'
+      '@kairo/plugins': '/packages/plugins/src/index.ts',
+      '@kairo/ui': '/packages/ui/src/index.ts',
+      '@kairo/tools': '/packages/tools/src/index.ts'
     }
   }
 });

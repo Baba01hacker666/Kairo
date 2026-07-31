@@ -6,6 +6,19 @@ export enum MouseButton {
   Right = 2
 }
 
+export type InputAction =
+  | 'MoveForward'
+  | 'MoveBackward'
+  | 'MoveLeft'
+  | 'MoveRight'
+  | 'Jump'
+  | 'Interact'
+  | 'Sprint'
+  | 'Undo'
+  | 'Restart'
+  | 'Hint'
+  | 'Pause';
+
 export class InputManager {
   private keysPressed: Set<string> = new Set();
   private keysJustPressed: Set<string> = new Set();
@@ -16,7 +29,10 @@ export class InputManager {
   private mouseButtonsPressed: Set<number> = new Set();
   private mouseButtonsJustPressed: Set<number> = new Set();
 
-  private actionBindings: Map<string, string[]> = new Map();
+  public touchJoystickActive: boolean = false;
+  public touchJoystickVector: Vector2 = new Vector2(0, 0);
+
+  private actionBindings: Map<InputAction, string[]> = new Map();
 
   constructor() {
     this.setupListeners();
@@ -29,7 +45,12 @@ export class InputManager {
     this.actionBindings.set('MoveLeft', ['KeyA', 'ArrowLeft']);
     this.actionBindings.set('MoveRight', ['KeyD', 'ArrowRight']);
     this.actionBindings.set('Jump', ['Space']);
-    this.actionBindings.set('Fire', ['KeyF', 'Mouse0']);
+    this.actionBindings.set('Interact', ['KeyE', 'Enter']);
+    this.actionBindings.set('Sprint', ['ShiftLeft', 'ShiftRight']);
+    this.actionBindings.set('Undo', ['KeyZ', 'KeyU']);
+    this.actionBindings.set('Restart', ['KeyR']);
+    this.actionBindings.set('Hint', ['KeyH']);
+    this.actionBindings.set('Pause', ['Escape', 'KeyP']);
   }
 
   private setupListeners(): void {
@@ -72,16 +93,72 @@ export class InputManager {
     return this.keysJustPressed.has(code);
   }
 
-  public isActionActive(actionName: string): boolean {
-    const keys = this.actionBindings.get(actionName) || [];
-    return keys.some(k => k.startsWith('Mouse') ? this.mouseButtonsPressed.has(parseInt(k.replace('Mouse', ''))) : this.isKeyDown(k));
+  public bindAction(action: InputAction, keys: string[]): void {
+    this.actionBindings.set(action, keys);
   }
 
-  public getAxis(negativeAction: string, positiveAction: string): number {
-    let val = 0;
-    if (this.isActionActive(positiveAction)) val += 1;
-    if (this.isActionActive(negativeAction)) val -= 1;
-    return val;
+  public getActionBindings(action: InputAction): string[] {
+    return this.actionBindings.get(action) || [];
+  }
+
+  public isActionActive(actionName: InputAction): boolean {
+    const keys = this.actionBindings.get(actionName) || [];
+    const keyActive = keys.some(k => k.startsWith('Mouse') ? this.mouseButtonsPressed.has(parseInt(k.replace('Mouse', ''))) : this.isKeyDown(k));
+    if (keyActive) return true;
+
+    // Check Gamepad API if available
+    if (typeof navigator !== 'undefined' && navigator.getGamepads) {
+      const gamepads = navigator.getGamepads();
+      for (const gp of gamepads) {
+        if (!gp) continue;
+        if (actionName === 'Jump' && gp.buttons[0]?.pressed) return true; // A button
+        if (actionName === 'Interact' && gp.buttons[2]?.pressed) return true; // X button
+        if (actionName === 'Undo' && gp.buttons[3]?.pressed) return true; // Y button
+        if (actionName === 'Hint' && gp.buttons[1]?.pressed) return true; // B button
+        if (actionName === 'Pause' && gp.buttons[9]?.pressed) return true; // Start button
+        if (actionName === 'Sprint' && gp.buttons[10]?.pressed) return true; // L3
+      }
+    }
+
+    return false;
+  }
+
+  public isActionJustPressed(actionName: InputAction): boolean {
+    const keys = this.actionBindings.get(actionName) || [];
+    return keys.some(k => this.isKeyJustPressed(k));
+  }
+
+  public getMovementVector(): Vector2 {
+    const vec = new Vector2(0, 0);
+
+    if (this.touchJoystickActive) {
+      vec.x = this.touchJoystickVector.x;
+      vec.y = -this.touchJoystickVector.y;
+      return vec;
+    }
+
+    if (this.isActionActive('MoveForward')) vec.y += 1;
+    if (this.isActionActive('MoveBackward')) vec.y -= 1;
+    if (this.isActionActive('MoveRight')) vec.x += 1;
+    if (this.isActionActive('MoveLeft')) vec.x -= 1;
+
+    // Check Gamepad Left Stick
+    if (typeof navigator !== 'undefined' && navigator.getGamepads) {
+      const gamepads = navigator.getGamepads();
+      for (const gp of gamepads) {
+        if (!gp) continue;
+        const axisX = gp.axes[0];
+        const axisY = gp.axes[1];
+        if (Math.abs(axisX) > 0.15) vec.x = axisX;
+        if (Math.abs(axisY) > 0.15) vec.y = -axisY;
+      }
+    }
+
+    if (vec.lengthSq() > 1) {
+      vec.normalize();
+    }
+
+    return vec;
   }
 
   public endFrame(): void {

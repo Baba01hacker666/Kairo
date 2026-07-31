@@ -5,3 +5,5 @@ export * from './Scene.ts';
 export * from './Engine.ts';
 export * from './ObjectPool.ts';
 export * from './KairoApp.ts';
+export * from './Serializer.ts';
+

@@ -126,6 +126,12 @@ export class PhysicsWorld {
   private defaultMaterial: CANNON.Material;
   private activePairs = new Set<string>();
   private collisionListeners = new Set<(event: CollisionEvent) => void>();
+  private triggerListeners = new Set<(event: CollisionEvent) => void>();
+
+  onTrigger(listener: (event: CollisionEvent) => void): () => void {
+    this.triggerListeners.add(listener);
+    return () => this.triggerListeners.delete(listener);
+  }
 
   constructor() {
     this.cannonWorld = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
@@ -265,13 +271,19 @@ export class PhysicsWorld {
   }
 
   private emitCollision(phase: CollisionPhase, a: BodyEntry, b: BodyEntry): void {
-    const events = [
+    const events: CollisionEvent[] = [
       { phase, body: a.body, other: b.body, collider: a.collider, otherCollider: b.collider },
       { phase, body: b.body, other: a.body, collider: b.collider, otherCollider: a.collider }
     ];
     this.collisionEvents.push(...events);
-    for (const event of events) for (const listener of this.collisionListeners) listener(event);
+    for (const event of events) {
+      for (const listener of this.collisionListeners) listener(event);
+      if (event.collider.isTrigger || event.otherCollider.isTrigger) {
+        for (const listener of this.triggerListeners) listener(event);
+      }
+    }
   }
+
 
   private toRaycastHit(result: CANNON.RaycastResult): RaycastHit {
     const entry = result.body ? this.bodyLookup.get(result.body) : undefined;

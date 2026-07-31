@@ -2,104 +2,289 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fox Adventure</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fox's Puzzle Quest: The Lost Grove</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <style>
-    body {
+    * { box-sizing: border-box; user-select: none; }
+    body, html {
       margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      background-color: #87ceeb; /* Sky blue */
+      background-color: #09090b;
       font-family: 'Inter', sans-serif;
+      color: #ffffff;
     }
-    #ui {
+
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* HUD Bar */
+    #hud-bar {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       pointer-events: none;
+      z-index: 100;
     }
-    h1 { margin: 0 0 10px 0; font-size: 24px; }
-    p { margin: 5px 0; font-size: 16px; }
-    .controls-hint {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
+
+    .hud-card {
+      background: rgba(18, 18, 22, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+
+    .hud-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #10b981, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+
+    .hud-subtitle {
+      font-size: 13px;
+      color: #a1a1aa;
+      margin: 2px 0 0 0;
+    }
+
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .stat-icon { font-size: 18px; }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
       color: white;
-      background: rgba(0,0,0,0.5);
-      padding: 15px;
-      border-radius: 8px;
-      backdrop-filter: blur(5px);
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    
-    /* Mobile Controls */
-    #joystick-zone {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      width: 120px;
-      height: 120px;
+
+    .icon-btn:hover {
       background: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.5);
-      touch-action: none;
-      display: none; /* Shown via JS if touch device */
+      transform: translateY(-2px);
     }
+
+    /* Mobile Controls Overlay */
+    #touch-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #joystick-zone {
+      width: 130px;
+      height: 130px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      touch-action: none;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+    }
+
     #joystick-knob {
+      width: 55px;
+      height: 55px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 50px;
-      height: 50px;
-      background: rgba(255, 255, 255, 0.6);
-      border-radius: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    #sprint-btn {
-      position: absolute;
-      bottom: 30px;
-      right: 30px;
-      width: 80px;
-      height: 80px;
-      background: rgba(255, 255, 255, 0.3);
-      border: 2px solid rgba(255, 255, 255, 0.6);
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .touch-btn {
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.4);
       color: white;
-      font-weight: bold;
+      font-weight: 800;
       font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
       touch-action: none;
-      display: none;
-      user-select: none;
     }
-    #sprint-btn:active {
-      background: rgba(255, 255, 255, 0.6);
+
+    .touch-btn:active {
+      background: rgba(255, 255, 255, 0.5);
+      transform: scale(0.95);
     }
-    
-    @media (hover: none) and (pointer: coarse) {
-      .controls-hint { display: none; }
-      #joystick-zone { display: block; }
-      #sprint-btn { display: flex; align-items: center; justify-content: center; }
+
+    @media (hover: hover) and (pointer: fine) {
+      #touch-controls { display: none; }
+    }
+
+    /* Modal Screens */
+    .menu-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(9, 9, 11, 0.92);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 900px;
+      margin-top: 24px;
+    }
+
+    .level-card {
+      background: rgba(24, 24, 27, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .level-card:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: #3b82f6;
+      transform: translateY(-4px);
+    }
+
+    .level-card.locked {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: #3b82f6;
+      border-color: #60a5fa;
     }
   </style>
 </head>
 <body>
-  <div id="ui">
-    <h1>Fox Adventure</h1>
-    <p>Collect the delicious avocados!</p>
-    <p>Score: <span id="score">0</span></p>
+  <!-- HUD Top Bar -->
+  <div id="hud-bar">
+    <div class="hud-card">
+      <div>
+        <div id="hud-level-title" class="hud-title">Level 1: Emerald Meadow</div>
+        <div id="hud-world-desc" class="hud-subtitle">World 1 - Emerald Meadow</div>
+      </div>
+    </div>
+
+    <div class="hud-card">
+      <div class="stat-badge">
+        <span class="stat-icon">🥑</span>
+        <span id="hud-avocado-count">0 / 3</span>
+      </div>
+      <div class="stat-badge">
+        <span class="stat-icon">👣</span>
+        <span id="hud-move-count">0 moves</span>
+      </div>
+    </div>
+
+    <div class="hud-card">
+      <button id="btn-undo" class="icon-btn">↩️ Undo (U)</button>
+      <button id="btn-restart" class="icon-btn">🔄 Restart (R)</button>
+      <button id="btn-hint" class="icon-btn">💡 Hint (H)</button>
+      <button id="btn-levels" class="icon-btn">🗺️ Levels</button>
+      <button id="btn-settings" class="icon-btn">⚙️ Settings</button>
+    </div>
   </div>
-  <div class="controls-hint">
-    <strong>Controls:</strong><br>
-    [W, A, S, D] to Move<br>
-    [SHIFT] to Run<br>
-    [Mouse] to Rotate Camera
+
+  <!-- Touch Controls for Mobile -->
+  <div id="touch-controls">
+    <div id="joystick-zone">
+      <div id="joystick-knob"></div>
+    </div>
+    <div class="action-buttons">
+      <button id="touch-btn-undo" class="touch-btn">↩️</button>
+      <button id="touch-btn-interact" class="touch-btn">E</button>
+      <button id="touch-btn-sprint" class="touch-btn">⚡</button>
+    </div>
   </div>
-  
-  <div id="joystick-zone">
-    <div id="joystick-knob"></div>
-  </div>
-  <div id="sprint-btn">RUN</div>
+
+  <canvas id="game-canvas"></canvas>
 
   <script type="module" src="./main.ts"></script>
 </body>

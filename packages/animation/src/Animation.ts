@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { Vector3, Quaternion, MathUtils } from '@kairo/core';
 
 export interface Keyframe<T> {
@@ -89,8 +90,82 @@ export class BlendTree1D {
   }
 }
 
+/**
+ * High-Level Three.js Skeletal Animation State Machine
+ * Handles state transitions, parameters, crossfading, and clip callbacks.
+ */
+export interface StateTransitionCondition {
+  parameter: string;
+  operator: '==' | '!=' | '>' | '<' | '>=' | '<=';
+  value: any;
+}
+
+export interface AnimationState {
+  name: string;
+  action: THREE.AnimationAction;
+  fadeDuration?: number;
+  timeScale?: number;
+}
+
+export class AnimationStateMachine {
+  public mixer: THREE.AnimationMixer;
+  private states: Map<string, AnimationState> = new Map();
+  private parameters: Map<string, any> = new Map();
+  private currentState: AnimationState | null = null;
+
+  constructor(root: THREE.Object3D) {
+    this.mixer = new THREE.AnimationMixer(root);
+  }
+
+  public registerState(name: string, clip: THREE.AnimationClip, options: { fadeDuration?: number; timeScale?: number; loop?: THREE.AnimationActionLoopStyles } = {}): void {
+    const action = this.mixer.clipAction(clip);
+    if (options.loop !== undefined) {
+      action.setLoop(options.loop, Infinity);
+    }
+    if (options.timeScale !== undefined) {
+      action.timeScale = options.timeScale;
+    }
+    const state: AnimationState = {
+      name,
+      action,
+      fadeDuration: options.fadeDuration ?? 0.25,
+      timeScale: options.timeScale ?? 1.0
+    };
+    this.states.set(name, state);
+  }
+
+  public setParameter(name: string, value: any): void {
+    this.parameters.set(name, value);
+  }
+
+  public getParameter(name: string): any {
+    return this.parameters.get(name);
+  }
+
+  public setState(name: string, fadeDuration?: number): void {
+    const nextState = this.states.get(name);
+    if (!nextState || this.currentState === nextState) return;
+
+    const duration = fadeDuration ?? nextState.fadeDuration ?? 0.25;
+
+    if (this.currentState) {
+      this.currentState.action.fadeOut(duration);
+    }
+
+    this.currentState = nextState;
+    this.currentState.action.reset().fadeIn(duration).play();
+  }
+
+  public getCurrentStateName(): string | null {
+    return this.currentState ? this.currentState.name : null;
+  }
+
+  public update(dt: number): void {
+    this.mixer.update(dt);
+  }
+}
+
 export class InverseKinematicsSolver {
-  // Simple Two-Bone IK Solver for limbs & feet alignment
   static solveTwoBone(
     rootPos: Vector3,
     jointPos: Vector3,
@@ -116,10 +191,6 @@ export class InverseKinematicsSolver {
   }
 }
 
-/**
- * Procedural Stickman Animation Controller
- * Computes skeletal transforms for Idle, Walk, Run, Jump, & Backflip animations.
- */
 export class StickmanPose {
   public headOffset: Vector3 = new Vector3(0, 2.3, 0);
   public torsoAngle: number = 0;
@@ -144,16 +215,13 @@ export class StickmanAnimator {
     const t = time * speed * 5.0;
 
     if (state === 'idle') {
-      // Gentle breathing & arm sway
       pose.rootY = Math.sin(time * 2) * 0.05;
       pose.headOffset.y = 2.3 + Math.sin(time * 2) * 0.02;
       pose.leftArmAngle = Math.sin(time * 2) * 0.1 + 0.1;
       pose.rightArmAngle = -Math.sin(time * 2) * 0.1 - 0.1;
       pose.leftLegAngle = 0.05;
       pose.rightLegAngle = -0.05;
-
     } else if (state === 'walk') {
-      // Sinusoidal Walk Cycle
       const stride = 0.6;
       pose.rootY = Math.abs(Math.sin(t)) * 0.1;
       pose.leftLegAngle = Math.sin(t) * stride;
@@ -161,16 +229,13 @@ export class StickmanAnimator {
       pose.leftShinAngle = Math.max(0, Math.sin(t + Math.PI / 2)) * 0.5;
       pose.rightShinAngle = Math.max(0, Math.sin(t - Math.PI / 2)) * 0.5;
 
-      // Arm Counter-Swing
       pose.leftArmAngle = -Math.sin(t) * stride;
       pose.rightArmAngle = Math.sin(t) * stride;
       pose.leftForearmAngle = 0.2;
       pose.rightForearmAngle = 0.2;
-
     } else if (state === 'run') {
-      // High Speed Running Motion with Forward Torso Lean
       const stride = 1.1;
-      pose.torsoAngle = 0.25; // Lean forward
+      pose.torsoAngle = 0.25;
       pose.rootY = Math.abs(Math.sin(t * 1.5)) * 0.2;
 
       pose.leftLegAngle = Math.sin(t * 1.5) * stride;
@@ -182,12 +247,10 @@ export class StickmanAnimator {
       pose.rightArmAngle = Math.sin(t * 1.5) * stride * 1.1;
       pose.leftForearmAngle = 0.8;
       pose.rightForearmAngle = 0.8;
-
     } else if (state === 'jump') {
-      // Acrobat Jump & Backflip spin
       const jumpTime = (time % 2.0) / 2.0;
       pose.rootY = Math.sin(jumpTime * Math.PI) * 2.5;
-      pose.rootFlipAngle = jumpTime * Math.PI * 2; // 360 backflip
+      pose.rootFlipAngle = jumpTime * Math.PI * 2;
 
       pose.leftArmAngle = -1.2;
       pose.rightArmAngle = -1.2;
