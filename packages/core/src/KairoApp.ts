@@ -117,6 +117,21 @@ export class KairoApp {
       this.pipeline.render();
       this.debug.update(this.pipeline.metrics, this.engine.activeScene.root.children.length);
     });
+
+    // Expose global KairoAPI for external scripts/automation to generate videos and interact with the engine programmatically
+    if (typeof window !== 'undefined') {
+      (window as any).KairoAPI = {
+        app: this,
+        startVideoRecording: (fps: number = 60) => this.startRecording(fps),
+        stopVideoRecording: (filename?: string) => this.stopRecording(filename),
+        captureScreenshot: (filename?: string) => this.captureScreenshot(filename),
+        recordGameplaySequence: async (durationMs: number, filename?: string) => {
+          this.startRecording(60);
+          await new Promise(resolve => setTimeout(resolve, durationMs));
+          return await this.stopRecording(filename);
+        }
+      };
+    }
   }
 
   public registerObstacle(object: THREE.Object3D): void {
