@@ -300,7 +300,51 @@ function buildLevelVisuals(): void {
   goalMesh.position.copy(gridToWorld(currentLevel.goalPos[0], currentLevel.goalPos[1], 0.05));
   levelObjectsGroup.add(goalMesh);
 
-  // Level Interactive Elements
+  // Collect & Batch Instanced Elements (Ice, Conveyors, Teleporters)
+  const iceElements = currentLevel.elements.filter(e => e.type === 'ice');
+  if (iceElements.length > 0) {
+    const iceGeo = new THREE.BoxGeometry(1.9, 0.05, 1.9);
+    const iceMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.0, transparent: true, opacity: 0.85, emissive: 0x0284c7, emissiveIntensity: 0.2 });
+    const iceInstancedMesh = new THREE.InstancedMesh(iceGeo, iceMat, iceElements.length);
+    iceElements.forEach((elem, idx) => {
+      dummy.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.02));
+      dummy.updateMatrix();
+      iceInstancedMesh.setMatrixAt(idx, dummy.matrix);
+    });
+    iceInstancedMesh.instanceMatrix.needsUpdate = true;
+    levelObjectsGroup.add(iceInstancedMesh);
+  }
+
+  const conveyorElements = currentLevel.elements.filter(e => e.type === 'conveyor');
+  if (conveyorElements.length > 0) {
+    const conveyorGeo = new THREE.BoxGeometry(1.8, 0.06, 1.8);
+    const conveyorMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 });
+    const conveyorInstancedMesh = new THREE.InstancedMesh(conveyorGeo, conveyorMat, conveyorElements.length);
+    conveyorElements.forEach((elem, idx) => {
+      dummy.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.03));
+      dummy.updateMatrix();
+      conveyorInstancedMesh.setMatrixAt(idx, dummy.matrix);
+    });
+    conveyorInstancedMesh.instanceMatrix.needsUpdate = true;
+    levelObjectsGroup.add(conveyorInstancedMesh);
+  }
+
+  const teleporterElements = currentLevel.elements.filter(e => e.type === 'teleporter');
+  if (teleporterElements.length > 0) {
+    const teleporterGeo = new THREE.TorusGeometry(0.7, 0.1, 12, 24);
+    const teleporterMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x9333ea, emissiveIntensity: 0.8 });
+    const teleporterInstancedMesh = new THREE.InstancedMesh(teleporterGeo, teleporterMat, teleporterElements.length);
+    teleporterElements.forEach((elem, idx) => {
+      dummy.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.1));
+      dummy.rotation.x = Math.PI / 2;
+      dummy.updateMatrix();
+      teleporterInstancedMesh.setMatrixAt(idx, dummy.matrix);
+    });
+    teleporterInstancedMesh.instanceMatrix.needsUpdate = true;
+    levelObjectsGroup.add(teleporterInstancedMesh);
+  }
+
+  // Level Interactive Dynamic Elements
   currentLevel.elements.forEach((elem, index) => {
     const elemId = elem.id || `elem_${index}_${elem.type}`;
 
@@ -328,22 +372,6 @@ function buildLevelVisuals(): void {
         levelObjectsGroup.add(tntMesh);
         elementMeshMap.set(elemId, tntMesh);
       }
-
-    } else if (elem.type === 'ice') {
-      const iceMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1.9, 0.05, 1.9),
-        new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.0, transparent: true, opacity: 0.85, emissive: 0x0284c7, emissiveIntensity: 0.2 })
-      );
-      iceMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.02));
-      levelObjectsGroup.add(iceMesh);
-
-    } else if (elem.type === 'conveyor') {
-      const conveyorMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 0.06, 1.8),
-        new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 })
-      );
-      conveyorMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.03));
-      levelObjectsGroup.add(conveyorMesh);
 
     } else if (elem.type === 'plate') {
       const plateMesh = new THREE.Mesh(
@@ -385,7 +413,7 @@ function buildLevelVisuals(): void {
           itemMesh = avocadoTemplate.clone();
         } else {
           itemMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4, 16, 16),
+            new THREE.SphereGeometry(0.4, 12, 12),
             new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.4 })
           );
         }
@@ -401,7 +429,7 @@ function buildLevelVisuals(): void {
           helmetMesh = helmetTemplate.clone();
         } else {
           helmetMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(0.5, 16, 16),
+            new THREE.SphereGeometry(0.5, 12, 12),
             new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.8, roughness: 0.2 })
           );
         }
@@ -429,16 +457,6 @@ function buildLevelVisuals(): void {
       mirrorGroup.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.9));
       levelObjectsGroup.add(mirrorGroup);
       elementMeshMap.set(elemId, mirrorGroup);
-
-    } else if (elem.type === 'teleporter') {
-      const portalMesh = new THREE.Mesh(
-        new THREE.TorusGeometry(0.7, 0.1, 16, 32),
-        new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x9333ea, emissiveIntensity: 0.8 })
-      );
-      portalMesh.rotation.x = Math.PI / 2;
-      portalMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.1));
-      levelObjectsGroup.add(portalMesh);
-      elementMeshMap.set(elemId, portalMesh);
     }
   });
 

@@ -54,8 +54,20 @@ export class RenderPipeline {
   }
 
   private setupRendererDefaults(): void {
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const gl = this.renderer.getContext();
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const rendererName = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
+    const isSoftware = /swiftshader|software|llvmpipe|cpu|mesa/i.test(rendererName);
+
+    if (isSoftware) {
+      this.renderer.shadowMap.enabled = false;
+      this.renderer.setPixelRatio(1.0);
+    } else {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    }
+
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = this.config.exposure;
   }
@@ -73,22 +85,31 @@ export class RenderPipeline {
     ambientIntensity?: number;
     shadowMapSize?: number;
   }): { sun: THREE.DirectionalLight; ambient: THREE.AmbientLight } {
+    const gl = this.renderer.getContext();
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const rendererName = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
+    const isSoftware = /swiftshader|software|llvmpipe|cpu|mesa/i.test(rendererName);
+
     const sunColor = options.sunColor ?? 0xfff5ea;
     const sunIntensity = options.sunIntensity ?? 2.5;
     const sun = new THREE.DirectionalLight(sunColor, sunIntensity);
     sun.position.set(...(options.sunPosition ?? [-15, 30, -15]));
-    sun.castShadow = true;
     
-    const size = options.shadowMapSize ?? 2048;
-    sun.shadow.mapSize.width = size;
-    sun.shadow.mapSize.height = size;
-    sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far = 80;
-    sun.shadow.camera.left = -30;
-    sun.shadow.camera.right = 30;
-    sun.shadow.camera.top = 30;
-    sun.shadow.camera.bottom = -30;
-    sun.shadow.bias = -0.0005;
+    if (isSoftware) {
+      sun.castShadow = false;
+    } else {
+      sun.castShadow = true;
+      const size = options.shadowMapSize ?? 1024;
+      sun.shadow.mapSize.width = size;
+      sun.shadow.mapSize.height = size;
+      sun.shadow.camera.near = 0.5;
+      sun.shadow.camera.far = 80;
+      sun.shadow.camera.left = -30;
+      sun.shadow.camera.right = 30;
+      sun.shadow.camera.top = 30;
+      sun.shadow.camera.bottom = -30;
+      sun.shadow.bias = -0.0005;
+    }
 
     const ambientColor = options.ambientColor ?? 0xddeeff;
     const ambientIntensity = options.ambientIntensity ?? 0.8;
