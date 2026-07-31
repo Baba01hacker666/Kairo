@@ -4,6 +4,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
+import path from 'path';
 
 async function run() {
   console.log('🚀 Starting Vite preview server...');
@@ -25,6 +26,14 @@ async function run() {
   });
 
   const page = await context.newPage();
+
+  // Listen for browser downloads and save directly to project root
+  page.on('download', async (download) => {
+    const filename = download.suggestedFilename();
+    console.log(`📥 Saving downloaded artifact: ${filename}`);
+    await download.saveAs(path.join(process.cwd(), filename));
+  });
+
   console.log('Opening Fox Game...');
   await page.goto('http://localhost:4173/examples/fox-game/index.html', { waitUntil: 'networkidle' });
   await page.waitForTimeout(3000);
@@ -38,9 +47,9 @@ async function run() {
     }
   });
 
-  // Wait for Level 1 completion modal (AI plays Level 1)
-  console.log('Waiting for Level 1 AI clearance...');
-  await page.waitForTimeout(15000);
+  // Wait for Level 1 AI clearance and video packaging
+  console.log('Waiting for Level 1 AI clearance and video generation...');
+  await page.waitForTimeout(16000);
 
   console.log('✅ QA Run Complete! Closing browser...');
   await browser.close();
