@@ -168,15 +168,26 @@ app.scene.add(particleSys.mesh);
 // Load 3D Models
 const gltfLoader = new GLTFLoader();
 
+// Robust asset URL resolver across root, subfolders, and GitHub Pages
+function getAssetUrl(relativePath: string): string {
+  const clean = relativePath.replace(/^\//, '');
+  if (typeof window !== 'undefined') {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    // If running under subfolder /examples/fox-game/, step up to root
+    const depth = parts.length > 1 && parts.includes('examples') ? parts.indexOf('examples') + 1 : 0;
+    const prefix = depth > 0 ? '../'.repeat(parts.length - depth) : './';
+    return prefix + clean;
+  }
+  return '/' + clean;
+}
+
 let avocadoTemplate: THREE.Group | null = null;
 let helmetTemplate: THREE.Group | null = null;
 
-// Load Fox Model & Skeletal Animations. Keep a visible fallback in the scene so
-// movement/camera changes never leave the level without a player model while the GLB
-// downloads or if the asset fails to load.
+// Load Fox Model & Skeletal Animations.
 installFoxModel(createFallbackFoxModel());
 gltfLoader.load(
-  (import.meta as any).env.BASE_URL + 'models/Fox.glb',
+  getAssetUrl('models/Fox.glb'),
   (gltf) => {
     const loadedFox = gltf.scene;
     loadedFox.scale.set(0.022, 0.022, 0.022);
@@ -194,6 +205,7 @@ gltfLoader.load(
     animStateMachine.setState('Idle');
 
     installFoxModel(loadedFox);
+    console.log('✅ Successfully loaded high quality Fox.glb model!');
   },
   undefined,
   (error) => {
@@ -205,7 +217,7 @@ gltfLoader.load(
 
 // Load Avocado Model
 gltfLoader.load(
-  (import.meta as any).env.BASE_URL + 'models/Avocado.glb',
+  getAssetUrl('models/Avocado.glb'),
   (gltf) => {
     avocadoTemplate = gltf.scene;
     avocadoTemplate.scale.set(12, 12, 12);
@@ -221,7 +233,7 @@ gltfLoader.load(
 
 // Load Helmet Model
 gltfLoader.load(
-  (import.meta as any).env.BASE_URL + 'models/DamagedHelmet.glb',
+  getAssetUrl('models/DamagedHelmet.glb'),
   (gltf) => {
     helmetTemplate = gltf.scene;
     helmetTemplate.scale.set(0.6, 0.6, 0.6);
