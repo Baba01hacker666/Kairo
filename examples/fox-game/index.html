@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <style>
-    * { box-sizing: border-box; user-select: none; }
+    * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
     body, html {
       margin: 0;
       padding: 0;
@@ -19,43 +19,46 @@
       background-color: #09090b;
       font-family: 'Inter', sans-serif;
       color: #ffffff;
+      touch-action: none;
     }
 
     #game-canvas {
       width: 100%;
       height: 100%;
       display: block;
+      touch-action: none;
     }
 
     /* HUD Bar */
     #hud-bar {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      right: 16px;
+      top: 12px;
+      left: 12px;
+      right: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       pointer-events: none;
       z-index: 100;
+      gap: 8px;
     }
 
     .hud-card {
-      background: rgba(18, 18, 22, 0.75);
+      background: rgba(18, 18, 22, 0.85);
       backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 16px;
-      padding: 10px 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px 14px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
       pointer-events: auto;
     }
 
     .hud-title {
       font-family: 'Outfit', sans-serif;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 800;
       background: linear-gradient(135deg, #10b981, #3b82f6);
       -webkit-background-clip: text;
@@ -64,29 +67,29 @@
     }
 
     .hud-subtitle {
-      font-size: 13px;
+      font-size: 12px;
       color: #a1a1aa;
-      margin: 2px 0 0 0;
+      margin: 1px 0 0 0;
     }
 
     .stat-badge {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 14px;
     }
 
-    .stat-icon { font-size: 18px; }
+    .stat-icon { font-size: 16px; }
 
     .icon-btn {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
       color: white;
-      padding: 10px 16px;
+      padding: 8px 14px;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -94,79 +97,89 @@
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .icon-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
+    .icon-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.25);
     }
 
-    /* Mobile Controls Overlay */
+    /* Mobile Touch Controls */
     #touch-controls {
       position: absolute;
-      bottom: 24px;
-      left: 24px;
-      right: 24px;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
       pointer-events: none;
-      z-index: 100;
+      z-index: 200;
     }
 
     #joystick-zone {
-      width: 130px;
-      height: 130px;
-      background: rgba(255, 255, 255, 0.15);
+      width: 140px;
+      height: 140px;
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 50%;
       border: 2px solid rgba(255, 255, 255, 0.3);
       position: relative;
       touch-action: none;
       pointer-events: auto;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
 
     #joystick-knob {
-      width: 55px;
-      height: 55px;
-      background: rgba(255, 255, 255, 0.6);
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
       border-radius: 50%;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.6);
     }
 
     .action-buttons {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(2, 64px);
       gap: 12px;
       pointer-events: auto;
     }
 
-    .touch-btn {
+    .touch-action-btn {
       width: 64px;
       height: 64px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 18px;
+      background: rgba(24, 24, 27, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: white;
       font-weight: 800;
-      font-size: 16px;
+      font-size: 15px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(4px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
       touch-action: none;
+      cursor: pointer;
+      gap: 2px;
     }
 
-    .touch-btn:active {
-      background: rgba(255, 255, 255, 0.5);
-      transform: scale(0.95);
+    .touch-action-btn:active {
+      background: rgba(59, 130, 246, 0.5);
+      transform: scale(0.92);
+      border-color: #60a5fa;
     }
 
-    @media (hover: hover) and (pointer: fine) {
-      #touch-controls { display: none; }
+    .touch-btn-sub {
+      font-size: 9px;
+      color: #a1a1aa;
+      font-weight: 600;
+      text-transform: uppercase;
     }
 
     /* Modal Screens */
@@ -176,31 +189,31 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(9, 9, 11, 0.92);
+      background: rgba(9, 9, 11, 0.94);
       backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 500;
-      padding: 32px;
+      padding: 24px;
       overflow-y: auto;
     }
 
     .level-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 12px;
       width: 100%;
-      max-width: 900px;
-      margin-top: 24px;
+      max-width: 850px;
+      margin-top: 20px;
     }
 
     .level-card {
-      background: rgba(24, 24, 27, 0.8);
+      background: rgba(24, 24, 27, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 14px;
-      padding: 16px;
+      border-radius: 12px;
+      padding: 14px 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -209,36 +222,15 @@
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .level-card:hover {
-      background: rgba(59, 130, 246, 0.2);
+    .level-card:active {
+      background: rgba(59, 130, 246, 0.3);
       border-color: #3b82f6;
-      transform: translateY(-4px);
+      transform: scale(0.95);
     }
 
     .level-card.locked {
-      opacity: 0.4;
+      opacity: 0.35;
       cursor: not-allowed;
-    }
-
-    .tab-bar {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .tab-btn {
-      padding: 10px 20px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .tab-btn.active {
-      background: #3b82f6;
-      border-color: #60a5fa;
     }
   </style>
 </head>
@@ -264,23 +256,37 @@
     </div>
 
     <div class="hud-card">
-      <button id="btn-undo" class="icon-btn">↩️ Undo (U)</button>
-      <button id="btn-restart" class="icon-btn">🔄 Restart (R)</button>
-      <button id="btn-hint" class="icon-btn">💡 Hint (H)</button>
+      <button id="btn-undo" class="icon-btn">↩️ Undo</button>
+      <button id="btn-restart" class="icon-btn">🔄 Restart</button>
+      <button id="btn-hint" class="icon-btn">💡 Hint</button>
       <button id="btn-levels" class="icon-btn">🗺️ Levels</button>
       <button id="btn-settings" class="icon-btn">⚙️ Settings</button>
     </div>
   </div>
 
-  <!-- Touch Controls for Mobile -->
+  <!-- Touch Controls Overlay for Mobile -->
   <div id="touch-controls">
     <div id="joystick-zone">
       <div id="joystick-knob"></div>
     </div>
+
     <div class="action-buttons">
-      <button id="touch-btn-undo" class="touch-btn">↩️</button>
-      <button id="touch-btn-interact" class="touch-btn">E</button>
-      <button id="touch-btn-sprint" class="touch-btn">⚡</button>
+      <button id="touch-btn-undo" class="touch-action-btn">
+        <span>↩️</span>
+        <span class="touch-btn-sub">Undo</span>
+      </button>
+      <button id="touch-btn-interact" class="touch-action-btn">
+        <span style="font-size: 18px; color: #60a5fa;">E</span>
+        <span class="touch-btn-sub">Interact</span>
+      </button>
+      <button id="touch-btn-restart" class="touch-action-btn">
+        <span>🔄</span>
+        <span class="touch-btn-sub">Reset</span>
+      </button>
+      <button id="touch-btn-hint" class="touch-action-btn">
+        <span>💡</span>
+        <span class="touch-btn-sub">Hint</span>
+      </button>
     </div>
   </div>
 

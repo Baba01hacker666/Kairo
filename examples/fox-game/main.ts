@@ -47,8 +47,8 @@ function saveProgress(progress: GameProgress): void {
   }
 }
 
-// Mobile Device Performance Detection
-const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// Mobile Performance & Touch Detection
+const isMobile = typeof navigator !== 'undefined' && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768);
 
 // Game State
 let progress: GameProgress = loadProgress();
@@ -78,7 +78,7 @@ let animStateMachine: AnimationStateMachine | null = null;
 const levelObjectsGroup = new THREE.Group();
 const elementMeshMap: Map<string, THREE.Object3D> = new Map();
 
-// Optimized Particle System (Lower particle count on mobile devices)
+// Particle System
 const particleSys = new ParticleSystem(isMobile ? 300 : 1200);
 
 // Grid dimensions & positioning
@@ -95,16 +95,21 @@ const collectedItems: Set<string> = new Set();
 const app = new KairoApp({
   canvas: 'game-canvas',
   background: 0x09090b,
-  shadows: !isMobile, // Disable heavy shadow maps on mobile devices
+  shadows: !isMobile, // Disable dynamic shadows on mobile for 60 FPS
   fogColor: 0x09090b,
   fogNear: 20,
   fogFar: 80
 });
 
 if (isMobile) {
-  // Clamp canvas resolution to 1.0 to prevent 4K/Retina mobile rendering lag
-  app.renderer.setPixelRatio(1.0);
+  app.renderer.setPixelRatio(1.0); // Clamp pixel ratio to 1.0 on mobile to prevent 4K canvas lag
 }
+
+// Camera Setup: Third-Person Perspective (Behind character facing forward)
+app.cameraController.yaw = Math.PI; // Position camera behind Fox
+app.cameraController.pitch = 0.45;  // Slightly elevated third person angle
+app.cameraController.distance = 7.5;
+app.cameraController.heightOffset = 1.6;
 
 app.scene.add(levelObjectsGroup);
 app.scene.add(particleSys.mesh);
@@ -177,9 +182,8 @@ function gridToWorld(x: number, y: number, height: number = 0): THREE.Vector3 {
   return new THREE.Vector3(offsetX + x * TILE_SIZE, height, offsetZ + y * TILE_SIZE);
 }
 
-// Build 3D Level Architecture & Visual Environment with Instanced Rendering & Memory Cleanup
+// Build 3D Level Architecture & Visual Environment
 function buildLevelVisuals(): void {
-  // Dispose old level GPU resources to prevent memory leaks in VRAM
   MemoryManager.disposeHierarchy(levelObjectsGroup);
   while (levelObjectsGroup.children.length > 0) {
     const child = levelObjectsGroup.children[0];
@@ -213,7 +217,7 @@ function buildLevelVisuals(): void {
     app.setLighting({ sunPosition: [-10, 20, -10], sunColor: 0xec4899, sunIntensity: 2.5, ambientColor: 0x3f3f46, ambientIntensity: 0.8 });
   }
 
-  // Instanced Floor Tiles (Reduces draw calls from 200+ down to 2!)
+  // Instanced Floor Tiles (2 InstancedMeshes instead of 200+ draw calls!)
   const floorGeo = new THREE.BoxGeometry(TILE_SIZE * 0.96, 0.4, TILE_SIZE * 0.96);
   const tileMatA = new THREE.MeshStandardMaterial({
     color: currentLevel.world === 1 ? 0x4a7c59 : currentLevel.world === 2 ? 0x1e293b : currentLevel.world === 3 ? 0x78350f : currentLevel.world === 4 ? 0x4338ca : 0x3f3f46,
@@ -257,7 +261,7 @@ function buildLevelVisuals(): void {
   levelObjectsGroup.add(floorMeshA);
   levelObjectsGroup.add(floorMeshB);
 
-  // Instanced Boundary Walls (1 InstancedMesh for all boundary walls!)
+  // Instanced Boundary Walls
   const wallGeo = new THREE.BoxGeometry(TILE_SIZE, 2.0, TILE_SIZE);
   const wallMat = new THREE.MeshStandardMaterial({
     color: currentLevel.world === 1 ? 0x2d4c1e : currentLevel.world === 2 ? 0x334155 : currentLevel.world === 3 ? 0x57534e : currentLevel.world === 4 ? 0x312e81 : 0x18181b,
@@ -527,6 +531,37 @@ function performUndo(): void {
   updatePlayerPositionVisuals(true);
 }
 
+// Interact with Mirror / Object in front of Fox
+function performInteract(): void {
+  // Find mirror or prism at player position or adjacent position
+  let rotatedAny = false;
+  currentLevel.elements.forEach((elem, index) => {
+    const elemId = elem.id || `elem_${index}_${elem.type}`;
+    if (elem.type === 'mirror' || elem.type === 'prism') {
+      const dx = Math.abs(elem.pos[0] - playerGridPos[0]);
+      const dy = Math.abs(elem.pos[1] - playerGridPos[1]);
+      if (dx <= 1 && dy <= 1) {
+        pushUndoState();
+        const currentRot = mirrorRotations.get(elemId) || 0;
+        const newRot = (currentRot + 90) % 360;
+        mirrorRotations.set(elemId, newRot);
+
+        const mirrorMesh = elementMeshMap.get(elemId);
+        if (mirrorMesh) {
+          mirrorMesh.rotation.y = (newRot * Math.PI) / 180;
+        }
+        app.audio.playSynthesizedSound('switch');
+        app.ui.showToast(`Rotated ${elem.type === 'prism' ? 'Prism' : 'Mirror'} to ${newRot}°! 🔄`, 1500, 'info');
+        rotatedAny = true;
+      }
+    }
+  });
+
+  if (!rotatedAny) {
+    app.ui.showToast('Nothing nearby to interact with!', 1500, 'info');
+  }
+}
+
 // Update Fox position & Camera target
 function updatePlayerPositionVisuals(instant: boolean = false): void {
   if (!foxGroup) return;
@@ -760,7 +795,7 @@ function updateHUD(): void {
   if (moveEl) moveEl.innerText = `${moveCount} moves`;
 }
 
-// UI Button Listeners
+// UI Button Listeners (Desktop & Touch)
 document.getElementById('btn-undo')?.addEventListener('click', performUndo);
 document.getElementById('btn-restart')?.addEventListener('click', () => loadLevel(currentLevelIndex));
 document.getElementById('btn-hint')?.addEventListener('click', () => {
@@ -769,6 +804,91 @@ document.getElementById('btn-hint')?.addEventListener('click', () => {
 });
 document.getElementById('btn-levels')?.addEventListener('click', showLevelSelectModal);
 document.getElementById('btn-settings')?.addEventListener('click', showSettingsModal);
+
+// Mobile Touch Action Buttons
+document.getElementById('touch-btn-undo')?.addEventListener('click', performUndo);
+document.getElementById('touch-btn-restart')?.addEventListener('click', () => loadLevel(currentLevelIndex));
+document.getElementById('touch-btn-interact')?.addEventListener('click', performInteract);
+document.getElementById('touch-btn-hint')?.addEventListener('click', () => {
+  app.audio.playSynthesizedSound('hint');
+  app.ui.createModal('💡 Dynamic Level Hint', currentLevel.hint, [{ text: 'Got it!', primary: true, onClick: () => {} }]);
+});
+
+// Mobile Virtual Joystick Touch Math
+const joystickZone = document.getElementById('joystick-zone');
+const joystickKnob = document.getElementById('joystick-knob');
+
+if (joystickZone && joystickKnob) {
+  let center = { x: 0, y: 0 };
+  const maxRadius = 55;
+
+  const onTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    if (!app.input.touchJoystickActive) return;
+    const touch = Array.from(e.touches).find(t => t.target === joystickZone || t.target === joystickKnob);
+    if (!touch) return;
+
+    let dx = touch.clientX - center.x;
+    let dy = touch.clientY - center.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > maxRadius) {
+      dx = (dx / dist) * maxRadius;
+      dy = (dy / dist) * maxRadius;
+    }
+
+    joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    app.input.touchJoystickVector.set(dx / maxRadius, dy / maxRadius);
+  };
+
+  joystickZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    app.input.touchJoystickActive = true;
+    const rect = joystickZone.getBoundingClientRect();
+    center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    onTouchMove(e);
+  }, { passive: false });
+
+  joystickZone.addEventListener('touchmove', onTouchMove, { passive: false });
+
+  const resetJoystick = () => {
+    app.input.touchJoystickActive = false;
+    app.input.touchJoystickVector.set(0, 0);
+    joystickKnob.style.transform = `translate(-50%, -50%)`;
+  };
+
+  joystickZone.addEventListener('touchend', resetJoystick);
+  joystickZone.addEventListener('touchcancel', resetJoystick);
+}
+
+// Touch Drag Camera Orbit (Swipe anywhere on screen to rotate camera 360°)
+let lastTouchX = 0;
+let lastTouchY = 0;
+let isTouchingCamera = false;
+
+window.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    const target = e.touches[0].target as HTMLElement;
+    if (target.tagName === 'CANVAS' || target.id === 'game-canvas') {
+      isTouchingCamera = true;
+      lastTouchX = e.touches[0].clientX;
+      lastTouchY = e.touches[0].clientY;
+    }
+  }
+});
+
+window.addEventListener('touchmove', (e) => {
+  if (isTouchingCamera && e.touches.length === 1) {
+    const dx = e.touches[0].clientX - lastTouchX;
+    const dy = e.touches[0].clientY - lastTouchY;
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
+
+    app.cameraController.rotate(-dx * 0.005, -dy * 0.005);
+  }
+});
+
+window.addEventListener('touchend', () => { isTouchingCamera = false; });
 
 // Level Select Modal
 function showLevelSelectModal(): void {
@@ -853,7 +973,7 @@ app.onUpdate((dt) => {
     }
   }
 
-  // Keyboard Input
+  // Keyboard / Touch Movement Input
   const now = performance.now();
   if (now - lastInputTime > INPUT_COOLDOWN) {
     const move = app.input.getMovementVector();
@@ -864,6 +984,7 @@ app.onUpdate((dt) => {
       lastInputTime = now;
     }
 
+    if (app.input.isActionJustPressed('Interact')) performInteract();
     if (app.input.isActionJustPressed('Undo')) performUndo();
     if (app.input.isActionJustPressed('Restart')) loadLevel(currentLevelIndex);
     if (app.input.isActionJustPressed('Hint')) {

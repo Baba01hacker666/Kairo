@@ -16,7 +16,7 @@ export class CameraController {
   public maxDistance: number = 20.0;
   public heightOffset: number = 1.5;
   public pitch: number = 0.35; // Vertical angle in radians
-  public yaw: number = 0.0;   // Horizontal angle in radians
+  public yaw: number = Math.PI; // Horizontal angle in radians (Behind character looking forward)
 
   public lerpSpeed: number = 10.0;
   public enableCollisionAvoidance: boolean = true;
