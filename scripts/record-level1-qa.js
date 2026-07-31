@@ -27,8 +27,18 @@ async function run() {
 
   const page = await context.newPage();
 
-  console.log('Opening Fox Game...');
-  await page.goto('http://localhost:4173/examples/fox-game/index.html', { waitUntil: 'networkidle' });
+  // Listen for browser downloads and save directly to project root
+  page.on('download', async (download) => {
+    const filename = download.suggestedFilename() || 'fox-level1-qa-gameplay-recording.webm';
+    const targetPath = path.join(process.cwd(), filename);
+    await download.saveAs(targetPath);
+    console.log(`📥 Saved downloaded recording artifact: ${targetPath}`);
+  });
+
+  // Real URL with Vite base '/Kairo/' prefix
+  const targetUrl = 'http://localhost:4173/Kairo/examples/fox-game/index.html';
+  console.log(`Opening Fox Game at real URL: ${targetUrl}...`);
+  await page.goto(targetUrl, { waitUntil: 'networkidle' });
   await page.waitForTimeout(3000);
 
   // Take initial loading screenshot
