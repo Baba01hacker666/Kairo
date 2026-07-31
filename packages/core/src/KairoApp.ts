@@ -8,6 +8,7 @@ import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
 import { GlobalDebugInspector, DebugInspector, ScreenRecorder } from '@kairo/tools';
 import { Serializer } from './Serializer.ts';
+import { SaveSystem } from './SaveSystem.ts';
 import { animate } from 'motion';
 
 export interface KairoAppConfig {
@@ -18,6 +19,7 @@ export interface KairoAppConfig {
   fogColor?: number | string;
   fogNear?: number;
   fogFar?: number;
+  gameId?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export class KairoApp {
   public renderer: THREE.WebGLRenderer;
   public pipeline: RenderPipeline;
   public screenRecorder!: ScreenRecorder;
+  public save: SaveSystem;
 
   public input: InputManager = GlobalInput;
   public audio: AudioManager = GlobalAudio;
@@ -42,6 +45,7 @@ export class KairoApp {
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig = {}) {
+    this.save = new SaveSystem(config.gameId || 'default');
     this.engine = new Engine();
     
     // Setup physics

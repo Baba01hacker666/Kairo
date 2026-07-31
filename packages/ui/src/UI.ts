@@ -182,6 +182,95 @@ export class UIManager {
     return backdrop;
   }
 
+  public showAchievement(title: string, description: string, icon: string = '🏆'): void {
+    if (!this.container || typeof document === 'undefined') return;
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: ${this.theme.cardBackground};
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      border-radius: ${this.theme.borderRadius};
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.1);
+      transform: translateX(120%);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+      z-index: 9999;
+    `;
+    
+    toast.innerHTML = `
+      <div style="font-size: 32px;">${icon}</div>
+      <div>
+        <div style="font-size: 12px; font-weight: bold; color: #facc15; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Achievement Unlocked</div>
+        <div style="font-size: 16px; font-weight: 600; color: white;">${title}</div>
+        <div style="font-size: 13px; color: ${this.theme.mutedTextColor}; margin-top: 2px;">${description}</div>
+      </div>
+    `;
+    
+    this.container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+      toast.style.transform = 'translateX(0)';
+    });
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(120%)';
+      setTimeout(() => toast.remove(), 400);
+    }, 4000);
+  }
+
+  public createGameMenu(title: string, options: { text: string; onClick: () => void; color?: string }[]): HTMLElement | null {
+    if (!this.container || typeof document === 'undefined') return null;
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = `
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 3000; opacity: 0; transition: opacity 0.3s;
+      pointer-events: auto;
+    `;
+
+    const titleEl = document.createElement('h1');
+    titleEl.innerText = title;
+    titleEl.style.cssText = `font-size: 48px; font-weight: 800; color: white; margin-bottom: 40px; text-shadow: 0 4px 20px rgba(0,0,0,0.5);`;
+
+    const menuContainer = document.createElement('div');
+    menuContainer.style.cssText = `display: flex; flex-direction: column; gap: 16px; width: 300px;`;
+
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.innerText = opt.text;
+      const baseBg = opt.color || 'rgba(255, 255, 255, 0.1)';
+      btn.style.cssText = `
+        padding: 16px 24px; font-size: 18px; font-weight: 600; color: white;
+        background: ${baseBg}; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px; cursor: pointer; transition: all 0.2s;
+        text-align: center;
+      `;
+      btn.onmouseenter = () => { btn.style.transform = 'scale(1.05)'; btn.style.background = opt.color ? opt.color : 'rgba(255,255,255,0.2)'; };
+      btn.onmouseleave = () => { btn.style.transform = 'scale(1)'; btn.style.background = baseBg; };
+      btn.onclick = () => {
+        backdrop.style.opacity = '0';
+        setTimeout(() => { backdrop.remove(); opt.onClick(); }, 300);
+      };
+      menuContainer.appendChild(btn);
+    });
+
+    backdrop.appendChild(titleEl);
+    backdrop.appendChild(menuContainer);
+    this.container.appendChild(backdrop);
+
+    requestAnimationFrame(() => { backdrop.style.opacity = '1'; });
+    return backdrop;
+  }
+
   public clear(): void {
     if (this.container) {
       this.container.innerHTML = '';

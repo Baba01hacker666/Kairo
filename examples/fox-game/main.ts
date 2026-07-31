@@ -8,51 +8,10 @@ import { Serializer } from '@kairo/core';
 import { ALL_LEVELS, LevelDefinition, LevelElement, WORLD_NAMES } from './levels.ts';
 import { MOVE_ARRIVAL_EPSILON, canAcceptMoveInput, toCardinalMove } from './movement.ts';
 
-// Save state format
-interface GameProgress {
-  unlockedLevel: number;
-  levelStars: Record<number, number>;
-  totalAvocados: number;
-  achievements: Record<string, boolean>;
-}
-
-const SAVE_KEY = 'kairo_fox_puzzle_progress';
-
-function loadProgress(): GameProgress {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) {
-      const envelope = JSON.parse(raw);
-      const verified = Serializer.verifyAndUnwrapSave<GameProgress>(envelope);
-      if (verified.valid && verified.payload) {
-        return verified.payload;
-      }
-    }
-  } catch (e) {
-    console.warn('Could not load save progress:', e);
-  }
-  return {
-    unlockedLevel: 1,
-    levelStars: {},
-    totalAvocados: 0,
-    achievements: {}
-  };
-}
-
-function saveProgress(progress: GameProgress): void {
-  try {
-    const envelope = Serializer.createSaveEnvelope(progress);
-    localStorage.setItem(SAVE_KEY, JSON.stringify(envelope));
-  } catch (e) {
-    console.warn('Could not save progress:', e);
-  }
-}
-
 // Mobile Performance & Touch Detection
 const isMobile = typeof navigator !== 'undefined' && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768);
 
 // Game State
-let progress: GameProgress = loadProgress();
 let currentLevelIndex = 0;
 let currentLevel: LevelDefinition = ALL_LEVELS[currentLevelIndex];
 
@@ -146,11 +105,16 @@ let aiRecordingTimeout: any = null;
 const app = new KairoApp({
   canvas: 'game-canvas',
   background: 0x09090b,
-  shadows: !isMobile, // Disable dynamic shadows on mobile for 60 FPS
+  gravity: [0, -18, 0],
+  shadows: !isMobile,
   fogColor: 0x09090b,
+  gameId: 'fox_puzzle',
   fogNear: 20,
   fogFar: 80
 });
+
+app.save.defineAchievement({ id: 'first_level', title: 'A New Journey', description: 'Clear Level 1', icon: '🦊' });
+app.save.defineAchievement({ id: 'collector', title: 'Avocado Collector', description: 'Collect 10 avocados', icon: '🥑' });
 
 if (isMobile) {
   app.renderer.setPixelRatio(1.0); // Clamp pixel ratio to 1.0 on mobile to prevent 4K canvas lag
@@ -979,12 +943,18 @@ function checkGoalCondition(): void {
 
     const stars = avocadosCollected >= 3 ? (moveCount <= currentLevel.parMoves ? 3 : 2) : 1;
 
-    if (progress.unlockedLevel <= currentLevelIndex + 1 && currentLevelIndex + 1 < ALL_LEVELS.length) {
-      progress.unlockedLevel = currentLevelIndex + 2;
+    const unlockedLevel = app.save.getProgress('unlockedLevel', 1) as number;
+    if (unlockedLevel <= currentLevelIndex + 1 && currentLevelIndex + 1 < ALL_LEVELS.length) {
+      app.save.setProgress('unlockedLevel', currentLevelIndex + 2);
     }
-    progress.levelStars[currentLevel.id] = Math.max(progress.levelStars[currentLevel.id] || 0, stars);
-    progress.totalAvocados += avocadosCollected;
-    saveProgress(progress);
+    const levelStars = app.save.getProgress('levelStars', {}) as Record<number, number>;
+    levelStars[currentLevel.id] = Math.max(levelStars[currentLevel.id] || 0, stars);
+    app.save.setProgress('levelStars', levelStars);
+    
+    app.save.setProgress('totalAvocados', (app.save.getProgress('totalAvocados', 0) as number) + avocadosCollected);
+
+    if (currentLevelIndex === 0) app.save.unlockAchievement('first_level', app.ui);
+    if ((app.save.getProgress('totalAvocados', 0) as number) >= 10) app.save.unlockAchievement('collector', app.ui);
 
     if (!isAiAutoPlay) {
       app.ui.createModal(
@@ -1046,6 +1016,7 @@ document.getElementById('btn-hint')?.addEventListener('click', () => {
   app.ui.createModal('💡 Dynamic Level Hint', currentLevel.hint, [{ text: 'Got it!', primary: true, onClick: () => {} }]);
 });
 document.getElementById('btn-levels')?.addEventListener('click', showLevelSelectModal);
+document.getElementById('btn-menu')?.addEventListener('click', showSystemGameMenu);
 document.getElementById('btn-settings')?.addEventListener('click', showSettingsModal);
 
 // Mobile Touch Action Buttons
@@ -1136,9 +1107,11 @@ window.addEventListener('touchend', () => { isTouchingCamera = false; });
 // Level Select Modal
 function showLevelSelectModal(): void {
   let gridHtml = '<div class="level-grid">';
+  const unlockedLevel = app.save.getProgress('unlockedLevel', 1) as number;
+  const levelStars = app.save.getProgress('levelStars', {}) as Record<number, number>;
   ALL_LEVELS.forEach((lvl, idx) => {
-    const isUnlocked = idx + 1 <= progress.unlockedLevel;
-    const stars = progress.levelStars[lvl.id] || 0;
+    const isUnlocked = idx + 1 <= unlockedLevel;
+    const stars = levelStars[lvl.id] || 0;
     gridHtml += `
       <div class="level-card ${isUnlocked ? '' : 'locked'}" onclick="window.selectGameLevel(${idx})">
         <div style="font-weight: bold; font-size: 16px;">#${lvl.id}</div>
@@ -1150,14 +1123,28 @@ function showLevelSelectModal(): void {
   gridHtml += '</div>';
 
   (window as any).selectGameLevel = (idx: number) => {
-    if (idx + 1 <= progress.unlockedLevel) {
+    const unlockedLevel = app.save.getProgress('unlockedLevel', 1) as number;
+    if (idx + 1 <= unlockedLevel) {
       loadLevel(idx);
     } else {
       app.ui.showToast('Level Locked! Clear previous levels to unlock.', 2000, 'warning');
     }
   };
 
-  app.ui.createModal('🗺️ Select Level', gridHtml, [{ text: 'Close', primary: true, onClick: () => {} }]);
+  app.ui.createModal('🦊 Level Select', gridHtml, [{ text: 'Cancel', onClick: () => {} }]);
+}
+
+// System Game Menu
+function showSystemGameMenu(): void {
+  app.ui.createGameMenu('🦊 Fox Game Menu', [
+    { text: '▶ Resume Game', onClick: () => {} },
+    { text: '🗺️ Level Select', onClick: () => showLevelSelectModal() },
+    { text: '🔄 Restart Level', color: 'rgba(234, 179, 8, 0.2)', onClick: () => loadLevel(currentLevelIndex) },
+    { text: '❓ View Hint', onClick: () => {
+      app.audio.playSynthesizedSound('hint');
+      app.ui.createModal('💡 Dynamic Level Hint', currentLevel.hint, [{ text: 'Got it!', primary: true, onClick: () => {} }]);
+    } }
+  ]);
 }
 
 // Settings Modal
@@ -1337,6 +1324,7 @@ app.onUpdate((dt) => {
     if (app.input.isActionJustPressed('Interact')) performInteract();
     if (app.input.isActionJustPressed('Undo')) performUndo();
     if (app.input.isActionJustPressed('Restart')) loadLevel(currentLevelIndex);
+    if (app.input.isActionJustPressed('Menu')) showSystemGameMenu();
     if (app.input.isActionJustPressed('Hint')) {
       app.audio.playSynthesizedSound('hint');
       app.ui.createModal('💡 Dynamic Level Hint', currentLevel.hint, [{ text: 'Got it!', primary: true, onClick: () => {} }]);

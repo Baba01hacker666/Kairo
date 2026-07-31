@@ -17,6 +17,7 @@ export type InputAction =
   | 'Undo'
   | 'Restart'
   | 'Hint'
+  | 'Menu'
   | 'Pause';
 
 export class InputManager {

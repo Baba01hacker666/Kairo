@@ -7,3 +7,4 @@ export * from './ObjectPool.ts';
 export * from './KairoApp.ts';
 export * from './Serializer.ts';
 
+export * from './SaveSystem.ts';
