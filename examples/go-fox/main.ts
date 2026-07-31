@@ -60,8 +60,10 @@ function initThreeJS() {
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, 3, -6);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const maxPixelRatio = isMobileDevice ? 1.5 : 2;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
@@ -115,6 +117,27 @@ function initThreeJS() {
   trunk.receiveShadow = true;
   treePrefab.add(leaves, trunk);
 
+  const treeEntities: GoEntity[] = JSON.parse(window.kairo.getEntities()).filter((ent: GoEntity) => ent.type === 'tree');
+  const leafInstances = new THREE.InstancedMesh(treeGeo, treeMat, treeEntities.length);
+  const trunkInstances = new THREE.InstancedMesh(trunkGeo, trunkMat, treeEntities.length);
+  leafInstances.castShadow = true;
+  leafInstances.receiveShadow = true;
+  trunkInstances.castShadow = true;
+  trunkInstances.receiveShadow = true;
+  const treeMatrix = new THREE.Matrix4();
+  const treeQuaternion = new THREE.Quaternion();
+  const treeScale = new THREE.Vector3(1, 1, 1);
+  treeEntities.forEach((ent, index) => {
+    treeQuaternion.setFromEuler(new THREE.Euler(0, ent.rotY, 0));
+    treeMatrix.compose(new THREE.Vector3(ent.x, ent.y + 2, ent.z), treeQuaternion, treeScale);
+    leafInstances.setMatrixAt(index, treeMatrix);
+    treeMatrix.compose(new THREE.Vector3(ent.x, ent.y + 0.5, ent.z), treeQuaternion, treeScale);
+    trunkInstances.setMatrixAt(index, treeMatrix);
+  });
+  leafInstances.instanceMatrix.needsUpdate = true;
+  trunkInstances.instanceMatrix.needsUpdate = true;
+  scene.add(leafInstances, trunkInstances);
+
   const gltfLoader = new GLTFLoader();
 
   // Load Fox Template
@@ -148,7 +171,7 @@ function initThreeJS() {
   }, 100);
 }
 
-function spawnEntitiesFromGo(foxTemplate: THREE.Group, treeTemplate: THREE.Group, avocadoTemplate: THREE.Group) {
+function spawnEntitiesFromGo(foxTemplate: THREE.Group, _treeTemplate: THREE.Group, avocadoTemplate: THREE.Group) {
   const entities: GoEntity[] = JSON.parse(window.kairo.getEntities());
   
   for (const ent of entities) {
@@ -165,7 +188,7 @@ function spawnEntitiesFromGo(foxTemplate: THREE.Group, treeTemplate: THREE.Group
       currentAction = idleAction;
       currentAction.play();
     } else if (ent.type === 'tree') {
-      obj = treeTemplate.clone();
+      continue;
     } else {
       obj = avocadoTemplate.clone();
     }
@@ -233,16 +256,16 @@ function fadeToAction(newAction: THREE.AnimationAction, duration: number) {
 }
 
 function startGameLoop() {
-  const clock = new THREE.Clock();
+  const fixedDelta = 1 / 60;
+  const maxFrameDelta = 0.05;
+  let accumulator = 0;
+  let lastTime = performance.now() / 1000;
+  let previousEntities: GoEntity[] = JSON.parse(window.kairo.getEntities());
+  let currentEntities: GoEntity[] = previousEntities.map((ent) => ({ ...ent }));
+  const previousById = new Map<number, GoEntity>();
+  const currentById = new Map<number, GoEntity>();
 
-  function animate() {
-    requestAnimationFrame(animate);
-    const delta = clock.getDelta();
-
-    // 1. Prepare Input for Go
-    let dirX = 0;
-    let dirZ = 0;
-    
+  function readInputDirection() {
     const cameraDirection = new THREE.Vector3();
     camera.getWorldDirection(cameraDirection);
     cameraDirection.y = 0;
@@ -260,58 +283,65 @@ function startGameLoop() {
       if (keys.d) inputDir.add(cameraRight);
     }
 
-    dirX = inputDir.x;
-    dirZ = inputDir.z;
+    return { dirX: inputDir.x, dirZ: inputDir.z };
+  }
 
-    // 2. Call Go Update
-    window.kairo.update(delta, dirX, dirZ, keys.shift);
+  function animate() {
+    requestAnimationFrame(animate);
+    const now = performance.now() / 1000;
+    const frameDelta = Math.min(now - lastTime, maxFrameDelta);
+    lastTime = now;
+    accumulator += frameDelta;
 
-    // 3. Read State back from Go
-    const entities: GoEntity[] = JSON.parse(window.kairo.getEntities());
+    while (accumulator >= fixedDelta) {
+      previousEntities = currentEntities.map((ent) => ({ ...ent }));
+      const { dirX, dirZ } = readInputDirection();
+      window.kairo.update(fixedDelta, dirX, dirZ, keys.shift);
+      currentEntities = JSON.parse(window.kairo.getEntities());
+      accumulator -= fixedDelta;
+    }
+
+    previousById.clear();
+    currentById.clear();
+    previousEntities.forEach((ent) => previousById.set(ent.id, ent));
+    currentEntities.forEach((ent) => currentById.set(ent.id, ent));
+
+    const alpha = accumulator / fixedDelta;
     let playerObj: THREE.Object3D | null = null;
     let currentSpeed = 0;
 
-    for (const ent of entities) {
+    for (const ent of currentEntities) {
       const obj = objectMap.get(ent.id);
-      if (obj) {
-        if (!ent.active) {
-          obj.visible = false;
-        } else {
-          // Lerp position for super smooth rendering (even if Go tick rate drops)
-          // Here we just set it since Go delta is smooth
-          obj.position.set(ent.x, ent.y, ent.z);
-          obj.rotation.y = ent.rotY;
-        }
-        
-        if (ent.type === 'player') {
-          playerObj = obj;
-          currentSpeed = ent.speed;
-        }
+      if (!obj) continue;
+      const prev = previousById.get(ent.id) ?? ent;
+
+      obj.visible = ent.active;
+      if (ent.active) {
+        obj.position.set(
+          THREE.MathUtils.lerp(prev.x, ent.x, alpha),
+          THREE.MathUtils.lerp(prev.y, ent.y, alpha),
+          THREE.MathUtils.lerp(prev.z, ent.z, alpha)
+        );
+        obj.rotation.y = prev.rotY + Math.atan2(Math.sin(ent.rotY - prev.rotY), Math.cos(ent.rotY - prev.rotY)) * alpha;
+      }
+
+      if (ent.type === 'player') {
+        playerObj = obj;
+        currentSpeed = THREE.MathUtils.lerp(prev.speed, ent.speed, alpha);
       }
     }
 
     scoreElement.innerText = window.kairo.getScore().toString();
 
-    // 4. Update Animations & Camera based on Player State
     if (playerObj && mixer) {
       if (currentSpeed > 0.1) {
-        if (currentSpeed > 4.5 && runAction) {
-          fadeToAction(runAction, 0.2);
-        } else if (walkAction) {
-          fadeToAction(walkAction, 0.2);
-        }
-      } else if (idleAction) {
-        fadeToAction(idleAction, 0.2);
-      }
-      mixer.update(delta);
+        if (currentSpeed > 4.5 && runAction) fadeToAction(runAction, 0.2);
+        else if (walkAction) fadeToAction(walkAction, 0.2);
+      } else if (idleAction) fadeToAction(idleAction, 0.2);
+      mixer.update(frameDelta);
 
-      // Hard lock the target to the player's head area
       const idealTarget = new THREE.Vector3(playerObj.position.x, playerObj.position.y + 1.5, playerObj.position.z);
-      
-      // Calculate how much the target moved this frame
       const targetDiff = idealTarget.clone().sub(controls.target);
-      
-      // Move both target and camera by the exact difference to prevent zooming in/out
       controls.target.copy(idealTarget);
       camera.position.add(targetDiff);
     }
@@ -327,6 +357,9 @@ window.addEventListener('resize', () => {
   if (camera && renderer) {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const maxPixelRatio = isMobileDevice ? 1.5 : 2;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 });
