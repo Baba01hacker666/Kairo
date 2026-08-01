@@ -3,6 +3,7 @@ import {
   Engine as BabylonEngine,
   Scene,
   Vector3,
+  VirtualJoysticksCamera,
   UniversalCamera,
   HemisphericLight,
   MeshBuilder,
@@ -34,37 +35,57 @@ async function init() {
   const hk = new HavokPlugin(true, havokInstance);
   scene.enablePhysics(new Vector3(0, -9.81, 0), hk);
 
-  // 4. Setup Camera (UniversalCamera supports touch joysticks automatically on mobile)
-  const camera = new UniversalCamera("camera", new Vector3(0, 2, -10), scene);
+  // 4. Setup Camera
+  // Using VirtualJoysticksCamera forces on-screen joysticks to appear on all touch devices
+  const camera = new VirtualJoysticksCamera("camera", new Vector3(0, 2, -10), scene);
   camera.setTarget(new Vector3(0, 2, 0));
   camera.attachControl(canvas, true);
   camera.minZ = 0.1;
-  camera.speed = 0.5;
+  camera.speed = 0.8;
   
-  // Add a player collision body (capsule)
-  const playerMesh = MeshBuilder.CreateCapsule("player", { height: 2, radius: 0.5 }, scene);
-  playerMesh.isVisible = false;
-  const playerAgg = new PhysicsAggregate(playerMesh, PhysicsShapeType.CAPSULE, { mass: 50, friction: 0 }, scene);
+  // 4.5 Build a reliable Procedural Gun (so there is ALWAYS a gun visible)
+  const gunMesh = new Mesh("gunRoot", scene);
+  gunMesh.parent = camera;
+  gunMesh.position = new Vector3(0.5, -0.4, 1.2);
   
-  // Lock rotation so player doesn't tip over
-  playerAgg.body.setMassProperties({ inertia: new Vector3(0,0,0) });
-
-  // 4.5 Load Gun Model
-  let gunMesh: Mesh | null = null;
+  const barrel = MeshBuilder.CreateCylinder("barrel", { height: 1.5, diameter: 0.15 }, scene);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.z = 0.5;
+  barrel.parent = gunMesh;
+  
+  const body = MeshBuilder.CreateBox("body", { width: 0.2, height: 0.3, depth: 0.8 }, scene);
+  body.parent = gunMesh;
+  
+  const handle = MeshBuilder.CreateBox("handle", { width: 0.15, height: 0.4, depth: 0.2 }, scene);
+  handle.position.y = -0.2;
+  handle.position.z = -0.2;
+  handle.rotation.x = Math.PI / 8;
+  handle.parent = gunMesh;
+  
+  const gunMat = new StandardMaterial("gunMat", scene);
+  gunMat.diffuseColor = new Color3(0.2, 0.2, 0.2);
+  gunMat.specularColor = new Color3(0.5, 0.5, 0.5);
+  barrel.material = gunMat;
+  body.material = gunMat;
+  handle.material = gunMat;
+  
+  // Try to load M4A1.obj, if it works, hide the procedural gun and use the loaded one
   try {
     const gunResult = await SceneLoader.ImportMeshAsync("", "/models/", "M4A1.obj", scene);
-    gunMesh = gunResult.meshes[0] as Mesh;
-    
-    // Attach gun to the camera
-    gunMesh.parent = camera;
-    
-    // Position it in the bottom-right of the screen like a standard FPS
-    // Adjusted scale and position for M4A1
-    gunMesh.position = new Vector3(0.5, -0.5, 1.5);
-    gunMesh.scaling = new Vector3(0.01, 0.01, 0.01); // OBJ files are usually huge
-    gunMesh.rotation = new Vector3(0, Math.PI, 0);
+    if (gunResult.meshes.length > 0) {
+      const loadedGun = gunResult.meshes[0] as Mesh;
+      loadedGun.parent = camera;
+      loadedGun.position = new Vector3(0.5, -0.5, 1.5);
+      loadedGun.scaling = new Vector3(0.01, 0.01, 0.01); 
+      loadedGun.rotation = new Vector3(0, Math.PI, 0);
+      
+      // Hide procedural gun
+      barrel.isVisible = false;
+      body.isVisible = false;
+      handle.isVisible = false;
+    }
   } catch (e) {
-    console.error("Failed to load M4A1.obj model:", e);
+    console.warn("Failed to load M4A1.obj model, falling back to procedural gun.", e);
   }
 
   // 5. Lighting
@@ -155,14 +176,10 @@ async function init() {
     if (e.button === 0) shoot();
   });
 
-  // 9. Sync camera to player physics body
+  // 9. Keep camera height locked to simulate walking on ground
   scene.onBeforeRenderObservable.add(() => {
-    // Sync camera to player mesh position
-    camera.position.x = playerMesh.position.x;
-    camera.position.z = playerMesh.position.z;
-    camera.position.y = playerMesh.position.y + 1; // Eye level
-    
-    // Instead of free flying, lock the player's y velocity if they jump (optional)
+    // Lock the Y axis so players can't fly up into the air
+    camera.position.y = 2.0; 
   });
 
   // Handle Resize
