@@ -18,7 +18,8 @@ export default defineConfig({
         gofox: 'examples/go-fox/index.html',
         gdp: 'examples/gdp-explainer/index.html',
         babylonhavok: 'examples/babylon-havok/index.html',
-        babylonshooter: 'examples/babylon-shooter/index.html'
+        babylonshooter: 'examples/babylon-shooter/index.html',
+        goraylib: 'examples/go-raylib-tester/index.html'
       },
       output: {
         manualChunks(id) {

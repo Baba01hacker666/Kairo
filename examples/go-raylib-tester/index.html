@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go + Raylib System Tester - Kairo Engine</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #090d16;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+    }
+
+    /* Header Nav */
+    header {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: white;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #00ADD8, #3b82f6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      box-shadow: 0 0 16px rgba(0, 173, 216, 0.4);
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #e0f2fe, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-btn {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      color: white;
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+    }
+
+    /* Main Container */
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+
+    /* Canvas Wrapper */
+    .canvas-wrapper {
+      position: relative;
+      width: 1024px;
+      height: 768px;
+      background: #020617;
+      border-radius: 16px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.15);
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(9, 13, 22, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 10;
+      transition: opacity 0.4s ease;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #93c5fd;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Controls Toolbar */
+    .toolbar {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .tab-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .tab-btn {
+      background: rgba(30, 41, 59, 0.8);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      background: rgba(51, 65, 85, 1);
+      color: white;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      border-color: #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .action-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .act-btn {
+      background: rgba(30, 41, 59, 0.6);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .act-btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: #94a3b8;
+    }
+
+    /* Key Legend Box */
+    .legend-box {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .kbd {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #38bdf8;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="../../index.html" class="brand">
+      <div class="brand-logo">RL</div>
+      <div class="brand-title">Kairo Engine • Raylib Go Tester</div>
+    </a>
+    <div class="nav-actions">
+      <a href="../../index.html" class="back-btn">← Back to Hub</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="canvas-wrapper">
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Initializing Golang WebAssembly Raylib Engine...</div>
+      </div>
+      <canvas id="canvas" width="1024" height="768"></canvas>
+    </div>
+
+    <div class="toolbar">
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="switchTestMode(0, this)">
+          <span>⚽</span> 2D Physics Engine
+        </button>
+        <button class="tab-btn" onclick="switchTestMode(1, this)">
+          <span>🧊</span> 3D Raylib Scene
+        </button>
+        <button class="tab-btn" onclick="switchTestMode(2, this)">
+          <span>⚡</span> ECS Stress Test
+        </button>
+        <button class="tab-btn" onclick="switchTestMode(3, this)">
+          <span>📡</span> 360° Raycasting
+        </button>
+      </div>
+
+      <div class="action-group">
+        <button class="act-btn" onclick="resetCurrentTest()">↺ Reset Scene</button>
+      </div>
+    </div>
+
+    <div class="legend-box">
+      <div class="legend-item"><span class="kbd">1</span> Mode 1: 2D RigidBody Elastic Bouncing</div>
+      <div class="legend-item"><span class="kbd">2</span> Mode 2: 3D Wireframe/Shaded Mesh Camera</div>
+      <div class="legend-item"><span class="kbd">3</span> Mode 3: ECS Swarm (+UP/-DOWN arrows)</div>
+      <div class="legend-item"><span class="kbd">4</span> Mode 4: Dynamic 360° Laser Raycasting</div>
+      <div class="legend-item"><span class="kbd">CLICK</span> Mouse Spawn / Move Laser Emitter</div>
+      <div class="legend-item"><span class="kbd">W / S</span> Camera Height in 3D Mode</div>
+    </div>
+  </div>
+
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go();
+    const wasmPath = '/wasm/go-raylib-tester.wasm';
+
+    WebAssembly.instantiateStreaming(fetch(wasmPath), go.importObject)
+      .then(result => {
+        go.run(result.instance);
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 400);
+      })
+      .catch(err => {
+        console.error('WASM Load Error:', err);
+        document.querySelector('.loading-text').innerText = 'Failed to load WebAssembly binary.';
+      });
+
+    function switchTestMode(modeIndex, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (window.kairoRaylib && window.kairoRaylib.setMode) {
+        window.kairoRaylib.setMode(modeIndex);
+      }
+    }
+
+    function resetCurrentTest() {
+      if (window.kairoRaylib && window.kairoRaylib.reset2D) {
+        window.kairoRaylib.reset2D();
+      }
+    }
+  </script>
+</body>
+</html>
