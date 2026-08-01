@@ -1,49 +1,68 @@
 # Kairo Engine 🚀
 
-**Kairo** is an experimental, high-performance, modular 2D/3D Game Engine built for the modern web. Over the course of its development, Kairo evolved from a standard TypeScript Entity-Component-System (ECS) into a **Hybrid Web Game Engine** that combines the raw performance of WebAssembly with the cinematic graphics of WebGL.
+**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 15 modular `@kairo/*` engine packages, 14 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
 
-🌍 **Live Demo & Hub:** [Play Kairo Engine Examples Here!](https://Baba01hacker666.github.io/Kairo/)
-
----
-
-## 🏗️ Architecture
-
-Kairo currently features multiple rendering and logic paradigms to demonstrate different ways to build web games:
-
-1. **The Pure TypeScript ECS (`@kairo/core`)**
-   A textbook Entity-Component-System architecture written entirely in TypeScript. It supports basic 3D primitives, WebGPU/WebGL rendering, physics integrations (Cannon-es), and component-based logic.
-
-2. **The Go WASM Software Renderer (`examples/go-wasm`)**
-   A full 3D software rendering engine written entirely in Golang. It compiles to WebAssembly, does all vertex transformations and rasterization manually on the CPU, and paints directly to an HTML5 Canvas 2D context.
-
-3. **The High-Fidelity WebGL Pipeline (`examples/high-quality-render`)**
-   A stunning rendering pipeline utilizing Three.js. It features Physically Based Rendering (PBR), soft shadows, environment mapping, and native support for complex skeletal animations via `.glb` (GLTF) files.
-
-4. **The Hybrid Engine (`examples/go-fox`)**
-   The crown jewel of Kairo. It completely decouples Game Logic from Graphics by running a **Golang WebAssembly Backend** for physics, collisions, and state management, while a **Three.js TypeScript Frontend** handles the cinematic rendering and animations.
+🌍 **Live Hub & Studio Editor:** [Play Kairo Engine Demos & Studio Here!](https://Baba01hacker666.github.io/Kairo/)
 
 ---
 
-## 🎮 Playable Examples
+## 🏗️ Monorepo Architecture (`@kairo/*` Packages)
 
-You can access all examples from the main hub page, but here are the highlights:
+Kairo is built from 15 decoupled, modular packages:
 
-- 🦊 **Go + Three.js Fox:** A playable third-person platformer where you control an animated Fox to collect floating Avocados in a forest. The physics are powered by Go (WASM), while the graphics are powered by Three.js. Includes mobile touch controls (Virtual Joystick)!
-- 🌸 **Cherry Blossoms:** A beautiful, cinematic scene utilizing Kairo's custom animation API to simulate falling cherry blossom petals.
-- 🏃 **Go Runner:** An infinite runner game rendered entirely in software (CPU) via Golang WebAssembly. 
-- 🕹️ **Stickman Game:** A simple test of the pure TypeScript Kairo Engine ECS and physics wrappers.
+1. **`@kairo/core`**: Engine loop (`Engine`), High-level app wrapper (`KairoApp`), EventSystem, Vector/Quaternion math, ObjectPool, SaveSystem, and Serializer.
+2. **`@kairo/ecs`**: Fast Component-Entity-System pipeline with Query indexing, World state management, and archetypes.
+3. **`@kairo/renderer`**: WebGL 2.0 & WebGPU render pipeline, PBR materials, dynamic frustum culling, soft shadows, and particle emitters.
+4. **`@kairo/physics`**: 3D & 2D physics simulation world with RigidBodies, Colliders, Raycasting, and Cannon.js / Havok integrations.
+5. **`@kairo/animation`**: Keyframe animation clips, 1D/2D BlendTrees, skeletal joint hierarchies, and state machines.
+6. **`@kairo/audio`**: Web Audio API spatial synth, HRTF 3D positional sound, background music track manager, and SFX generator.
+7. **`@kairo/input`**: Unified input manager for Keyboard, Mouse, Touch, Virtual Joystick, and Gamepad API.
+8. **`@kairo/ai`**: A* NavMesh pathfinding grid solver, behavior tree nodes (Sequence, Selector, Action), and state machines.
+9. **`@kairo/network`**: Client prediction, WebSocket transport client, state interpolator, RPC routing, and snapshot reconciliation.
+10. **`@kairo/assets`**: Preloader and caching manager for `.glb`/`.gltf` models, textures, audio buffers, and binary files.
+11. **`@kairo/plugins`**: Plugin architecture with lifecycle hooks (`onLoad`, `onUpdate`, `onRender`, `onUnload`) and dependency tracking.
+12. **`@kairo/ui`**: High-performance HTML5 overlay UI framework, toast notifications, modals, achievements, and game HUD menus.
+13. **`@kairo/tools`**: Real-time CPU/GPU Profiler map, AOT Engine Compiler, MeshCompressor, and 60 FPS WebGL ScreenRecorder.
+14. **`packages/go-raylib`**: Native Golang WebAssembly Raylib API bindings and math library.
+15. **`packages/c-raylib`**: Native C/C++ Raylib bindings.
+
+---
+
+## 🎛️ Kairo Studio & Web Editor (`/editor/`)
+
+Kairo features a complete in-browser game studio editor:
+- **Scene Hierarchy**: Dynamic 3D entity & object tree inspection and creation.
+- **Inspector Panel**: Real-time property editing for transforms, components, and materials.
+- **Dual Viewport**: Toggle between 3D WebGL Web Studio and 2D Canvas Engine viewports.
+- **Animation & Physics Tools**: Motion speed controls, IK elevation, particle sliders, and joint state monitors.
+- **Playable Demos**: Play embedded platformer games with touch/keyboard controls directly inside the studio.
+
+---
+
+## 🎮 Playable Examples (`examples/`)
+
+Access all 14 interactive demos from the main hub page (`index.html`):
+
+- 🎛️ **Kairo Studio & Web Editor**: Dual 2D/3D visual level editor and game studio.
+- 🦊 **Go + Three.js Fox Adventure**: Hybrid WASM physics backend with Three.js rendering & GLTF animations.
+- 🔥 **Go + Raylib System Tester**: WebAssembly test suite & drawing engine powered by Go & Raylib.
+- 🤸 **Modern Stickman 3D**: 2.5D physics platformer with custom character rigs and touch controls.
+- 🏃 **3D Infinite Runner**: CPU software-rendered infinite runner written in pure Go WebAssembly.
+- 🐹 **Golang WASM 3D Renderer**: Custom CPU rasterizer and 3D software rendering engine in Go.
+- 🔮 **Babylon.js + Havok**: High-fidelity physics simulation with Babylon.js and Havok WASM.
+- 🔫 **Mobile Shooter FPS**: Mobile dual-joystick FPS with physics projectile ballistics.
+- 🧠 **AI Pathfinding & BT Studio**: Interactive A* NavMesh grid painter and live Behavior Tree monitor.
+- 🚀 **Sci-Fi 3D Explorer**: Cyberpunk space station explorer with volumetric light pillars and drone physics.
+- 🌸 **Cinematic Cherry Blossoms**: Particle emission and keyframe animation demo.
+- ✨ **High-Quality PBR Render**: Physically Based Rendering with soft shadows and skeletal GLTF animation.
+- 📊 **GDP Engine Architecture Explainer**: Interactive engine cycle and ECS visualizer with voiceover.
+- 📦 **Super Easy Starter API Demo**: Beginner-friendly physics scene using `KairoApp`.
+- 🌲 **Pure TS Fox Game**: Third-person platformer game engine implementation in pure TypeScript.
 
 ---
 
 ## 🚀 Running Locally
 
-Kairo uses `vite` for fast bundling and hot-module replacement.
-
-### Prerequisites
-- Node.js (v18+)
-- Golang (v1.21+) - *Only required if you plan on recompiling the WASM files.*
-
-### Setup
 ```bash
 # Clone the repository
 git clone https://github.com/Baba01hacker666/Kairo.git
@@ -52,26 +71,16 @@ cd Kairo
 # Install dependencies
 npm install
 
-# Start the local development server
+# Start local development server
 npm run dev
-```
-Open `http://localhost:5173` in your browser to see the hub!
 
-### Compiling WebAssembly (Optional)
-If you edit `examples/go-fox/main.go` or `examples/go-runner/main.go`, you must recompile them into WebAssembly:
-```bash
-cd examples/go-fox
-GOOS=js GOARCH=wasm go build -o ../../public/wasm/go-fox.wasm main.go
-```
+# Run unit test suite (26 tests)
+npm test
 
-## 🛠️ Building for Production
-
-To build the static assets for deployment (e.g., GitHub Pages):
-```bash
+# Build production bundle
 npm run build
 ```
-This will compile all TypeScript, bundle the assets, and place the final distributable files in the `dist/` directory.
 
 ---
 
-*Built with ❤️ and a lot of caffeine.*
+*Built with TypeScript, Golang, WebAssembly, WebGL & Three.js.*

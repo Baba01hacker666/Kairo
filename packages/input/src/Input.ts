@@ -126,7 +126,12 @@ export class InputManager {
 
   public isActionJustPressed(actionName: InputAction): boolean {
     const keys = this.actionBindings.get(actionName) || [];
-    return keys.some(k => this.isKeyJustPressed(k));
+    return keys.some(k => {
+      if (k.startsWith('Mouse')) {
+        return this.mouseButtonsJustPressed.has(parseInt(k.replace('Mouse', '')));
+      }
+      return this.isKeyJustPressed(k);
+    });
   }
 
   public getMovementVector(): Vector2 {

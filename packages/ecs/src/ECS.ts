@@ -139,6 +139,9 @@ export class World {
   }
 
   setParent(child: EntityId, parent: EntityId | null): void {
+    // Prevent creating parent/child cycles which would make destroyEntity recurse forever
+    if (parent !== null && (parent === child || this.isDescendant(parent, child))) return;
+
     const oldParent = this.parents.get(child);
     if (oldParent !== undefined) {
       this.children.get(oldParent)?.delete(child);
@@ -149,6 +152,15 @@ export class World {
     } else {
       this.parents.delete(child);
     }
+  }
+
+  private isDescendant(node: EntityId, ancestor: EntityId): boolean {
+    let current = this.parents.get(node);
+    while (current !== undefined) {
+      if (current === ancestor) return true;
+      current = this.parents.get(current);
+    }
+    return false;
   }
 
   getParent(child: EntityId): EntityId | undefined {
@@ -162,6 +174,10 @@ export class World {
 
   addComponent<T>(entity: EntityId, component: T): T {
     const cType = (component as any).constructor as ComponentType<T>;
+    // Re-adding a component supersedes any disabled instance of the same type,
+    // otherwise enableComponent would resurrect the old one and overwrite this.
+    this.disabledComponents.get(cType)?.delete(entity);
+
     if (!this.components.has(cType)) {
       this.components.set(cType, new Map());
     }
@@ -290,6 +306,35 @@ export class World {
     return results;
   }
 
+  /**
+   * Ultra-High Performance Direct Dual-Component Fast Iterator
+   * Avoids query array allocations and map lookup overheads for 100,000+ entities
+   */
+  each2<A, B>(
+    CompA: ComponentType<A>,
+    CompB: ComponentType<B>,
+    callback: (entity: EntityId, compA: A, compB: B) => void
+  ): void {
+    const storageA = this.components.get(CompA);
+    const storageB = this.components.get(CompB);
+    if (!storageA || !storageB) return;
+
+    const [smaller, larger, isASmaller] = storageA.size <= storageB.size
+      ? [storageA, storageB, true]
+      : [storageB, storageA, false];
+
+    for (const [entity, item] of smaller) {
+      const other = larger.get(entity);
+      if (other !== undefined) {
+        if (isASmaller) {
+          callback(entity, item as A, other as B);
+        } else {
+          callback(entity, other as A, item as B);
+        }
+      }
+    }
+  }
+
 
 
   addSystem(system: System): this {
@@ -317,6 +362,14 @@ export class World {
     this.update(delta, SystemStage.PreUpdate);
     this.update(delta, SystemStage.Update);
     this.update(delta, SystemStage.PostUpdate);
+  }
+
+  /**
+   * Run systems scheduled for the fixed-timestep stage. Wire this to the
+   * engine's fixedUpdate event so physics-tied systems advance at a stable rate.
+   */
+  updateFixed(delta: number): void {
+    this.update(delta, SystemStage.FixedUpdate);
   }
 
   get entityCount(): number {

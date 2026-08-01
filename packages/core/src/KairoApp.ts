@@ -214,13 +214,25 @@ export class KairoApp {
       this.physics.registerBody(rb, col, new Vector3(...mesh.position.toArray()));
 
       // Sync physics body to visual mesh
-      this.engine.events.on('update', () => {
+      const unsubscribe = this.engine.events.on('update', () => {
         if (rb.cannonBody) {
           mesh.position.set(rb.cannonBody.position.x, rb.cannonBody.position.y, rb.cannonBody.position.z);
           mesh.quaternion.set(rb.cannonBody.quaternion.x, rb.cannonBody.quaternion.y, rb.cannonBody.quaternion.z, rb.cannonBody.quaternion.w);
         }
       });
-      return { mesh, rb, col };
+
+      return {
+        mesh,
+        rb,
+        col,
+        dispose: () => {
+          unsubscribe();
+          this.scene.remove(mesh);
+          this.physics.unregisterBody(rb);
+          mesh.geometry.dispose();
+          (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach(m => m.dispose());
+        }
+      };
     }
     return { mesh };
   }

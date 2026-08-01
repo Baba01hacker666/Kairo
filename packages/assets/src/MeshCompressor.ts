@@ -46,6 +46,25 @@ export class MeshCompressor {
     return compressedGeo;
   }
 
+  private static remapAttributes(geometry: THREE.BufferGeometry, indices: number[], newVertexCount: number): void {
+    for (const name of Object.keys(geometry.attributes)) {
+      if (name === 'position') continue;
+      const attr = geometry.attributes[name];
+      if (!attr || typeof attr.count !== 'number') continue;
+
+      const itemSize = attr.itemSize;
+      const newArray = new (attr.array.constructor as new (length: number) => ArrayLike<number>)(newVertexCount * itemSize);
+      for (let i = 0; i < indices.length; i++) {
+        const src = i * itemSize;
+        const dst = indices[i] * itemSize;
+        for (let k = 0; k < itemSize; k++) {
+          (newArray as any)[dst + k] = attr.array[src + k];
+        }
+      }
+      geometry.setAttribute(name, new THREE.BufferAttribute(newArray as any, itemSize, attr.normalized));
+    }
+  }
+
   /**
    * Optimize and merge duplicate vertices in a 3D mesh.
    */
@@ -69,18 +88,22 @@ export class MeshCompressor {
         const z = parseFloat(positionAttr.getZ(i).toFixed(4));
         const key = `${x},${y},${z}`;
 
-        if (vertexMap.has(key)) {
-          indices.push(vertexMap.get(key)!);
-        } else {
-          vertexMap.set(key, nextIndex);
-          indices.push(nextIndex);
+        let newIndex = vertexMap.get(key);
+        if (newIndex === undefined) {
+          newIndex = nextIndex++;
+          vertexMap.set(key, newIndex);
           newPositions.push(x, y, z);
-          nextIndex++;
         }
+        indices.push(newIndex);
       }
 
       geo.setIndex(indices);
       geo.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+
+      // Keep every other attribute aligned with the compacted positions.
+      // Merging by position alone would otherwise leave normal/uv/color with a
+      // mismatched vertex count, breaking rendering.
+      this.remapAttributes(geo, indices, nextIndex);
     }
 
     const compressedVertices = geo.getAttribute('position')?.count || 0;

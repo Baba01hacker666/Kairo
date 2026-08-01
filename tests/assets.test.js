@@ -13,6 +13,21 @@ test('AssetManager instance API methods', () => {
   assert.strictEqual(typeof manager.loadImage, 'function');
   assert.strictEqual(typeof manager.loadJSON, 'function');
   assert.strictEqual(typeof manager.loadText, 'function');
+  assert.strictEqual(typeof manager.autoFitModel, 'function');
+  assert.strictEqual(typeof manager.generateAutoCollider, 'function');
+});
+
+test('AssetManager autoFitModel and generateAutoCollider', () => {
+  const manager = new AssetManager();
+  const geo = new THREE.BoxGeometry(4, 10, 2);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+
+  const bounds = manager.autoFitModel(mesh, 2.0); // Target height 2.0m
+  assert.strictEqual(Math.round(bounds.height), 2);
+
+  const collider = manager.generateAutoCollider(mesh);
+  assert.strictEqual(collider.height, bounds.height);
+  assert.ok(collider.type === 'capsule' || collider.type === 'box');
 });
 
 test('MeshCompressor vertex optimization & quantization', () => {

@@ -245,8 +245,16 @@ export class Quaternion {
   }
 
   slerp(qb: Quaternion, t: number): this {
+    // Follow the shortest arc: flip the target when the quaternions are
+    // more than 90 degrees apart so we never interpolate the long way around.
+    let target = qb;
     let cosHalfTheta = this.w * qb.w + this.x * qb.x + this.y * qb.y + this.z * qb.z;
-    if (Math.abs(cosHalfTheta) >= 1.0) {
+    if (cosHalfTheta < 0) {
+      target = new Quaternion(-qb.x, -qb.y, -qb.z, -qb.w);
+      cosHalfTheta = -cosHalfTheta;
+    }
+
+    if (cosHalfTheta >= 1.0) {
       return this;
     }
 
@@ -254,20 +262,20 @@ export class Quaternion {
     const sinHalfTheta = Math.sqrt(1.0 - cosHalfTheta * cosHalfTheta);
 
     if (Math.abs(sinHalfTheta) < 0.001) {
-      this.w = this.w * 0.5 + qb.w * 0.5;
-      this.x = this.x * 0.5 + qb.x * 0.5;
-      this.y = this.y * 0.5 + qb.y * 0.5;
-      this.z = this.z * 0.5 + qb.z * 0.5;
+      this.w = this.w * 0.5 + target.w * 0.5;
+      this.x = this.x * 0.5 + target.x * 0.5;
+      this.y = this.y * 0.5 + target.y * 0.5;
+      this.z = this.z * 0.5 + target.z * 0.5;
       return this;
     }
 
     const ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta;
     const ratioB = Math.sin(t * halfTheta) / sinHalfTheta;
 
-    this.w = this.w * ratioA + qb.w * ratioB;
-    this.x = this.x * ratioA + qb.x * ratioB;
-    this.y = this.y * ratioA + qb.y * ratioB;
-    this.z = this.z * ratioA + qb.z * ratioB;
+    this.w = this.w * ratioA + target.w * ratioB;
+    this.x = this.x * ratioA + target.x * ratioB;
+    this.y = this.y * ratioA + target.y * ratioB;
+    this.z = this.z * ratioA + target.z * ratioB;
 
     return this;
   }
@@ -414,9 +422,58 @@ export class Ray {
   public origin: Vector3;
   public direction: Vector3;
 
-  constructor(origin: Vector3 = new Vector3(), direction: Vector3 = new Vector3(0, 0, -1)) {
-    this.origin = origin;
-    this.direction = direction;
+  constructor(origin: Vector3 | { x: number; y: number; z: number } = new Vector3(), direction: Vector3 | { x: number; y: number; z: number } = new Vector3(0, 0, -1)) {
+    this.origin = origin instanceof Vector3 ? origin : new Vector3(origin.x, origin.y, origin.z);
+    this.direction = direction instanceof Vector3 ? direction : new Vector3(direction.x, direction.y, direction.z);
+  }
+
+  intersectBox(box: BoundingBox): { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 } {
+    const dirX = Math.abs(this.direction.x) < 0.00001 ? 0.00001 : this.direction.x;
+    const dirY = Math.abs(this.direction.y) < 0.00001 ? 0.00001 : this.direction.y;
+    const dirZ = Math.abs(this.direction.z) < 0.00001 ? 0.00001 : this.direction.z;
+
+    let tmin = (box.min.x - this.origin.x) / dirX;
+    let tmax = (box.max.x - this.origin.x) / dirX;
+    if (tmin > tmax) [tmin, tmax] = [tmax, tmin];
+
+    let tymin = (box.min.y - this.origin.y) / dirY;
+    let tymax = (box.max.y - this.origin.y) / dirY;
+    if (tymin > tymax) [tymin, tymax] = [tymax, tymin];
+
+    if (tmin > tymax || tymin > tmax) {
+      return { hasHit: false, distance: Infinity, point: new Vector3(), normal: new Vector3() };
+    }
+
+    if (tymin > tmin) tmin = tymin;
+    if (tymax < tmax) tmax = tymax;
+
+    let tzmin = (box.min.z - this.origin.z) / dirZ;
+    let tzmax = (box.max.z - this.origin.z) / dirZ;
+    if (tzmin > tzmax) [tzmin, tzmax] = [tzmax, tzmin];
+
+    if (tmin > tzmax || tzmin > tmax) {
+      return { hasHit: false, distance: Infinity, point: new Vector3(), normal: new Vector3() };
+    }
+
+    if (tzmin > tmin) tmin = tzmin;
+
+    const hitPoint = this.origin.clone().add(this.direction.clone().scale(tmin));
+    const normal = new Vector3();
+    const eps = 0.01;
+    if (Math.abs(hitPoint.x - box.max.x) < eps) normal.x = 1;
+    else if (Math.abs(hitPoint.x - box.min.x) < eps) normal.x = -1;
+    else if (Math.abs(hitPoint.y - box.max.y) < eps) normal.y = 1;
+    else if (Math.abs(hitPoint.y - box.min.y) < eps) normal.y = -1;
+    else if (Math.abs(hitPoint.z - box.max.z) < eps) normal.z = 1;
+    else if (Math.abs(hitPoint.z - box.min.z) < eps) normal.z = -1;
+    else normal.z = 1;
+
+    return {
+      hasHit: tmin >= 0,
+      distance: tmin,
+      point: hitPoint,
+      normal
+    };
   }
 }
 
