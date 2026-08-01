@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fox's Puzzle Quest: The Lost Grove</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #09090b;
+      font-family: 'Inter', sans-serif;
+      color: #ffffff;
+      touch-action: none;
+    }
+
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* HUD Bar */
+    #hud-bar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 100;
+      gap: 8px;
+    }
+
+    .hud-card {
+      background: rgba(18, 18, 22, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+
+    .hud-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #10b981, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+
+    .hud-subtitle {
+      font-size: 12px;
+      color: #a1a1aa;
+      margin: 1px 0 0 0;
+    }
+
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .stat-icon { font-size: 16px; }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      color: white;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Mobile Touch Controls */
+    #touch-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    #joystick-zone {
+      width: 140px;
+      height: 140px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      touch-action: none;
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    #joystick-knob {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 64px);
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .touch-action-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: rgba(24, 24, 27, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      touch-action: none;
+      cursor: pointer;
+      gap: 2px;
+    }
+
+    .touch-action-btn:active {
+      background: rgba(59, 130, 246, 0.5);
+      transform: scale(0.92);
+      border-color: #60a5fa;
+    }
+
+    .touch-btn-sub {
+      font-size: 9px;
+      color: #a1a1aa;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    /* Modal Screens */
+    .menu-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(9, 9, 11, 0.94);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 12px;
+      width: 100%;
+      max-width: 850px;
+      margin-top: 20px;
+    }
+
+    .level-card {
+      background: rgba(24, 24, 27, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .level-card:active {
+      background: rgba(59, 130, 246, 0.3);
+      border-color: #3b82f6;
+      transform: scale(0.95);
+    }
+
+    .level-card.locked {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  </style>
+  <script type="module" crossorigin src="../../assets/foxgame-BlV2d1vt.js"></script>
+  <link rel="modulepreload" crossorigin href="../../assets/modulepreload-polyfill-Dezn_h7o.js">
+  <link rel="modulepreload" crossorigin href="../../assets/vendor-C8jxmIoU.js">
+  <link rel="modulepreload" crossorigin href="../../assets/three-DnRU4ALz.js">
+  <link rel="modulepreload" crossorigin href="../../assets/src-ZeHVl5CG.js">
+</head>
+<body>
+  <!-- HUD Top Bar -->
+  <div id="hud-bar">
+    <div class="hud-card">
+      <div>
+        <div id="hud-level-title" class="hud-title">Level 1: Emerald Meadow</div>
+        <div id="hud-world-desc" class="hud-subtitle">World 1 - Emerald Meadow</div>
+      </div>
+    </div>
+
+    <div class="hud-card">
+      <div class="stat-badge">
+        <span class="stat-icon">🥑</span>
+        <span id="hud-avocado-count">0 / 3</span>
+      </div>
+      <div class="stat-badge">
+        <span class="stat-icon">👣</span>
+        <span id="hud-move-count">0 moves</span>
+      </div>
+    </div>
+
+    <div class="hud-card">
+      <button id="btn-ai-autoplay" class="icon-btn" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981;">🤖 AI Test & Record</button>
+      <button id="btn-record" class="icon-btn">🎥 Record</button>
+      <button id="btn-undo" class="icon-btn">↩️ Undo</button>
+      <button id="btn-restart" class="icon-btn">🔄 Restart</button>
+      <button id="btn-hint" class="icon-btn">💡 Hint</button>
+      <button id="btn-levels" class="icon-btn">🗺️ Levels</button>
+      <button id="btn-menu" class="icon-btn">☰ Menu</button>
+      <button id="btn-settings" class="icon-btn">⚙️ Settings</button>
+    </div>
+  </div>
+
+  <!-- Touch Controls Overlay for Mobile -->
+  <div id="touch-controls">
+    <div id="joystick-zone">
+      <div id="joystick-knob"></div>
+    </div>
+
+    <div class="action-buttons">
+      <button id="touch-btn-undo" class="touch-action-btn">
+        <span>↩️</span>
+        <span class="touch-btn-sub">Undo</span>
+      </button>
+      <button id="touch-btn-interact" class="touch-action-btn">
+        <span style="font-size: 18px; color: #60a5fa;">E</span>
+        <span class="touch-btn-sub">Interact</span>
+      </button>
+      <button id="touch-btn-restart" class="touch-action-btn">
+        <span>🔄</span>
+        <span class="touch-btn-sub">Reset</span>
+      </button>
+      <button id="touch-btn-hint" class="touch-action-btn">
+        <span>💡</span>
+        <span class="touch-btn-sub">Hint</span>
+      </button>
+    </div>
+  </div>
+
+  <canvas id="game-canvas"></canvas>
+
+</body>
+</html>

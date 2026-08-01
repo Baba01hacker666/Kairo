@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kairo Engine - Next-Gen Modular 2D/3D Hybrid Game Engine</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #05070f;
+      --bg-card: rgba(15, 23, 42, 0.7);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-primary: #38bdf8;
+      --accent-secondary: #818cf8;
+      --accent-glow: #c084fc;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 80px;
+      overflow-x: hidden;
+    }
+
+    /* Ambient Background Glows */
+    .bg-glow-1 {
+      position: absolute;
+      top: -150px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(129, 140, 248, 0.1) 40%, rgba(0,0,0,0) 70%);
+      filter: blur(60px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Hero Header */
+    header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      margin-top: 60px;
+      margin-bottom: 40px;
+      padding: 0 24px;
+      max-width: 900px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    h1 {
+      font-size: 54px;
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 40%, #38bdf8 70%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 18px;
+      line-height: 1.6;
+      max-width: 720px;
+      margin: 0 auto 36px auto;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+      padding: 16px 28px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stat-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Controls: Search & Category Filters */
+    .filter-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 1100px;
+      padding: 0 24px;
+      margin-bottom: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .filter-tab {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-tab:hover, .filter-tab.active {
+      color: white;
+      border-color: var(--accent-primary);
+      background: rgba(56, 189, 248, 0.15);
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Main Grid */
+    .grid {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      width: 100%;
+      max-width: 1100px;
+      padding: 0 24px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      overflow: hidden;
+      text-decoration: none;
+      color: white;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      backdrop-filter: blur(12px);
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* Featured Studio Card */
+    .card.featured {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(30, 27, 75, 0.8), rgba(15, 23, 42, 0.9));
+      border: 2px solid rgba(129, 140, 248, 0.4);
+      box-shadow: 0 0 40px rgba(129, 140, 248, 0.25);
+    }
+    .card.featured:hover {
+      border-color: rgba(168, 85, 247, 0.6);
+      box-shadow: 0 20px 50px rgba(168, 85, 247, 0.3);
+    }
+
+    .card-header-icon {
+      height: 140px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(129, 140, 248, 0.05));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 54px;
+      border-bottom: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .card-content {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      text-transform: uppercase;
+    }
+
+    .card h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .card p {
+      font-size: 13.5px;
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .card-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-primary);
+    }
+
+    footer {
+      margin-top: 60px;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow-1"></div>
+
+  <header>
+    <div class="badge-pill">
+      <span class="dot-live"></span> KAIRO HYBRID ENGINE v1.0 PRO
+    </div>
+    <h1>High-Performance 2D/3D Web Engine & Studio</h1>
+    <p class="subtitle">
+      Decoupled WebAssembly physics backends, WebGL & Three.js graphics, pure TypeScript ECS, and an integrated Web Studio Editor.
+    </p>
+
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-num">15</span>
+        <span class="stat-label">Packages</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">14</span>
+        <span class="stat-label">Playable Demos</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">Go + WASM</span>
+        <span class="stat-label">Physics Backend</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">23 / 23</span>
+        <span class="stat-label">Tests Passing</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter Category Tabs -->
+  <div class="filter-container">
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all">All Demos & Tools</button>
+      <button class="filter-tab" data-filter="studio">Studio & Editor</button>
+      <button class="filter-tab" data-filter="wasm">Go & WASM</button>
+      <button class="filter-tab" data-filter="3d">3D Games</button>
+      <button class="filter-tab" data-filter="physics">Physics & Babylon</button>
+      <button class="filter-tab" data-filter="ai">AI & Tech Demos</button>
+    </div>
+  </div>
+
+  <!-- Cards Grid -->
+  <div class="grid" id="demo-grid">
+    <!-- Featured Studio Editor Card -->
+    <a href="editor/index.html" class="card featured" data-cat="studio">
+      <div class="card-header-icon" style="height: 160px; background: linear-gradient(135deg, rgba(129, 140, 248, 0.2), rgba(168, 85, 247, 0.15));">
+        🎛️
+      </div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border-color: rgba(168, 85, 247, 0.4);">STUDIO EDITOR & GAME SUITE</span>
+          <span style="font-size: 11px; color: #a78bfa;">Interactive 2D/3D Studio</span>
+        </div>
+        <h2>Kairo Engine Studio & Web Editor</h2>
+        <p>Full 2D/3D visual level editor with Scene Hierarchy tree, Entity Inspector, Animation tab, Particle editor, Profiler, and embedded Playable Stickman Platformer game with mobile touch controls!</p>
+        <div class="card-footer" style="color: #c084fc;">
+          Launch Kairo Studio Editor →
+        </div>
+      </div>
+    </a>
+
+    <!-- Go + Three.js Fox -->
+    <a href="examples/go-fox/index.html" class="card" data-cat="wasm 3d">
+      <div class="card-header-icon">🦊</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">HYBRID WASM + THREE.JS</span>
+        </div>
+        <h2>Go WASM + Three.js Fox Adventure</h2>
+        <p>Decoupled engine architecture: Golang WebAssembly backend handles physics & collisions while Three.js renders PBR GLTF fox character animations.</p>
+        <div class="card-footer">Play Hybrid Fox Demo →</div>
+      </div>
+    </a>
+
+    <!-- Go + Raylib System Tester -->
+    <a href="examples/go-raylib-tester/index.html" class="card" data-cat="wasm physics">
+      <div class="card-header-icon">🔥</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge" style="background: rgba(0, 173, 216, 0.15); color: #00ADD8; border-color: rgba(0, 173, 216, 0.3);">GO WASM & RAYLIB</span>
+        </div>
+        <h2>Go + Raylib System Tester</h2>
+        <p>WebAssembly test suite & drawing engine library powered by Go & Raylib! Includes 2D physics, 3D mesh rendering, and ECS stress testing.</p>
+        <div class="card-footer" style="color: #00ADD8;">Run Raylib Tester →</div>
+      </div>
+    </a>
+
+    <!-- Stickman 3D -->
+    <a href="examples/stickman-game/index.html" class="card" data-cat="3d physics">
+      <div class="card-header-icon">🤸</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">TYPESCRIPT ECS</span>
+        </div>
+        <h2>Modern Stickman 3D Platformer</h2>
+        <p>A full 2.5D physics platformer built on pure TypeScript Kairo ECS with custom character rigs, animations, collectables, and touch controls.</p>
+        <div class="card-footer">Play Stickman Game →</div>
+      </div>
+    </a>
+
+    <!-- Go Runner -->
+    <a href="examples/go-runner/index.html" class="card" data-cat="wasm 3d">
+      <div class="card-header-icon">🏃</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">PURE GO SOFTWARE</span>
+        </div>
+        <h2>3D Infinite Runner</h2>
+        <p>A 3D infinite runner game built natively in Golang WebAssembly CPU software renderer with mobile touch controls!</p>
+        <div class="card-footer">Play Go Runner →</div>
+      </div>
+    </a>
+
+    <!-- Golang WASM 3D -->
+    <a href="examples/go-wasm/index.html" class="card" data-cat="wasm">
+      <div class="card-header-icon">🐹</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">WASM 3D RENDERER</span>
+        </div>
+        <h2>Golang WASM 3D Engine</h2>
+        <p>A custom software 3D renderer written in Go, doing all vertex transformations & rasterization manually on the CPU to HTML5 Canvas 2D.</p>
+        <div class="card-footer">Explore Go Software Renderer →</div>
+      </div>
+    </a>
+
+    <!-- Babylon.js + Havok -->
+    <a href="examples/babylon-havok/index.html" class="card" data-cat="physics">
+      <div class="card-header-icon">🔮</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">BABYLON + HAVOK</span>
+        </div>
+        <h2>Babylon.js + Havok Physics</h2>
+        <p>High-fidelity physics simulation combining Babylon.js graphics pipeline with Microsoft Havok WebAssembly physics integration.</p>
+        <div class="card-footer">Launch Havok Simulation →</div>
+      </div>
+    </a>
+
+    <!-- Mobile Shooter FPS -->
+    <a href="examples/babylon-shooter/index.html" class="card" data-cat="physics 3d">
+      <div class="card-header-icon">🔫</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">MOBILE FPS</span>
+        </div>
+        <h2>Mobile FPS Shooter</h2>
+        <p>First-person shooter featuring virtual joysticks for mobile devices, physics-based projectile ballistics, and GLTF asset destruction.</p>
+        <div class="card-footer">Play FPS Shooter →</div>
+      </div>
+    </a>
+
+    <!-- AI Pathfinding & BT -->
+    <a href="examples/ai-pathfinding/index.html" class="card" data-cat="ai">
+      <div class="card-header-icon">🧠</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">AI & PATHFINDING</span>
+        </div>
+        <h2>AI Pathfinding & Behavior Tree</h2>
+        <p>Interactive A* NavMesh grid solver, obstacle wall painter, bot path navigation, and live behavior tree state execution monitor.</p>
+        <div class="card-footer">Open AI Studio →</div>
+      </div>
+    </a>
+
+    <!-- Sci-Fi 3D Explorer -->
+    <a href="examples/scifi-explorer/index.html" class="card" data-cat="3d ai">
+      <div class="card-header-icon">🚀</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">3D ENVIRONMENT</span>
+        </div>
+        <h2>Sci-Fi 3D Environment Explorer</h2>
+        <p>Cyberpunk space station environment explorer featuring neon light pillars, hover drone physics, particle thrusters, and audio synth.</p>
+        <div class="card-footer">Explore Sci-Fi World →</div>
+      </div>
+    </a>
+
+    <!-- Cherry Blossoms -->
+    <a href="examples/cherry-blossoms/index.html" class="card" data-cat="3d">
+      <div class="card-header-icon">🌸</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">ANIMATION & PARTICLES</span>
+        </div>
+        <h2>Cinematic Cherry Blossoms</h2>
+        <p>Cinematic animation demonstrating Kairo Engine's keyframe animation interpolation API and falling petal particle system.</p>
+        <div class="card-footer">View Cinematic Scene →</div>
+      </div>
+    </a>
+
+    <!-- High-Quality Render -->
+    <a href="examples/high-quality-render/index.html" class="card" data-cat="3d">
+      <div class="card-header-icon">✨</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">PBR & GLTF</span>
+        </div>
+        <h2>High-Quality PBR Render</h2>
+        <p>Three.js rendering pipeline featuring true Physically Based Rendering, soft shadow mapping, and GLTF skeletal mesh animation.</p>
+        <div class="card-footer">View PBR Pipeline →</div>
+      </div>
+    </a>
+
+    <!-- GDP Explainer -->
+    <a href="examples/gdp-explainer/index.html" class="card" data-cat="ai">
+      <div class="card-header-icon">📊</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">ARCHITECTURE & AUDIO</span>
+        </div>
+        <h2>GDP Engine Architecture Explainer</h2>
+        <p>Interactive visualizer explaining game engine architecture, frame cycles, and ECS memory layouts with audio narration.</p>
+        <div class="card-footer">View Architecture Explainer →</div>
+      </div>
+    </a>
+
+    <!-- Pure TS Fox Game -->
+    <a href="examples/fox-game/index.html" class="card" data-cat="3d physics">
+      <div class="card-header-icon">🌲</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">PURE TYPESCRIPT</span>
+        </div>
+        <h2>Fox Adventure Game (Pure TS)</h2>
+        <p>Playable Third-Person controller platformer game engine implementation written entirely in TypeScript with Cannon physics.</p>
+        <div class="card-footer">Play Pure TS Fox →</div>
+      </div>
+    </a>
+
+    <!-- Starter API Easy Game -->
+    <a href="examples/easy-game/index.html" class="card" data-cat="physics">
+      <div class="card-header-icon">📦</div>
+      <div class="card-content">
+        <div class="card-meta">
+          <span class="card-badge">STARTER API</span>
+        </div>
+        <h2>Super Easy Starter API Demo</h2>
+        <p>Minimal physics scene showing how easily developers can construct 3D entities and rigidbodies using KairoApp API.</p>
+        <div class="card-footer">View Starter Demo →</div>
+      </div>
+    </a>
+  </div>
+
+  <footer>
+    <p>Kairo Engine Monorepo | Built with TypeScript, Golang, WebAssembly, WebGL & Three.js</p>
+  </footer>
+
+  <script>
+    // Category Filtering Logic
+    const tabs = document.querySelectorAll('.filter-tab');
+    const cards = document.querySelectorAll('.card');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const filter = tab.getAttribute('data-filter');
+
+        cards.forEach(card => {
+          if (filter === 'all') {
+            card.style.display = 'flex';
+          } else {
+            const cat = card.getAttribute('data-cat') || '';
+            if (cat.includes(filter)) {
+              card.style.display = 'flex';
+            } else {
+              card.style.display = 'none';
+            }
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

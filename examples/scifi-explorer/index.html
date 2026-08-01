@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kairo Engine - Sci-Fi 3D Environment Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #030712;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(3, 7, 18, 0.7);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a855f7, #ec4899, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .back-btn {
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .back-btn:hover {
+      color: white;
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .hud-overlay {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 50;
+      box-shadow: 0 8px 32px rgba(168, 85, 247, 0.15);
+    }
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .hud-label { color: #9ca3af; }
+    .hud-val { color: #ec4899; font-weight: 700; }
+  </style>
+  <script type="module" crossorigin src="../../assets/scifiexplorer-Db6bnfhC.js"></script>
+  <link rel="modulepreload" crossorigin href="../../assets/modulepreload-polyfill-Dezn_h7o.js">
+  <link rel="modulepreload" crossorigin href="../../assets/three-DnRU4ALz.js">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Sci-Fi 3D Environment Explorer</h1>
+      <span style="font-size: 11px; color: #6b7280;">High-Performance WebGL & ECS Physics</span>
+    </div>
+    <a href="../../index.html" class="back-btn">← Back to Hub</a>
+  </header>
+
+  <div id="canvas-container">
+    <canvas id="scifi-canvas"></canvas>
+  </div>
+
+  <div class="hud-overlay">
+    <div class="hud-row"><span class="hud-label">SYSTEM</span><span class="hud-val" style="color: #a855f7;">ONLINE</span></div>
+    <div class="hud-row"><span class="hud-label">CONTROLS</span><span class="hud-val" style="color: #60a5fa;">WASD / ARROWS</span></div>
+    <div class="hud-row"><span class="hud-label">THRUSTERS</span><span class="hud-val" id="thruster-val">IDLE</span></div>
+    <div class="hud-row"><span class="hud-label">ALTITUDE</span><span class="hud-val" id="alt-val">1.2m</span></div>
+  </div>
+
+</body>
+</html>

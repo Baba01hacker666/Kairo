@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Go + Raylib System Tester - Kairo Engine</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #090d16;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+    }
+
+    /* Header Nav */
+    header {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: white;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #00ADD8, #3b82f6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 0 16px rgba(0, 173, 216, 0.4);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #e0f2fe, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-btn {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      color: white;
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+    }
+
+    /* Main Container */
+    .container {
+      width: 100%;
+      max-width: 1060px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    /* Canvas Wrapper */
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1024px;
+      aspect-ratio: 4 / 3;
+      background: #020617;
+      border-radius: 16px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.15);
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(9, 13, 22, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 10;
+      transition: opacity 0.4s ease;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #93c5fd;
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    /* Controls Toolbar */
+    .toolbar {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .tab-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: rgba(30, 41, 59, 0.8);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover, .tab-btn:active {
+      background: rgba(51, 65, 85, 1);
+      color: white;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      border-color: #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .action-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .act-btn {
+      background: rgba(30, 41, 59, 0.7);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .act-btn:active {
+      background: #0284c7;
+      color: white;
+    }
+
+    /* Mobile Controls Overlay */
+    #mobile-controls {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Virtual Joystick */
+    #joystick-zone {
+      width: 110px;
+      height: 110px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      border-radius: 50%;
+      position: relative;
+      pointer-events: auto;
+      touch-action: none;
+      backdrop-filter: blur(4px);
+    }
+
+    #joystick-knob {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+    }
+
+    .mobile-buttons {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .m-btn {
+      width: 56px;
+      height: 56px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      border-radius: 14px;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+    }
+
+    .m-btn:active {
+      background: #0284c7;
+      transform: scale(0.95);
+    }
+
+    /* Legend Box */
+    .legend-box {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kbd {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #38bdf8;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .brand-title { font-size: 15px; }
+      .container { padding: 10px; }
+      .toolbar { padding: 10px; }
+      .tab-btn { font-size: 12px; padding: 6px 10px; }
+    }
+  </style>
+
+  <!-- Go WebAssembly JavaScript Runtime (Inline & Self-Contained) -->
+  <script>
+    "use strict";
+    (() => {
+      const enosys = () => {
+        const err = new Error("not implemented");
+        err.code = "ENOSYS";
+        return err;
+      };
+
+      if (!globalThis.fs) {
+        let outputBuf = "";
+        globalThis.fs = {
+          constants: { O_WRONLY: -1, O_RDWR: -1, O_CREAT: -1, O_TRUNC: -1, O_APPEND: -1, O_EXCL: -1, O_DIRECTORY: -1 },
+          writeSync(fd, buf) {
+            outputBuf += decoder.decode(buf);
+            const nl = outputBuf.lastIndexOf("\n");
+            if (nl != -1) {
+              console.log(outputBuf.substring(0, nl));
+              outputBuf = outputBuf.substring(nl + 1);
+            }
+            return buf.length;
+          },
+          write(fd, buf, offset, length, position, callback) {
+            if (offset !== 0 || length !== buf.length || position !== null) {
+              callback(enosys());
+              return;
+            }
+            const n = this.writeSync(fd, buf);
+            callback(null, n);
+          },
+          chmod(path, mode, callback) { callback(enosys()); },
+          chown(path, uid, gid, callback) { callback(enosys()); },
+          close(fd, callback) { callback(enosys()); },
+          fchmod(fd, mode, callback) { callback(enosys()); },
+          fchown(fd, uid, gid, callback) { callback(enosys()); },
+          fstat(fd, callback) { callback(enosys()); },
+          fsync(fd, callback) { callback(null); },
+          ftruncate(fd, length, callback) { callback(enosys()); },
+          lchown(path, uid, gid, callback) { callback(enosys()); },
+          link(path, link, callback) { callback(enosys()); },
+          lstat(path, callback) { callback(enosys()); },
+          mkdir(path, perm, callback) { callback(enosys()); },
+          open(path, flags, mode, callback) { callback(enosys()); },
+          read(fd, buffer, offset, length, position, callback) { callback(enosys()); },
+          readdir(path, callback) { callback(enosys()); },
+          readlink(path, callback) { callback(enosys()); },
+          rename(from, to, callback) { callback(enosys()); },
+          rmdir(path, callback) { callback(enosys()); },
+          stat(path, callback) { callback(enosys()); },
+          symlink(path, link, callback) { callback(enosys()); },
+          truncate(path, length, callback) { callback(enosys()); },
+          unlink(path, callback) { callback(enosys()); },
+          utimes(path, atime, mtime, callback) { callback(enosys()); },
+        };
+      }
+
+      if (!globalThis.process) {
+        globalThis.process = {
+          getuid() { return -1; },
+          getgid() { return -1; },
+          geteuid() { return -1; },
+          getegid() { return -1; },
+          getgroups() { throw enosys(); },
+          pid: -1,
+          ppid: -1,
+          umask() { throw enosys(); },
+          cwd() { throw enosys(); },
+          chdir() { throw enosys(); },
+        }
+      }
+
+      if (!globalThis.path) {
+        globalThis.path = {
+          resolve(...pathSegments) { return pathSegments.join("/"); }
+        }
+      }
+
+      const encoder = new TextEncoder("utf-8");
+      const decoder = new TextDecoder("utf-8");
+
+      globalThis.Go = class {
+        constructor() {
+          this.argv = ["js"];
+          this.env = {};
+          this.exit = (code) => {
+            if (code !== 0) { console.warn("exit code:", code); }
+          };
+          this._exitPromise = new Promise((resolve) => {
+            this._resolveExitPromise = resolve;
+          });
+          this._pendingEvent = null;
+          this._scheduledTimeouts = new Map();
+          this._nextCallbackTimeoutID = 1;
+
+          const setInt64 = (addr, v) => {
+            this.mem.setUint32(addr + 0, v, true);
+            this.mem.setUint32(addr + 4, Math.floor(v / 4294967296), true);
+          }
+
+          const getInt64 = (addr) => {
+            const low = this.mem.getUint32(addr + 0, true);
+            const high = this.mem.getInt32(addr + 4, true);
+            return low + high * 4294967296;
+          }
+
+          const loadValue = (addr) => {
+            const f = this.mem.getFloat64(addr, true);
+            if (f === 0) return undefined;
+            if (!isNaN(f)) return f;
+            const id = this.mem.getUint32(addr, true);
+            return this._values[id];
+          }
+
+          const storeValue = (addr, v) => {
+            const nanHead = 0x7FF80000;
+            if (typeof v === "number" && v !== 0) {
+              if (isNaN(v)) {
+                this.mem.setUint32(addr + 4, nanHead, true);
+                this.mem.setUint32(addr, 0, true);
+                return;
+              }
+              this.mem.setFloat64(addr, v, true);
+              return;
+            }
+
+            if (v === undefined) {
+              this.mem.setFloat64(addr, 0, true);
+              return;
+            }
+
+            let id = this._ids.get(v);
+            if (id === undefined) {
+              id = this._idPool.pop();
+              if (id === undefined) {
+                id = this._values.length;
+              }
+              this._values[id] = v;
+              this._goRefCounts[id] = 0;
+              this._ids.set(v, id);
+            }
+            this._goRefCounts[id]++;
+            let typeFlag = 0;
+            switch (typeof v) {
+              case "object": if (v !== null) typeFlag = 1; break;
+              case "string": typeFlag = 2; break;
+              case "symbol": typeFlag = 3; break;
+              case "function": typeFlag = 4; break;
+            }
+            this.mem.setUint32(addr + 4, nanHead | typeFlag, true);
+            this.mem.setUint32(addr, id, true);
+          }
+
+          const loadSlice = (addr) => {
+            const array = getInt64(addr + 0);
+            const len = getInt64(addr + 8);
+            return new Uint8Array(this._inst.exports.mem.buffer, array, len);
+          }
+
+          const loadSliceOfValues = (addr) => {
+            const array = getInt64(addr + 0);
+            const len = getInt64(addr + 8);
+            const a = new Array(len);
+            for (let i = 0; i < len; i++) {
+              a[i] = loadValue(array + i * 8);
+            }
+            return a;
+          }
+
+          const loadString = (addr) => {
+            const saddr = getInt64(addr + 0);
+            const len = getInt64(addr + 8);
+            return decoder.decode(new DataView(this._inst.exports.mem.buffer, saddr, len));
+          }
+
+          const timeOrigin = Date.now() - performance.now();
+          this.importObject = {
+            _gotest: { add: (a, b) => a + b },
+            gojs: {
+              "runtime.wasmExit": (sp) => {
+                sp >>>= 0;
+                const code = this.mem.getInt32(sp + 8, true);
+                this.exited = true;
+                delete this._inst;
+                delete this._values;
+                delete this._goRefCounts;
+                delete this._ids;
+                delete this._idPool;
+                this.exit(code);
+              },
+              "runtime.wasmWrite": (sp) => {
+                sp >>>= 0;
+                const fd = getInt64(sp + 8);
+                const p = getInt64(sp + 16);
+                const n = this.mem.getInt32(sp + 24, true);
+                fs.writeSync(fd, new Uint8Array(this._inst.exports.mem.buffer, p, n));
+              },
+              "runtime.resetMemoryDataView": (sp) => {
+                sp >>>= 0;
+                this.mem = new DataView(this._inst.exports.mem.buffer);
+              },
+              "runtime.nanotime1": (sp) => {
+                sp >>>= 0;
+                setInt64(sp + 8, (timeOrigin + performance.now()) * 1000000);
+              },
+              "runtime.walltime": (sp) => {
+                sp >>>= 0;
+                const msec = (new Date).getTime();
+                setInt64(sp + 8, msec / 1000);
+                this.mem.setInt32(sp + 16, (msec % 1000) * 1000000, true);
+              },
+              "runtime.scheduleTimeoutEvent": (sp) => {
+                sp >>>= 0;
+                const id = this._nextCallbackTimeoutID++;
+                this._scheduledTimeouts.set(id, setTimeout(() => {
+                  this._resume();
+                  while (this._scheduledTimeouts.has(id)) {
+                    this._resume();
+                  }
+                }, getInt64(sp + 8)));
+                this.mem.setInt32(sp + 16, id, true);
+              },
+              "runtime.clearTimeoutEvent": (sp) => {
+                sp >>>= 0;
+                const id = this.mem.getInt32(sp + 8, true);
+                clearTimeout(this._scheduledTimeouts.get(id));
+                this._scheduledTimeouts.delete(id);
+              },
+              "runtime.getRandomData": (sp) => {
+                sp >>>= 0;
+                crypto.getRandomValues(loadSlice(sp + 8));
+              },
+              "syscall/js.finalizeRef": (sp) => {
+                sp >>>= 0;
+                const id = this.mem.getUint32(sp + 8, true);
+                this._goRefCounts[id]--;
+                if (this._goRefCounts[id] === 0) {
+                  const v = this._values[id];
+                  this._values[id] = null;
+                  this._ids.delete(v);
+                  this._idPool.push(id);
+                }
+              },
+              "syscall/js.stringVal": (sp) => {
+                sp >>>= 0;
+                storeValue(sp + 24, loadString(sp + 8));
+              },
+              "syscall/js.valueGet": (sp) => {
+                sp >>>= 0;
+                const result = Reflect.get(loadValue(sp + 8), loadString(sp + 16));
+                sp = this._inst.exports.getsp() >>> 0;
+                storeValue(sp + 32, result);
+              },
+              "syscall/js.valueSet": (sp) => {
+                sp >>>= 0;
+                Reflect.set(loadValue(sp + 8), loadString(sp + 16), loadValue(sp + 32));
+              },
+              "syscall/js.valueDelete": (sp) => {
+                sp >>>= 0;
+                Reflect.deleteProperty(loadValue(sp + 8), loadString(sp + 16));
+              },
+              "syscall/js.valueIndex": (sp) => {
+                sp >>>= 0;
+                storeValue(sp + 24, Reflect.get(loadValue(sp + 8), getInt64(sp + 16)));
+              },
+              "syscall/js.valueSetIndex": (sp) => {
+                sp >>>= 0;
+                Reflect.set(loadValue(sp + 8), getInt64(sp + 16), loadValue(sp + 24));
+              },
+              "syscall/js.valueCall": (sp) => {
+                sp >>>= 0;
+                try {
+                  const v = loadValue(sp + 8);
+                  const m = Reflect.get(v, loadString(sp + 16));
+                  const args = loadSliceOfValues(sp + 32);
+                  const result = Reflect.apply(m, v, args);
+                  sp = this._inst.exports.getsp() >>> 0;
+                  storeValue(sp + 56, result);
+                  this.mem.setUint8(sp + 64, 1);
+                } catch (err) {
+                  sp = this._inst.exports.getsp() >>> 0;
+                  storeValue(sp + 56, err);
+                  this.mem.setUint8(sp + 64, 0);
+                }
+              },
+              "syscall/js.valueInvoke": (sp) => {
+                sp >>>= 0;
+                try {
+                  const v = loadValue(sp + 8);
+                  const args = loadSliceOfValues(sp + 16);
+                  const result = Reflect.apply(v, undefined, args);
+                  sp = this._inst.exports.getsp() >>> 0;
+                  storeValue(sp + 40, result);
+                  this.mem.setUint8(sp + 48, 1);
+                } catch (err) {
+                  sp = this._inst.exports.getsp() >>> 0;
+                  storeValue(sp + 40, err);
+                  this.mem.setUint8(sp + 48, 0);
+                }
+              },
+              "syscall/js.valueNew": (sp) => {
+                sp >>>= 0;
+                try {
+                  const v = loadValue(sp + 8);
+                  const args = loadSliceOfValues(sp + 16);
+                  const result = Reflect.construct(v, args);
+                  sp = this._inst.exports.getsp() >>> 0;
+                  storeValue(sp + 40, result);
+                  this.mem.setUint8(sp + 48, 1);
+                } catch (err) {
+                  sp = this._inst.exports.getsp() >>> 0;
+                  storeValue(sp + 40, err);
+                  this.mem.setUint8(sp + 48, 0);
+                }
+              },
+              "syscall/js.valueLength": (sp) => {
+                sp >>>= 0;
+                setInt64(sp + 16, parseInt(loadValue(sp + 8).length));
+              },
+              "syscall/js.valuePrepareString": (sp) => {
+                sp >>>= 0;
+                const str = encoder.encode(String(loadValue(sp + 8)));
+                storeValue(sp + 16, str);
+                setInt64(sp + 24, str.length);
+              },
+              "syscall/js.valueLoadString": (sp) => {
+                sp >>>= 0;
+                const str = loadValue(sp + 8);
+                loadSlice(sp + 16).set(str);
+              },
+              "syscall/js.valueInstanceOf": (sp) => {
+                sp >>>= 0;
+                this.mem.setUint8(sp + 24, (loadValue(sp + 8) instanceof loadValue(sp + 16)) ? 1 : 0);
+              },
+              "syscall/js.copyBytesToGo": (sp) => {
+                sp >>>= 0;
+                const dst = loadSlice(sp + 8);
+                const src = loadValue(sp + 32);
+                if (!(src instanceof Uint8Array || src instanceof Uint8ClampedArray)) {
+                  this.mem.setUint8(sp + 48, 0);
+                  return;
+                }
+                const toCopy = src.subarray(0, dst.length);
+                dst.set(toCopy);
+                setInt64(sp + 40, toCopy.length);
+                this.mem.setUint8(sp + 48, 1);
+              },
+              "syscall/js.copyBytesToJS": (sp) => {
+                sp >>>= 0;
+                const dst = loadValue(sp + 8);
+                const src = loadSlice(sp + 16);
+                if (!(dst instanceof Uint8Array || dst instanceof Uint8ClampedArray)) {
+                  this.mem.setUint8(sp + 48, 0);
+                  return;
+                }
+                const toCopy = src.subarray(0, dst.length);
+                dst.set(toCopy);
+                setInt64(sp + 40, toCopy.length);
+                this.mem.setUint8(sp + 48, 1);
+              },
+              "debug": (value) => { console.log(value); },
+            }
+          };
+        }
+
+        async run(instance) {
+          if (!(instance instanceof WebAssembly.Instance)) {
+            throw new Error("Go.run: WebAssembly.Instance expected");
+          }
+          this._inst = instance;
+          this.mem = new DataView(this._inst.exports.mem.buffer);
+          this._values = [NaN, 0, null, true, false, globalThis, this];
+          this._goRefCounts = new Array(this._values.length).fill(Infinity);
+          this._ids = new Map([[0, 1], [null, 2], [true, 3], [false, 4], [globalThis, 5], [this, 6]]);
+          this._idPool = [];
+          this.exited = false;
+
+          let offset = 4096;
+          const strPtr = (str) => {
+            const ptr = offset;
+            const bytes = encoder.encode(str + "\0");
+            new Uint8Array(this.mem.buffer, offset, bytes.length).set(bytes);
+            offset += bytes.length;
+            if (offset % 8 !== 0) offset += 8 - (offset % 8);
+            return ptr;
+          };
+
+          const argc = this.argv.length;
+          const argvPtrs = [];
+          this.argv.forEach((arg) => { argvPtrs.push(strPtr(arg)); });
+          argvPtrs.push(0);
+
+          const keys = Object.keys(this.env).sort();
+          keys.forEach((key) => { argvPtrs.push(strPtr(`${key}=${this.env[key]}`)); });
+          argvPtrs.push(0);
+
+          const argv = offset;
+          argvPtrs.forEach((ptr) => {
+            this.mem.setUint32(offset, ptr, true);
+            this.mem.setUint32(offset + 4, 0, true);
+            offset += 8;
+          });
+
+          this._inst.exports.run(argc, argv);
+          if (this.exited) this._resolveExitPromise();
+          await this._exitPromise;
+        }
+
+        _resume() {
+          if (this.exited) throw new Error("Go program has already exited");
+          this._inst.exports.resume();
+          if (this.exited) this._resolveExitPromise();
+        }
+
+        _makeFuncWrapper(id) {
+          const go = this;
+          return function () {
+            const event = { id: id, this: this, args: arguments };
+            go._pendingEvent = event;
+            go._resume();
+            return event.result;
+          };
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+
+  <header>
+    <a href="../../index.html" class="brand">
+      <div class="brand-logo">RL</div>
+      <div class="brand-title">Kairo Engine • Raylib Go Tester</div>
+    </a>
+    <div class="nav-actions">
+      <a href="../../index.html" class="back-btn">← Back to Hub</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="canvas-wrapper">
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Initializing Golang WebAssembly Raylib Engine...</div>
+      </div>
+      <canvas id="canvas" width="1024" height="768"></canvas>
+
+      <!-- Mobile On-Screen Controls -->
+      <div id="mobile-controls">
+        <div id="joystick-zone">
+          <div id="joystick-knob"></div>
+        </div>
+
+        <div class="mobile-buttons">
+          <button class="m-btn" id="m-btn-spawn" onclick="triggerSpawn()">➕</button>
+          <button class="m-btn" id="m-btn-up" ontouchstart="triggerKey(87, true)" ontouchend="triggerKey(87, false)">▲</button>
+          <button class="m-btn" id="m-btn-down" ontouchstart="triggerKey(83, true)" ontouchend="triggerKey(83, false)">▼</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="switchTestMode(0, this)">
+          <span>⚽</span> 2D Physics Engine
+        </button>
+        <button class="tab-btn" onclick="switchTestMode(1, this)">
+          <span>🧊</span> 3D Raylib Scene
+        </button>
+        <button class="tab-btn" onclick="switchTestMode(2, this)">
+          <span>⚡</span> ECS Stress Test
+        </button>
+        <button class="tab-btn" onclick="switchTestMode(3, this)">
+          <span>📡</span> 360° Raycasting
+        </button>
+      </div>
+
+      <div class="action-group">
+        <button class="act-btn" onclick="triggerSpawn()">⚡ Spawn Object</button>
+        <button class="act-btn" onclick="resetCurrentTest()">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="legend-box">
+      <div class="legend-item"><span class="kbd">1</span> Mode 1: 2D RigidBody Elastic Bouncing</div>
+      <div class="legend-item"><span class="kbd">2</span> Mode 2: 3D Wireframe/Shaded Mesh Camera</div>
+      <div class="legend-item"><span class="kbd">3</span> Mode 3: ECS Swarm (+UP/-DOWN arrows)</div>
+      <div class="legend-item"><span class="kbd">4</span> Mode 4: Dynamic 360° Laser Raycasting</div>
+      <div class="legend-item"><span class="kbd">TOUCH/CLICK</span> Spawn / Move Laser Emitter</div>
+      <div class="legend-item"><span class="kbd">JOYSTICK</span> Mobile Touch Direction Control</div>
+    </div>
+  </div>
+
+  <script>
+    async function initWasmEngine() {
+      const go = new Go();
+      const candidatePaths = [
+        './go-raylib-tester.wasm',
+        '/wasm/go-raylib-tester.wasm',
+        '../../public/wasm/go-raylib-tester.wasm',
+        'go-raylib-tester.wasm'
+      ];
+
+      let instance = null;
+      for (const path of candidatePaths) {
+        try {
+          const response = await fetch(path);
+          if (response.ok) {
+            const bytes = await response.arrayBuffer();
+            const result = await WebAssembly.instantiate(bytes, go.importObject);
+            instance = result.instance;
+            console.log('Successfully loaded WASM binary from:', path);
+            break;
+          }
+        } catch (e) {
+          // Try next fallback path
+        }
+      }
+
+      if (instance) {
+        go.run(instance);
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 400);
+      } else {
+        document.querySelector('.loading-text').innerText = 'Failed to load WebAssembly binary. Check server logs.';
+      }
+    }
+
+    initWasmEngine();
+
+    function switchTestMode(modeIndex, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (window.kairoRaylib && window.kairoRaylib.setMode) {
+        window.kairoRaylib.setMode(modeIndex);
+      }
+    }
+
+    function resetCurrentTest() {
+      if (window.kairoRaylib && window.kairoRaylib.reset2D) {
+        window.kairoRaylib.reset2D();
+      }
+    }
+
+    function triggerSpawn() {
+      if (window.kairoRaylib && window.kairoRaylib.spawnPhysicsObject) {
+        window.kairoRaylib.spawnPhysicsObject();
+      }
+    }
+
+    function triggerKey(keyCode, isDown) {
+      if (window.kairoRaylib && window.kairoRaylib.simulateKey) {
+        window.kairoRaylib.simulateKey(keyCode, isDown);
+      }
+    }
+
+    /* Virtual Joystick Touch Logic */
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    let joyActive = false;
+    let joyTouchId = null;
+
+    joyZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      joyActive = true;
+      joyTouchId = t.identifier;
+      updateJoystick(t);
+    });
+
+    joyZone.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (!joyActive) return;
+      for (let t of e.changedTouches) {
+        if (t.identifier === joyTouchId) {
+          updateJoystick(t);
+          break;
+        }
+      }
+    });
+
+    const resetJoystick = () => {
+      joyActive = false;
+      joyTouchId = null;
+      joyKnob.style.transform = 'translate(-50%, -50%)';
+      triggerKey(87, false); // W
+      triggerKey(83, false); // S
+      triggerKey(65, false); // A
+      triggerKey(68, false); // D
+      triggerKey(38, false); // UP
+      triggerKey(40, false); // DOWN
+    };
+
+    joyZone.addEventListener('touchend', resetJoystick);
+    joyZone.addEventListener('touchcancel', resetJoystick);
+
+    function updateJoystick(touch) {
+      const rect = joyZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      let dx = touch.clientX - centerX;
+      let dy = touch.clientY - centerY;
+
+      const maxDist = rect.width / 2 - 10;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > maxDist) {
+        dx = (dx / dist) * maxDist;
+        dy = (dy / dist) * maxDist;
+      }
+
+      joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+      const normX = dx / maxDist;
+      const normY = dy / maxDist;
+
+      // Trigger Virtual WASM Keys
+      triggerKey(87, normY < -0.3); // W / UP
+      triggerKey(38, normY < -0.3); // UP
+      triggerKey(83, normY > 0.3);  // S / DOWN
+      triggerKey(40, normY > 0.3);  // DOWN
+      triggerKey(65, normX < -0.3); // A / LEFT
+      triggerKey(68, normX > 0.3);  // D / RIGHT
+    }
+  </script>
+</body>
+</html>
