@@ -16,7 +16,8 @@ export default defineConfig({
         hqrender: 'examples/high-quality-render/index.html',
         foxgame: 'examples/fox-game/index.html',
         gofox: 'examples/go-fox/index.html',
-        gdp: 'examples/gdp-explainer/index.html'
+        gdp: 'examples/gdp-explainer/index.html',
+        babylonhavok: 'examples/babylon-havok/index.html'
       },
       output: {
         manualChunks(id) {
