@@ -495,6 +495,26 @@ func main() {
 		}),
 		"reset2D": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			init2DPhysics()
+			initECSStress()
+			return nil
+		}),
+		"simulateKey": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			if len(args) >= 2 {
+				k := rl.Key(args[0].Int())
+				down := args[1].Bool()
+				rl.SimulateVirtualKey(k, down)
+			}
+			return nil
+		}),
+		"spawnPhysicsObject": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			sw := float32(rl.GetScreenWidth())
+			entities2D = append(entities2D, &Entity2D{
+				Pos:    rl.NewVector2(sw*0.5, 120),
+				Vel:    rl.NewVector2(float32(rand.Intn(400)-200), float32(-200-rand.Intn(200))),
+				Radius: float32(15 + rand.Intn(20)),
+				Color:  rl.ColorFromHSV(float32(rand.Intn(360)), 0.85, 1.0),
+				Mass:   1.0,
+			})
 			return nil
 		}),
 	}))

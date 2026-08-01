@@ -139,12 +139,59 @@ func InitInputListeners() {
 		return nil
 	}))
 
+	// Touch listeners for mobile support
+	canvas.Call("addEventListener", "touchstart", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		e := args[0]
+		touches := e.Get("touches")
+		if touches.Length() > 0 {
+			t := touches.Index(0)
+			rect := canvas.Call("getBoundingClientRect")
+			newX := float32(t.Get("clientX").Float() - rect.Get("left").Float())
+			newY := float32(t.Get("clientY").Float() - rect.Get("top").Float())
+
+			mousePos.X = newX
+			mousePos.Y = newY
+			mouseDown[MOUSE_BUTTON_LEFT] = true
+		}
+		return nil
+	}))
+
+	canvas.Call("addEventListener", "touchmove", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		e := args[0]
+		touches := e.Get("touches")
+		if touches.Length() > 0 {
+			t := touches.Index(0)
+			rect := canvas.Call("getBoundingClientRect")
+			newX := float32(t.Get("clientX").Float() - rect.Get("left").Float())
+			newY := float32(t.Get("clientY").Float() - rect.Get("top").Float())
+
+			mouseDelta.X = newX - mousePos.X
+			mouseDelta.Y = newY - mousePos.Y
+			mousePos.X = newX
+			mousePos.Y = newY
+		}
+		return nil
+	}))
+
+	canvas.Call("addEventListener", "touchend", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		mouseDown[MOUSE_BUTTON_LEFT] = false
+		return nil
+	}))
+
 	// Wheel
 	doc.Call("addEventListener", "wheel", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		e := args[0]
 		mouseWheel = float32(-e.Get("deltaY").Float() * 0.01)
 		return nil
 	}))
+}
+
+// SimulateVirtualKey forces key press/release state for touch UI controls
+func SimulateVirtualKey(key Key, isDown bool) {
+	if isDown && !keysDown[key] {
+		keysPressed[key] = true
+	}
+	keysDown[key] = isDown
 }
 
 // IsKeyDown returns true if key is held down
