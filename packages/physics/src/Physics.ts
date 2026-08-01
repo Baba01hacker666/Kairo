@@ -179,10 +179,14 @@ export class PhysicsWorld {
   private activePairs: Set<string> = new Set();
   private collisionEvents: CollisionEvent[] = [];
 
+  private static readonly FIXED_TIMESTEP = 1 / 60;
+  private static readonly MAX_SUBSTEPS = 3;
+
   constructor(backend: PhysicsBackendType = 'cannon') {
     this.activeBackend = backend;
     this.cannonWorld = new CANNON.World();
     this.cannonWorld.gravity.set(0, -9.81, 0);
+    this.cannonWorld.frictionGravity = new CANNON.Vec3().copy(this.cannonWorld.gravity);
     this.cannonWorld.broadphase = new CANNON.SAPBroadphase(this.cannonWorld);
     (this.cannonWorld.solver as CANNON.GSSolver).iterations = 10;
   }
@@ -193,13 +197,17 @@ export class PhysicsWorld {
   }
 
   registerBody(body: RigidBody, collider: Collider, position: Vector3 = new Vector3()): void {
+    const isDynamic = body.type === RigidBodyType.Dynamic;
+    const isKinematic = body.type === RigidBodyType.Kinematic;
     const cannonBody = new CANNON.Body({
-      mass: body.type === RigidBodyType.Dynamic ? Math.max(0.001, body.mass) : 0,
-      type: body.type === RigidBodyType.Dynamic ? CANNON.Body.DYNAMIC : CANNON.Body.STATIC,
+      mass: isDynamic ? Math.max(0.001, body.mass) : 0,
+      type: isDynamic ? CANNON.Body.DYNAMIC : isKinematic ? CANNON.Body.KINEMATIC : CANNON.Body.STATIC,
       position: toCannonVec3(position),
       linearDamping: body.linearDamping,
       angularDamping: body.angularDamping,
-      fixedRotation: body.fixedRotation
+      fixedRotation: body.fixedRotation,
+      collisionFilterGroup: body.collisionLayer,
+      collisionFilterMask: body.collisionMask
     });
 
     const shape = this.createShape(collider);
@@ -227,11 +235,45 @@ export class PhysicsWorld {
       return;
     }
 
-    this.cannonWorld.gravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
+    const world = this.cannonWorld;
+    const accumulatorBefore = world.accumulator;
+    // cannon-es applies gravity inside each fixed substep, so predict the total
+    // simulated time this call to feed manual per-body gravity below.
+    const simulated = Math.min(
+      Math.floor((accumulatorBefore + dt) / PhysicsWorld.FIXED_TIMESTEP),
+      PhysicsWorld.MAX_SUBSTEPS
+    ) * PhysicsWorld.FIXED_TIMESTEP;
+
+    // Gravity is applied per-body so `useGravity: false` bodies stay unaffected,
+    // while world gravity is zeroed to avoid double application.
+    world.gravity.set(0, 0, 0);
+    if (world.frictionGravity) world.frictionGravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
+    this.applyGravity(simulated);
+
     this.syncKinematicAndStaticBodies();
-    this.cannonWorld.step(1 / 60, dt, 3);
+    world.step(PhysicsWorld.FIXED_TIMESTEP, dt, PhysicsWorld.MAX_SUBSTEPS);
+
+    // If the world bailed out early on a spike frame, retract the gravity that
+    // was applied for substeps that never ran.
+    const simulatedActual = (accumulatorBefore + dt) - world.accumulator;
+    const overApplied = simulated - simulatedActual;
+    if (overApplied > 0) this.applyGravity(-overApplied);
+
     this.syncDynamicBodies();
     this.collectCollisionEvents();
+  }
+
+  private applyGravity(dt: number): void {
+    if (dt === 0) return;
+    const g = this.gravity;
+    for (const b of this.bodies) {
+      const cannonBody = b.body.cannonBody;
+      if (cannonBody && b.body.type === RigidBodyType.Dynamic && b.body.useGravity) {
+        cannonBody.velocity.x += g.x * dt;
+        cannonBody.velocity.y += g.y * dt;
+        cannonBody.velocity.z += g.z * dt;
+      }
+    }
   }
 
   onCollision(listener: (event: CollisionEvent) => void): void {

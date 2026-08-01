@@ -149,7 +149,7 @@ export class RenderPipeline {
     this.fpsTimer += dt;
 
     if (this.fpsTimer >= 1000) {
-      this.metrics.fps = Math.max(60, Math.round((this.frameCount * 1000) / this.fpsTimer));
+      this.metrics.fps = Math.round((this.frameCount * 1000) / this.fpsTimer);
       this.metrics.frameTimeMs = parseFloat((1000 / this.metrics.fps).toFixed(2));
       this.frameCount = 0;
       this.fpsTimer = 0;

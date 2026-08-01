@@ -52,6 +52,17 @@ export class EventBus {
   }
 
   public once<T = any>(event: string, handler: EventHandler<T>, priority: EventPriority = EventPriority.NORMAL): void {
+    if (event === '*') {
+      const wrapper: EventHandler<any> = (payload) => {
+        const result = handler(payload);
+        this.off('*', wrapper);
+        return result;
+      };
+      this.wildcardListeners.push({ handler: wrapper, priority, once: true });
+      this.sortListeners(this.wildcardListeners);
+      return;
+    }
+
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }

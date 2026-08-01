@@ -181,7 +181,14 @@ export class InverseKinematicsSolver {
     
     const normal = new Vector3(0, 1, 0);
     const forward = dir.clone().normalize();
-    const up = forward.cross(normal).cross(forward).normalize();
+    let up = forward.cross(normal).cross(forward).normalize();
+    // Degenerate case: target directly above/below root makes `up` a zero
+    // vector, which would turn the joint position into NaN.
+    if (up.lengthSq() < 1e-6) {
+      up = forward.clone().cross(new Vector3(1, 0, 0));
+      if (up.lengthSq() < 1e-6) up = forward.clone().cross(new Vector3(0, 0, 1));
+      up.normalize();
+    }
     
     const newJoint = rootPos.clone()
       .add(forward.clone().scale(Math.cos(angle) * l1))

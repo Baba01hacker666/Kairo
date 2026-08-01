@@ -1,5 +1,6 @@
 import { Vector3, Quaternion, Matrix4 } from './Math.ts';
 import { EventEmitter } from './EventSystem.ts';
+import { Serializer } from './Serializer.ts';
 
 export interface SceneNodeSerialized {
   id: string;
@@ -133,14 +134,15 @@ export class Scene {
   }
 
   serialize(): string {
-    return JSON.stringify({
+    // Use Serializer so Map/Set instances inside components survive round-trips
+    return Serializer.serialize({
       name: this.name,
       root: this.root.serialize()
-    }, null, 2);
+    }, true);
   }
 
   static deserialize(jsonStr: string): Scene {
-    const data = JSON.parse(jsonStr);
+    const data = Serializer.deserialize<{ name: string; root: SceneNodeSerialized }>(jsonStr);
     const scene = new Scene(data.name);
     scene.root = SceneNode.deserialize(data.root);
     return scene;
