@@ -236,42 +236,27 @@ export class PhysicsWorld {
     }
 
     const world = this.cannonWorld;
-    const accumulatorBefore = world.accumulator;
-    // cannon-es applies gravity inside each fixed substep, so predict the total
-    // simulated time this call to feed manual per-body gravity below.
-    const simulated = Math.min(
-      Math.floor((accumulatorBefore + dt) / PhysicsWorld.FIXED_TIMESTEP),
-      PhysicsWorld.MAX_SUBSTEPS
-    ) * PhysicsWorld.FIXED_TIMESTEP;
-
-    // Gravity is applied per-body so `useGravity: false` bodies stay unaffected,
-    // while world gravity is zeroed to avoid double application.
-    world.gravity.set(0, 0, 0);
-    if (world.frictionGravity) world.frictionGravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
-    this.applyGravity(simulated);
+    world.gravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
+    // cannon-es 0.20 applies world gravity to every dynamic body unconditionally,
+    // so `useGravity: false` bodies are cancelled out here with an equal and
+    // opposite force in the same substep, keeping resting/solving behaviour stable.
+    this.cancelGravityForNonGravityBodies();
 
     this.syncKinematicAndStaticBodies();
     world.step(PhysicsWorld.FIXED_TIMESTEP, dt, PhysicsWorld.MAX_SUBSTEPS);
-
-    // If the world bailed out early on a spike frame, retract the gravity that
-    // was applied for substeps that never ran.
-    const simulatedActual = (accumulatorBefore + dt) - world.accumulator;
-    const overApplied = simulated - simulatedActual;
-    if (overApplied > 0) this.applyGravity(-overApplied);
 
     this.syncDynamicBodies();
     this.collectCollisionEvents();
   }
 
-  private applyGravity(dt: number): void {
-    if (dt === 0) return;
+  private cancelGravityForNonGravityBodies(): void {
     const g = this.gravity;
     for (const b of this.bodies) {
       const cannonBody = b.body.cannonBody;
-      if (cannonBody && b.body.type === RigidBodyType.Dynamic && b.body.useGravity) {
-        cannonBody.velocity.x += g.x * dt;
-        cannonBody.velocity.y += g.y * dt;
-        cannonBody.velocity.z += g.z * dt;
+      if (cannonBody && b.body.type === RigidBodyType.Dynamic && !b.body.useGravity) {
+        cannonBody.force.x -= b.body.mass * g.x;
+        cannonBody.force.y -= b.body.mass * g.y;
+        cannonBody.force.z -= b.body.mass * g.z;
       }
     }
   }
