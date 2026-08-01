@@ -517,6 +517,16 @@ func main() {
 			})
 			return nil
 		}),
+		"get3DState": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return map[string]interface{}{
+				"camX": camera3D.Position.X,
+				"camY": camera3D.Position.Y,
+				"camZ": camera3D.Position.Z,
+				"targetX": camera3D.Target.X,
+				"targetY": camera3D.Target.Y,
+				"targetZ": camera3D.Target.Z,
+			}
+		}),
 	}))
 
 	<-c
