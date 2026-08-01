@@ -9,6 +9,7 @@ type transform3D struct {
 	viewMatrix    [16]float64
 	screenCenterX float64
 	screenCenterY float64
+	focalLength   float64
 	eye           Vector3
 	lightDir      Vector3
 }
@@ -22,6 +23,9 @@ type Triangle3D struct {
 	Normal     Vector3
 }
 
+// Global reusable triangle buffer pool to eliminate heap allocations per frame
+var triPool = make([]Triangle3D, 0, 2048)
+
 // BeginMode3D starts 3D drawing mode with specified camera
 func BeginMode3D(camera Camera3D) {
 	isDrawing3D = true
@@ -34,6 +38,13 @@ func BeginMode3D(camera Camera3D) {
 	currentTrans.eye = camera.Position
 	currentTrans.lightDir = NewVector3(0.5, 1.0, 0.8).Normalize()
 
+	// Pre-calculate focal length once per frame instead of per-vertex
+	fovRad := float64(camera.Fov) * math.Pi / 180.0
+	currentTrans.focalLength = (sh * 0.5) / math.Tan(fovRad*0.5)
+
+	// Reset triangle pool
+	triPool = triPool[:0]
+
 	// Build View Matrix (LookAt)
 	eye := camera.Position
 	target := camera.Target
@@ -43,7 +54,7 @@ func BeginMode3D(camera Camera3D) {
 	right := forward.Cross(up).Normalize()
 	upVector := right.Cross(forward)
 
-	// View matrix transforms world coords to camera local space (where -Z is view direction)
+	// View matrix transforms world coords to camera local space
 	currentTrans.viewMatrix = [16]float64{
 		float64(right.X), float64(upVector.X), float64(-forward.X), 0,
 		float64(right.Y), float64(upVector.Y), float64(-forward.Y), 0,
@@ -69,11 +80,9 @@ func Project3DTo2D(pos Vector3) (Vector2, float32, bool) {
 		return Vector2{}, float32(vz), false
 	}
 
-	fovRad := float64(activeCam.Fov) * math.Pi / 180.0
-	focalLength := (float64(windowHeight) * 0.5) / math.Tan(fovRad*0.5)
-
-	screenX := currentTrans.screenCenterX + (vx/vz)*focalLength
-	screenY := currentTrans.screenCenterY - (vy/vz)*focalLength
+	invZ := 1.0 / vz
+	screenX := currentTrans.screenCenterX + (vx*invZ)*currentTrans.focalLength
+	screenY := currentTrans.screenCenterY - (vy*invZ)*currentTrans.focalLength
 
 	return Vector2{X: float32(screenX), Y: float32(screenY)}, float32(vz), true
 }
@@ -85,7 +94,6 @@ func DrawGrid(slices int, spacing float32) {
 	for i := 0; i <= slices; i++ {
 		offset := -halfSize + float32(i)*spacing
 
-		// Lines parallel to X
 		p1, _, ok1 := Project3DTo2D(NewVector3(-halfSize, 0, offset))
 		p2, _, ok2 := Project3DTo2D(NewVector3(halfSize, 0, offset))
 		if ok1 && ok2 {
@@ -96,7 +104,6 @@ func DrawGrid(slices int, spacing float32) {
 			DrawLineV(p1, p2, col)
 		}
 
-		// Lines parallel to Z
 		p3, _, ok3 := Project3DTo2D(NewVector3(offset, 0, -halfSize))
 		p4, _, ok4 := Project3DTo2D(NewVector3(offset, 0, halfSize))
 		if ok3 && ok4 {
@@ -141,63 +148,61 @@ func DrawCubeWires(position Vector3, width, height, length float32, color Color)
 	}
 }
 
-// DrawCube draws shaded 3D cube with Lambertian lighting & depth sorting
+// DrawCube draws shaded 3D cube with zero-alloc pool, Lambertian lighting & depth sorting
 func DrawCube(position Vector3, width, height, length float32, color Color) {
 	hw := width * 0.5
 	hh := height * 0.5
 	hl := length * 0.5
 
 	v := [8]Vector3{
-		NewVector3(position.X-hw, position.Y-hh, position.Z-hl), // 0
-		NewVector3(position.X+hw, position.Y-hh, position.Z-hl), // 1
-		NewVector3(position.X+hw, position.Y+hh, position.Z-hl), // 2
-		NewVector3(position.X-hw, position.Y+hh, position.Z-hl), // 3
-		NewVector3(position.X-hw, position.Y-hh, position.Z+hl), // 4
-		NewVector3(position.X+hw, position.Y-hh, position.Z+hl), // 5
-		NewVector3(position.X+hw, position.Y+hh, position.Z+hl), // 6
-		NewVector3(position.X-hw, position.Y+hh, position.Z+hl), // 7
+		NewVector3(position.X-hw, position.Y-hh, position.Z-hl),
+		NewVector3(position.X+hw, position.Y-hh, position.Z-hl),
+		NewVector3(position.X+hw, position.Y+hh, position.Z-hl),
+		NewVector3(position.X-hw, position.Y+hh, position.Z-hl),
+		NewVector3(position.X-hw, position.Y-hh, position.Z+hl),
+		NewVector3(position.X+hw, position.Y-hh, position.Z+hl),
+		NewVector3(position.X+hw, position.Y+hh, position.Z+hl),
+		NewVector3(position.X-hw, position.Y+hh, position.Z+hl),
 	}
 
 	quads := [6][4]int{
-		{3, 2, 1, 0}, // Back
-		{4, 5, 6, 7}, // Front
-		{0, 3, 7, 4}, // Left
-		{5, 6, 2, 1}, // Right
-		{0, 1, 5, 4}, // Bottom
-		{7, 6, 2, 3}, // Top
+		{3, 2, 1, 0},
+		{4, 5, 6, 7},
+		{0, 3, 7, 4},
+		{5, 6, 2, 1},
+		{0, 1, 5, 4},
+		{7, 6, 2, 3},
 	}
 
-	var tris []Triangle3D
+	startIdx := len(triPool)
 
 	for _, q := range quads {
 		v0, v1, v2, v3 := v[q[0]], v[q[1]], v[q[2]], v[q[3]]
 
-		// Tri 1
 		n1 := v1.Sub(v0).Cross(v2.Sub(v0)).Normalize()
-		tris = append(tris, Triangle3D{
+		triPool = append(triPool, Triangle3D{
 			V0: v0, V1: v1, V2: v2, Normal: n1, Color: color,
-			AvgZ: (v0.Z + v1.Z + v2.Z) / 3.0,
+			AvgZ: (v0.Z + v1.Z + v2.Z) * 0.33333,
 		})
 
-		// Tri 2
 		n2 := v2.Sub(v0).Cross(v3.Sub(v0)).Normalize()
-		tris = append(tris, Triangle3D{
+		triPool = append(triPool, Triangle3D{
 			V0: v0, V1: v2, V2: v3, Normal: n2, Color: color,
-			AvgZ: (v0.Z + v1.Z + v3.Z) / 3.0,
+			AvgZ: (v0.Z + v1.Z + v3.Z) * 0.33333,
 		})
 	}
 
-	// Sort triangles by distance to camera (Painter's algorithm)
+	tris := triPool[startIdx:]
+
+	// Sort triangles back-to-front
 	eye := currentTrans.eye
 	sort.Slice(tris, func(i, j int) bool {
-		d1 := tris[i].V0.Add(tris[i].V1).Add(tris[i].V2).Scale(1.0 / 3.0).Sub(eye).Length()
-		d2 := tris[j].V0.Add(tris[j].V1).Add(tris[j].V2).Scale(1.0 / 3.0).Sub(eye).Length()
+		d1 := tris[i].V0.Add(tris[i].V1).Add(tris[i].V2).Scale(0.33333).Sub(eye).Length()
+		d2 := tris[j].V0.Add(tris[j].V1).Add(tris[j].V2).Scale(0.33333).Sub(eye).Length()
 		return d1 > d2
 	})
 
-	// Render triangles
 	for _, t := range tris {
-		// Backface culling
 		viewDir := t.V0.Sub(eye).Normalize()
 		if t.Normal.Dot(viewDir) >= 0 {
 			continue
@@ -208,12 +213,11 @@ func DrawCube(position Vector3, width, height, length float32, color Color) {
 		p2, _, ok2 := Project3DTo2D(t.V2)
 
 		if ok0 && ok1 && ok2 {
-			// Directional lighting calculation
 			lightDot := t.Normal.Dot(currentTrans.lightDir)
 			if lightDot < 0 {
 				lightDot = 0
 			}
-			intensity := 0.35 + lightDot*0.65 // Ambient + Diffuse
+			intensity := 0.35 + lightDot*0.65
 
 			shadedCol := Color{
 				R: uint8(float32(t.Color.R) * intensity),
@@ -229,12 +233,12 @@ func DrawCube(position Vector3, width, height, length float32, color Color) {
 	DrawCubeWires(position, width, height, length, ColorAlpha(WHITE, 0.4))
 }
 
-// DrawSphere draws shaded 3D sphere
+// DrawSphere draws shaded 3D sphere using triPool
 func DrawSphere(centerPos Vector3, radius float32, color Color) {
 	rings := 10
 	slices := 12
 
-	var tris []Triangle3D
+	startIdx := len(triPool)
 
 	for i := 0; i < rings; i++ {
 		lat0 := math.Pi * (-0.5 + float64(i)/float64(rings))
@@ -256,12 +260,13 @@ func DrawSphere(centerPos Vector3, radius float32, color Color) {
 			v3 := NewVector3(centerPos.X+float32(math.Cos(lng1)*r0), centerPos.Y+float32(y0), centerPos.Z+float32(math.Sin(lng1)*r0))
 
 			n1 := v0.Sub(centerPos).Normalize()
-			tris = append(tris, Triangle3D{V0: v0, V1: v1, V2: v2, Normal: n1, Color: color})
-			tris = append(tris, Triangle3D{V0: v0, V1: v2, V2: v3, Normal: n1, Color: color})
+			triPool = append(triPool, Triangle3D{V0: v0, V1: v1, V2: v2, Normal: n1, Color: color})
+			triPool = append(triPool, Triangle3D{V0: v0, V1: v2, V2: v3, Normal: n1, Color: color})
 		}
 	}
 
-	// Sort triangles by distance
+	tris := triPool[startIdx:]
+
 	eye := currentTrans.eye
 	sort.Slice(tris, func(i, j int) bool {
 		d1 := tris[i].V0.Sub(eye).Length()
@@ -298,7 +303,7 @@ func DrawSphere(centerPos Vector3, radius float32, color Color) {
 	}
 }
 
-// DrawSphereWires draws wireframe 3D sphere
+// DrawSphereWires draws sphere
 func DrawSphereWires(centerPos Vector3, radius float32, rings, slices int, color Color) {
 	DrawSphere(centerPos, radius, color)
 }
