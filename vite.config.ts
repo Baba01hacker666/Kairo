@@ -19,7 +19,10 @@ export default defineConfig({
         gdp: 'examples/gdp-explainer/index.html',
         babylonhavok: 'examples/babylon-havok/index.html',
         babylonshooter: 'examples/babylon-shooter/index.html',
-        goraylib: 'examples/go-raylib-tester/index.html'
+        goraylib: 'examples/go-raylib-tester/index.html',
+        editor: 'editor/index.html',
+        aipathfinding: 'examples/ai-pathfinding/index.html',
+        scifiexplorer: 'examples/scifi-explorer/index.html'
       },
       output: {
         manualChunks(id) {
@@ -43,7 +46,8 @@ export default defineConfig({
       '@kairo/assets': '/packages/assets/src/index.ts',
       '@kairo/plugins': '/packages/plugins/src/index.ts',
       '@kairo/ui': '/packages/ui/src/index.ts',
-      '@kairo/tools': '/packages/tools/src/index.ts'
+      '@kairo/tools': '/packages/tools/src/index.ts',
+      '@kairo/events': '/packages/events/src/index.ts'
     }
   }
 });

@@ -43,6 +43,73 @@ interface BodyEntry {
   position: Vector3;
 }
 
+export class SpatialHashGrid3D {
+  private cellSize: number;
+  private grid: Map<string, Array<{ id: number; pos: Vector3; radius: number }>> = new Map();
+
+  constructor(cellSize: number = 2.0) {
+    this.cellSize = cellSize;
+  }
+
+  private getKey(x: number, y: number, z: number): string {
+    const cx = Math.floor(x / this.cellSize);
+    const cy = Math.floor(y / this.cellSize);
+    const cz = Math.floor(z / this.cellSize);
+    return `${cx},${cy},${cz}`;
+  }
+
+  public clear(): void {
+    this.grid.clear();
+  }
+
+  public insert(id: number, pos: Vector3, radius: number = 0.5): void {
+    const key = this.getKey(pos.x, pos.y, pos.z);
+    let cell = this.grid.get(key);
+    if (!cell) {
+      cell = [];
+      this.grid.set(key, cell);
+    }
+    cell.push({ id, pos, radius });
+  }
+
+  public getNearby(pos: Vector3): Array<{ id: number; pos: Vector3; radius: number }> {
+    const cx = Math.floor(pos.x / this.cellSize);
+    const cy = Math.floor(pos.y / this.cellSize);
+    const cz = Math.floor(pos.z / this.cellSize);
+    const nearby: Array<{ id: number; pos: Vector3; radius: number }> = [];
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const key = `${cx + dx},${cy + dy},${cz + dz}`;
+          const cell = this.grid.get(key);
+          if (cell) {
+            for (let i = 0; i < cell.length; i++) {
+              nearby.push(cell[i]);
+            }
+          }
+        }
+      }
+    }
+
+    return nearby;
+  }
+}
+
+export class Collider {
+  public type: ColliderTypeValue = ColliderType.Box;
+  public size: Vector3 = new Vector3(1, 1, 1);
+  public isTrigger: boolean = false;
+
+  public getBoundingBox(position: Vector3): BoundingBox {
+    const half = this.size.clone().scale(0.5);
+    return new BoundingBox(
+      position.clone().sub(half),
+      position.clone().add(half)
+    );
+  }
+}
+
 export class RigidBody {
   public type: RigidBodyTypeValue = RigidBodyType.Dynamic;
   public mass: number = 1.0;
@@ -99,154 +166,131 @@ export class RigidBody {
   }
 }
 
-export class Collider {
-  public type: ColliderTypeValue = ColliderType.Box;
-  public size: Vector3 = new Vector3(1, 1, 1);
-  public centerOffset: Vector3 = new Vector3(0, 0, 0);
-  public isTrigger: boolean = false;
-  public friction: number = 0.4;
-  public restitution: number = 0.2;
-  public cannonShape: CANNON.Shape | null = null;
-
-  getBoundingBox(position: Vector3): BoundingBox {
-    const halfSize = this.size.clone().scale(0.5);
-    const pos = position.clone().add(this.centerOffset);
-    return new BoundingBox(pos.clone().sub(halfSize), pos.clone().add(halfSize));
-  }
-}
+export type PhysicsBackendType = 'cannon' | 'havok' | 'go-wasm';
 
 export class PhysicsWorld {
-  public cannonWorld: CANNON.World;
-  public fixedTimeStep = 1 / 60;
-  public maxSubSteps = 8;
-  public collisionEvents: CollisionEvent[] = [];
-
+  public gravity: Vector3 = new Vector3(0, -9.81, 0);
+  public activeBackend: PhysicsBackendType = 'cannon';
   private bodies: BodyEntry[] = [];
-  private bodyLookup = new Map<CANNON.Body, BodyEntry>();
-  private defaultMaterial: CANNON.Material;
-  private activePairs = new Set<string>();
-  private collisionListeners = new Set<(event: CollisionEvent) => void>();
-  private triggerListeners = new Set<(event: CollisionEvent) => void>();
+  private cannonWorld: CANNON.World;
+  private bodyLookup: Map<CANNON.Body, BodyEntry> = new Map();
+  private collisionListeners: Array<(event: CollisionEvent) => void> = [];
+  private triggerListeners: Array<(event: CollisionEvent) => void> = [];
+  private activePairs: Set<string> = new Set();
+  private collisionEvents: CollisionEvent[] = [];
 
-  onTrigger(listener: (event: CollisionEvent) => void): () => void {
-    this.triggerListeners.add(listener);
-    return () => this.triggerListeners.delete(listener);
-  }
-
-  constructor() {
-    this.cannonWorld = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
-    this.cannonWorld.allowSleep = true;
+  constructor(backend: PhysicsBackendType = 'cannon') {
+    this.activeBackend = backend;
+    this.cannonWorld = new CANNON.World();
+    this.cannonWorld.gravity.set(0, -9.81, 0);
     this.cannonWorld.broadphase = new CANNON.SAPBroadphase(this.cannonWorld);
-    this.defaultMaterial = new CANNON.Material('default');
-    this.cannonWorld.defaultContactMaterial.friction = 0.4;
-    this.cannonWorld.defaultContactMaterial.restitution = 0.2;
-    this.cannonWorld.addContactMaterial(new CANNON.ContactMaterial(this.defaultMaterial, this.defaultMaterial, { friction: 0.4, restitution: 0.2 }));
+    (this.cannonWorld.solver as CANNON.GSSolver).iterations = 10;
   }
 
-  set gravity(g: Vector3) { this.cannonWorld.gravity.set(g.x, g.y, g.z); }
-  get gravity(): Vector3 { return fromCannonVec3(this.cannonWorld.gravity); }
-
-  onCollision(listener: (event: CollisionEvent) => void): () => void {
-    this.collisionListeners.add(listener);
-    return () => this.collisionListeners.delete(listener);
+  public setBackend(backend: PhysicsBackendType): void {
+    this.activeBackend = backend;
+    console.log(`[Kairo Physics] Active Physics Engine Backend set to: ${backend.toUpperCase()}`);
   }
 
-  registerBody(body: RigidBody, collider: Collider, position: Vector3): void {
+  registerBody(body: RigidBody, collider: Collider, position: Vector3 = new Vector3()): void {
+    const cannonBody = new CANNON.Body({
+      mass: body.type === RigidBodyType.Dynamic ? Math.max(0.001, body.mass) : 0,
+      type: body.type === RigidBodyType.Dynamic ? CANNON.Body.DYNAMIC : CANNON.Body.STATIC,
+      position: toCannonVec3(position),
+      linearDamping: body.linearDamping,
+      angularDamping: body.angularDamping,
+      fixedRotation: body.fixedRotation
+    });
+
     const shape = this.createShape(collider);
-    collider.cannonShape = shape;
-    const mass = body.type === RigidBodyType.Dynamic ? Math.max(0, body.mass) : 0;
-    const material = new CANNON.Material(`collider-${this.bodies.length}`);
-    material.friction = collider.friction;
-    material.restitution = collider.restitution;
-    const cBody = new CANNON.Body({ mass, material, position: toCannonVec3(position), fixedRotation: body.fixedRotation, linearDamping: body.linearDamping, angularDamping: body.angularDamping });
-    cBody.type = body.type === RigidBodyType.Kinematic ? CANNON.Body.KINEMATIC : body.type === RigidBodyType.Static ? CANNON.Body.STATIC : CANNON.Body.DYNAMIC;
-    cBody.collisionFilterGroup = body.collisionLayer;
-    cBody.collisionFilterMask = body.collisionMask;
-    shape.collisionResponse = !collider.isTrigger;
-    cBody.addShape(shape, toCannonVec3(collider.centerOffset));
-    if (!body.useGravity) cBody.addEventListener('preStep', () => cBody.force.vsub(this.cannonWorld.gravity.scale(cBody.mass), cBody.force));
+    cannonBody.addShape(shape);
+    body.cannonBody = cannonBody;
 
-    const entry = { body, collider, position };
-    this.cannonWorld.addBody(cBody);
-    body.cannonBody = cBody;
+    const entry: BodyEntry = { body, collider, position };
     this.bodies.push(entry);
-    this.bodyLookup.set(cBody, entry);
+    this.bodyLookup.set(cannonBody, entry);
+    this.cannonWorld.addBody(cannonBody);
   }
 
   unregisterBody(body: RigidBody): void {
     if (body.cannonBody) {
-      this.bodyLookup.delete(body.cannonBody);
       this.cannonWorld.removeBody(body.cannonBody);
+      this.bodyLookup.delete(body.cannonBody);
       body.cannonBody = null;
     }
-    this.bodies = this.bodies.filter(b => b.body !== body);
+    this.bodies = this.bodies.filter(entry => entry.body !== body);
   }
 
   step(dt: number): void {
+    if (this.activeBackend === 'go-wasm' && (window as any).kairoWasmPhysics) {
+      (window as any).kairoWasmPhysics.step(dt);
+      return;
+    }
+
+    this.cannonWorld.gravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
     this.syncKinematicAndStaticBodies();
-    this.cannonWorld.step(this.fixedTimeStep, dt, this.maxSubSteps);
+    this.cannonWorld.step(1 / 60, dt, 3);
     this.syncDynamicBodies();
     this.collectCollisionEvents();
   }
 
-  raycast(ray: Ray, maxDistance: number = 100): RaycastHit | null {
-    const from = toCannonVec3(ray.origin);
-    const direction = ray.direction.clone().normalize();
-    const to = new CANNON.Vec3(from.x + direction.x * maxDistance, from.y + direction.y * maxDistance, from.z + direction.z * maxDistance);
-    const result = new CANNON.RaycastResult();
-    this.cannonWorld.raycastClosest(from, to, { skipBackfaces: false }, result);
-    return result.hasHit ? this.toRaycastHit(result) : null;
+  onCollision(listener: (event: CollisionEvent) => void): void {
+    this.collisionListeners.push(listener);
   }
 
-sphereCast(origin: Vector3, radius: number, direction: Vector3, maxDistance = 100): RaycastHit | null {
-    const from = toCannonVec3(origin);
+  onTrigger(listener: (event: CollisionEvent) => void): void {
+    this.triggerListeners.push(listener);
+  }
 
-    // We modify direction in place instead of clone()
-    const dirLen = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
-    const dirX = direction.x / dirLen;
-    const dirY = direction.y / dirLen;
-    const dirZ = direction.z / dirLen;
+  raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance: number = 100): RaycastHit {
+    let ray: Ray;
+    let maxDist = maxDistance;
 
-    const to = new CANNON.Vec3(from.x + dirX * maxDistance, from.y + dirY * maxDistance, from.z + dirZ * maxDistance);
-
-    // Quick hack for sphere cast using raycast closest - not perfect but Cannon.js doesn't have native sweep test
-    // Real implementation would need a ghost object sweep or custom broadphase/narrowphase intersection test
-    const result = new CANNON.RaycastResult();
-    this.cannonWorld.raycastClosest(from, to, { skipBackfaces: false }, result);
-
-    // Fallback if no exact ray hit, check using steps to simulate a sphere cast
-    if (!result.hasHit) {
-      const steps = Math.max(1, Math.ceil(maxDistance / Math.max(radius, 0.1)));
-
-      const center = new Vector3(0, 0, 0); // Re-use this vector in loop
-
-      for (let i = 0; i <= steps; i++) {
-        const distance = (i / steps) * maxDistance;
-        center.set(origin.x + dirX * distance, origin.y + dirY * distance, origin.z + dirZ * distance);
-
-        const body = this.overlapSphere(center, radius)[0];
-        if (body) {
-          const entry = this.bodies.find(candidate => candidate.body === body);
-          return { hasHit: true, body, collider: entry?.collider ?? null, point: new Vector3(center.x, center.y, center.z), normal: new Vector3(-dirX, -dirY, -dirZ), distance };
-        }
-      }
-      return null;
+    if (originOrRay instanceof Ray) {
+      ray = originOrRay;
+      if (typeof directionOrMaxDist === 'number') maxDist = directionOrMaxDist;
+    } else {
+      const dir = (directionOrMaxDist instanceof Vector3) ? directionOrMaxDist : new Vector3(0, 0, -1);
+      ray = new Ray(originOrRay, dir);
     }
 
-    // Approximate sphere cast hit using raycast hit
-    return this.toRaycastHit(result);
+    let closestHit: RaycastHit = {
+      hasHit: false,
+      body: null,
+      collider: null,
+      point: new Vector3(),
+      normal: new Vector3(),
+      distance: maxDist
+    };
+
+    for (const { body, collider, position } of this.bodies) {
+      const bounds = collider.getBoundingBox(position);
+      const hit = ray.intersectBox(bounds);
+      if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestHit.distance) {
+        closestHit = {
+          hasHit: true,
+          body,
+          collider,
+          point: hit.point,
+          normal: hit.normal,
+          distance: hit.distance
+        };
+      }
+    }
+    return closestHit;
   }
 
-  overlapBox(center: Vector3, size: Vector3): RigidBody[] {
-    const query = new Collider();
-    query.size = size;
-    return this.bodies.filter(({ body, collider, position }) => body.cannonBody && query.getBoundingBox(center).intersectsBox(collider.getBoundingBox(position))).map(({ body }) => body);
+  sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance: number = 100): RaycastHit {
+    const hit = this.raycast(originOrRay, direction, maxDistance + radius);
+    if (hit.hasHit) {
+      hit.distance = Math.max(0, hit.distance - radius);
+    }
+    return hit;
   }
 
   overlapSphere(center: Vector3, radius: number): RigidBody[] {
     const radiusSq = radius * radius;
-    return this.bodies.filter(({ body, collider, position }) => {
-      if (!body.cannonBody) return false;
+    return this.bodies.filter(({ collider, position }) => {
       const bounds = collider.getBoundingBox(position);
       const closestX = clamp(center.x, bounds.min.x, bounds.max.x);
       const closestY = clamp(center.y, bounds.min.y, bounds.max.y);
@@ -255,6 +299,17 @@ sphereCast(origin: Vector3, radius: number, direction: Vector3, maxDistance = 10
       const dy = center.y - closestY;
       const dz = center.z - closestZ;
       return dx * dx + dy * dy + dz * dz <= radiusSq;
+    }).map(({ body }) => body);
+  }
+
+  overlapBox(center: Vector3, halfExtents: Vector3): RigidBody[] {
+    const queryBox = new BoundingBox(
+      center.clone().sub(halfExtents),
+      center.clone().add(halfExtents)
+    );
+    return this.bodies.filter(({ collider, position }) => {
+      const bounds = collider.getBoundingBox(position);
+      return queryBox.intersectsBox(bounds);
     }).map(({ body }) => body);
   }
 
@@ -307,7 +362,6 @@ sphereCast(origin: Vector3, radius: number, direction: Vector3, maxDistance = 10
       }
     }
   }
-
 
   private toRaycastHit(result: CANNON.RaycastResult): RaycastHit {
     const entry = result.body ? this.bodyLookup.get(result.body) : undefined;

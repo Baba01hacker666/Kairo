@@ -290,6 +290,35 @@ export class World {
     return results;
   }
 
+  /**
+   * Ultra-High Performance Direct Dual-Component Fast Iterator
+   * Avoids query array allocations and map lookup overheads for 100,000+ entities
+   */
+  each2<A, B>(
+    CompA: ComponentType<A>,
+    CompB: ComponentType<B>,
+    callback: (entity: EntityId, compA: A, compB: B) => void
+  ): void {
+    const storageA = this.components.get(CompA);
+    const storageB = this.components.get(CompB);
+    if (!storageA || !storageB) return;
+
+    const [smaller, larger, isASmaller] = storageA.size <= storageB.size
+      ? [storageA, storageB, true]
+      : [storageB, storageA, false];
+
+    for (const [entity, item] of smaller) {
+      const other = larger.get(entity);
+      if (other !== undefined) {
+        if (isASmaller) {
+          callback(entity, item as A, other as B);
+        } else {
+          callback(entity, other as A, item as B);
+        }
+      }
+    }
+  }
+
 
 
   addSystem(system: System): this {

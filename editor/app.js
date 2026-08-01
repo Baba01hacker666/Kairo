@@ -449,7 +449,75 @@ function setupDropdownMenus() {
 
   bindAction('menu-new-scene', () => { loadDemoScene(state.demoType); logConsole('[Scene] New Scene created.'); });
   bindAction('menu-save-scene', () => { alert('Scene saved to Kairo Local Storage!'); logConsole('[Scene] Scene saved successfully.'); });
-  bindAction('menu-export-proj', () => { alert('Project exported to Standalone WebGL / 2D Canvas Bundle!'); logConsole('[Build] Project build exported.'); });
+  bindAction('menu-export-proj', () => {
+    const exportedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kairo Standalone Exported Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0a0c0f; font-family: sans-serif; }
+    #hud { position: absolute; top: 16px; left: 16px; color: #fff; background: rgba(0,0,0,0.7); padding: 10px 16px; border-radius: 8px; border: 1px solid #6366f1; }
+  </style>
+</head>
+<body>
+  <div id="hud">🎮 KAIRO STANDALONE GAME BUILD | Arrow/WASD: Move</div>
+  <script>
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0c0f);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 10);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const grid = new THREE.GridHelper(30, 30, 0x6366f1, 0x232938);
+    scene.add(grid);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1.5);
+    light.position.set(5, 10, 5);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+    const playerGeo = new THREE.BoxGeometry(1, 2, 1);
+    const playerMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.2 });
+    const player = new THREE.Mesh(playerGeo, playerMat);
+    player.position.y = 1;
+    scene.add(player);
+
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (keys['KeyW'] || keys['ArrowUp']) player.position.z -= 0.1;
+      if (keys['KeyS'] || keys['ArrowDown']) player.position.z += 0.1;
+      if (keys['KeyA'] || keys['ArrowLeft']) player.position.x -= 0.1;
+      if (keys['KeyD'] || keys['ArrowRight']) player.position.x += 0.1;
+
+      camera.position.x = player.position.x;
+      camera.position.z = player.position.z + 8;
+      camera.lookAt(player.position);
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([exportedHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kairo-game-standalone.html';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    logConsole('[Build] Standalone Game Bundle compiled & downloaded as kairo-game-standalone.html!');
+  });
   
   bindAction('menu-add-stickman', () => { loadDemoScene('stickman'); logConsole('[Scene] Added 3D Character.'); });
   bindAction('menu-add-cube', () => { createEntity('3D Cube', `cube_${Date.now()}`, { x: (Math.random()-0.5)*4, y: 1.5, z: (Math.random()-0.5)*4 }, { x: 1, y: 1, z: 1 }, 0x6366f1); updateHierarchyTree(); logConsole('[Scene] Added 3D Cube entity.'); });

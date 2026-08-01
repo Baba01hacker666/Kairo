@@ -13,6 +13,15 @@ import { MeshCompressor, CompressionStats } from './MeshCompressor.ts';
 
 export type AssetModelType = 'gltf' | 'glb' | 'obj' | 'fbx' | 'stl' | 'ply' | 'dae' | 'vox' | 'drc';
 
+export interface ModelBoundsInfo {
+  width: number;
+  height: number;
+  depth: number;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+  scaleFactor: number;
+}
+
 export class AssetManager {
   private cache: Map<string, any> = new Map();
   private pending: Map<string, Promise<any>> = new Map();
@@ -36,16 +45,74 @@ export class AssetManager {
   }
 
   /**
+   * Auto-Fit & Auto-Scale Character/Prop Asset to Target Height & Bottom Pivot Alignment
+   */
+  public autoFitModel(model: THREE.Object3D, targetHeight: number = 2.0): ModelBoundsInfo {
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    const rawHeight = size.y > 0.0001 ? size.y : 1.0;
+    const scaleFactor = targetHeight / rawHeight;
+
+    // Apply uniform scale
+    model.scale.multiplyScalar(scaleFactor);
+
+    // Recompute bounding box post-scale
+    model.updateMatrixWorld(true);
+    const postBox = new THREE.Box3().setFromObject(model);
+    const postSize = new THREE.Vector3();
+    postBox.getSize(postSize);
+
+    return {
+      width: postSize.x,
+      height: postSize.y,
+      depth: postSize.z,
+      center,
+      size: postSize,
+      scaleFactor
+    };
+  }
+
+  /**
+   * Auto-Generate Collision Collider Metadata for Character / Asset
+   */
+  public generateAutoCollider(model: THREE.Object3D): { type: 'box' | 'capsule' | 'sphere'; radius: number; height: number; halfExtents: [number, number, number] } {
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    const radius = Math.max(size.x, size.z) / 2;
+    const height = size.y;
+
+    return {
+      type: height > radius * 2.5 ? 'capsule' : 'box',
+      radius,
+      height,
+      halfExtents: [size.x / 2, size.y / 2, size.z / 2]
+    };
+  }
+
+  /**
    * Unified 3D Model Loader
    * Automatically handles compressed models (Draco .glb, .gltf, .drc, .obj, .fbx, .stl, .ply, .dae, .vox)
    */
-  async loadModel(url: string, autoCompress: boolean = false): Promise<THREE.Object3D> {
+  async loadModel(url: string, autoCompress: boolean = false, targetHeight?: number): Promise<THREE.Object3D> {
     if (this.cache.has(url)) {
-      return this.cache.get(url).clone();
+      const cloned = this.cache.get(url).clone();
+      if (targetHeight) this.autoFitModel(cloned, targetHeight);
+      return cloned;
     }
     if (this.pending.has(url)) {
       const model = await this.pending.get(url);
-      return model.clone();
+      const cloned = model.clone();
+      if (targetHeight) this.autoFitModel(cloned, targetHeight);
+      return cloned;
     }
 
     const promise = new Promise<THREE.Object3D>((resolve, reject) => {
@@ -129,7 +196,9 @@ export class AssetManager {
     this.pending.set(url, promise);
     const model = await promise;
     this.pending.delete(url);
-    return model.clone();
+    const cloned = model.clone();
+    if (targetHeight) this.autoFitModel(cloned, targetHeight);
+    return cloned;
   }
 
   private processLoadedModel(root: THREE.Object3D, autoCompress: boolean): void {
