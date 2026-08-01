@@ -238,24 +238,58 @@ sphereCast(origin: Vector3, radius: number, direction: Vector3, maxDistance = 10
   }
 
   overlapBox(center: Vector3, size: Vector3): RigidBody[] {
-    const query = new Collider();
-    query.size = size;
-    return this.bodies.filter(({ body, collider, position }) => body.cannonBody && query.getBoundingBox(center).intersectsBox(collider.getBoundingBox(position))).map(({ body }) => body);
+    const halfSizeX = size.x * 0.5;
+    const halfSizeY = size.y * 0.5;
+    const halfSizeZ = size.z * 0.5;
+    const queryMinX = center.x - halfSizeX;
+    const queryMaxX = center.x + halfSizeX;
+    const queryMinY = center.y - halfSizeY;
+    const queryMaxY = center.y + halfSizeY;
+    const queryMinZ = center.z - halfSizeZ;
+    const queryMaxZ = center.z + halfSizeZ;
+
+    const result: RigidBody[] = [];
+
+    // ⚡ Bolt Optimization: Replace .filter().map() with O(N) loop to eliminate array allocation
+    // Also skip new Collider() allocation for query bounding box
+    for (let i = 0; i < this.bodies.length; i++) {
+      const entry = this.bodies[i];
+      if (!entry.body.cannonBody) continue;
+
+      const bounds = entry.collider.getBoundingBox(entry.position);
+      if (
+        queryMaxX >= bounds.min.x && queryMinX <= bounds.max.x &&
+        queryMaxY >= bounds.min.y && queryMinY <= bounds.max.y &&
+        queryMaxZ >= bounds.min.z && queryMinZ <= bounds.max.z
+      ) {
+        result.push(entry.body);
+      }
+    }
+    return result;
   }
 
   overlapSphere(center: Vector3, radius: number): RigidBody[] {
     const radiusSq = radius * radius;
-    return this.bodies.filter(({ body, collider, position }) => {
-      if (!body.cannonBody) return false;
-      const bounds = collider.getBoundingBox(position);
+    const result: RigidBody[] = [];
+
+    // ⚡ Bolt Optimization: Replace .filter().map() with O(N) loop to eliminate array allocation
+    for (let i = 0; i < this.bodies.length; i++) {
+      const entry = this.bodies[i];
+      if (!entry.body.cannonBody) continue;
+
+      const bounds = entry.collider.getBoundingBox(entry.position);
       const closestX = clamp(center.x, bounds.min.x, bounds.max.x);
       const closestY = clamp(center.y, bounds.min.y, bounds.max.y);
       const closestZ = clamp(center.z, bounds.min.z, bounds.max.z);
       const dx = center.x - closestX;
       const dy = center.y - closestY;
       const dz = center.z - closestZ;
-      return dx * dx + dy * dy + dz * dz <= radiusSq;
-    }).map(({ body }) => body);
+
+      if (dx * dx + dy * dy + dz * dz <= radiusSq) {
+        result.push(entry.body);
+      }
+    }
+    return result;
   }
 
   private createShape(collider: Collider): CANNON.Shape {
