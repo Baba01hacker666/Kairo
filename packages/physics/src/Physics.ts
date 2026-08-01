@@ -169,6 +169,10 @@ export class RigidBody {
 export type PhysicsBackendType = 'cannon' | 'havok' | 'go-wasm';
 
 export class PhysicsWorld {
+  public getCannonWorld(): CANNON.World {
+    return this.cannonWorld;
+  }
+
   public gravity: Vector3 = new Vector3(0, -9.81, 0);
   public activeBackend: PhysicsBackendType = 'cannon';
   private bodies: BodyEntry[] = [];
@@ -416,3 +420,113 @@ function fromCannonVec3(v: CANNON.Vec3): Vector3 { return new Vector3(v.x, v.y, 
 function pairKey(a: number, b: number): string { return a < b ? `${a}:${b}` : `${b}:${a}`; }
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
+
+
+export interface VehicleConfig {
+  chassisBody: RigidBody;
+  indexRightAxis?: number;
+  indexUpAxis?: number;
+  indexForwardAxis?: number;
+}
+
+export interface WheelInfo {
+  radius: number;
+  directionLocal: Vector3;
+  suspensionStiffness: number;
+  suspensionRestLength: number;
+  frictionSlip: number;
+  dampingRelaxation: number;
+  dampingCompression: number;
+  maxSuspensionForce: number;
+  rollInfluence: number;
+  axleLocal: Vector3;
+  chassisConnectionPointLocal: Vector3;
+  maxSuspensionTravel: number;
+  customSlidingRotationalSpeed: number;
+  useCustomSlidingRotationalSpeed: boolean;
+  isFrontWheel?: boolean;
+}
+
+export class RaycastVehicle {
+  public cannonVehicle: CANNON.RaycastVehicle | null = null;
+  public chassisBody: RigidBody;
+
+  constructor(config: VehicleConfig) {
+    this.chassisBody = config.chassisBody;
+
+    if (this.chassisBody.cannonBody) {
+      this.cannonVehicle = new CANNON.RaycastVehicle({
+        chassisBody: this.chassisBody.cannonBody,
+        indexRightAxis: config.indexRightAxis ?? 0, // x
+        indexUpAxis: config.indexUpAxis ?? 1, // y
+        indexForwardAxis: config.indexForwardAxis ?? 2 // z
+      });
+    }
+  }
+
+  public addWheel(options: WheelInfo) {
+    if (!this.cannonVehicle) return;
+    this.cannonVehicle.addWheel({
+      radius: options.radius,
+      directionLocal: toCannonVec3(options.directionLocal),
+      suspensionStiffness: options.suspensionStiffness,
+      suspensionRestLength: options.suspensionRestLength,
+      frictionSlip: options.frictionSlip,
+      dampingRelaxation: options.dampingRelaxation,
+      dampingCompression: options.dampingCompression,
+      maxSuspensionForce: options.maxSuspensionForce,
+      rollInfluence: options.rollInfluence,
+      axleLocal: toCannonVec3(options.axleLocal),
+      chassisConnectionPointLocal: toCannonVec3(options.chassisConnectionPointLocal),
+      maxSuspensionTravel: options.maxSuspensionTravel,
+      customSlidingRotationalSpeed: options.customSlidingRotationalSpeed,
+      useCustomSlidingRotationalSpeed: options.useCustomSlidingRotationalSpeed,
+      isFrontWheel: options.isFrontWheel
+    });
+  }
+
+  public setSteeringValue(value: number, wheelIndex: number) {
+    if (this.cannonVehicle) {
+      this.cannonVehicle.setSteeringValue(value, wheelIndex);
+    }
+  }
+
+  public applyEngineForce(value: number, wheelIndex: number) {
+    if (this.cannonVehicle) {
+      this.cannonVehicle.applyEngineForce(value, wheelIndex);
+    }
+  }
+
+  public setBrake(brake: number, wheelIndex: number) {
+    if (this.cannonVehicle) {
+      this.cannonVehicle.setBrake(brake, wheelIndex);
+    }
+  }
+
+  public updateWheelTransform(wheelIndex: number) {
+    if (this.cannonVehicle) {
+      this.cannonVehicle.updateWheelTransform(wheelIndex);
+    }
+  }
+
+  public getWheelTransform(wheelIndex: number): { position: Vector3, quaternion: {x: number, y: number, z: number, w: number} } | null {
+    if (!this.cannonVehicle) return null;
+    const t = this.cannonVehicle.wheelInfos[wheelIndex].worldTransform;
+    return {
+      position: new Vector3(t.position.x, t.position.y, t.position.z),
+      quaternion: { x: t.quaternion.x, y: t.quaternion.y, z: t.quaternion.z, w: t.quaternion.w }
+    };
+  }
+
+  public addToWorld(world: PhysicsWorld) {
+    if (this.cannonVehicle && world.getCannonWorld()) {
+      this.cannonVehicle.addToWorld(world.getCannonWorld());
+    }
+  }
+
+  public removeFromWorld(world: PhysicsWorld) {
+    if (this.cannonVehicle && world.getCannonWorld()) {
+      this.cannonVehicle.removeFromWorld(world.getCannonWorld());
+    }
+  }
+}
