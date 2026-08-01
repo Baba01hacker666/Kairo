@@ -17,7 +17,8 @@ export default defineConfig({
         foxgame: 'examples/fox-game/index.html',
         gofox: 'examples/go-fox/index.html',
         gdp: 'examples/gdp-explainer/index.html',
-        babylonhavok: 'examples/babylon-havok/index.html'
+        babylonhavok: 'examples/babylon-havok/index.html',
+        babylonshooter: 'examples/babylon-shooter/index.html'
       },
       output: {
         manualChunks(id) {
