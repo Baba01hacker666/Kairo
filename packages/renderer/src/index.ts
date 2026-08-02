@@ -4,3 +4,4 @@ export * from './Particles.ts';
 export * from './Camera.ts';
 export * from './RenderPipeline.ts';
 export * from './FrustumCulling.ts';
+export * from './PostProcessManager.ts';

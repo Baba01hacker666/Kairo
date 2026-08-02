@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Procedural Dungeon // Kairo Engine</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      user-select: none;
+    }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #ui {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      pointer-events: none;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    h1 { margin: 0 0 10px 0; font-size: 24px; color: #fbbf24; }
+    p { margin: 0; color: #cbd5e1; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <div id="ui">
+    <h1>PROCEDURAL DUNGEON</h1>
+    <p>Cellular Automata Cave Generation</p>
+    <p style="margin-top: 10px;">WASD / Arrows to Move</p>
+    <p>R to Generate New Cave</p>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

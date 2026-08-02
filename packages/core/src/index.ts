@@ -8,3 +8,6 @@ export * from './KairoApp.ts';
 export * from './Serializer.ts';
 
 export * from './SaveSystem.ts';
+export * from './Procedural.ts';
+export * from './Cutscene.ts';
+export * from './SceneManager.ts';

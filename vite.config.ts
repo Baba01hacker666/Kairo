@@ -29,7 +29,9 @@ export default defineConfig({
         scifiexplorer: 'examples/scifi-explorer/index.html',
         cargame: 'examples/car-game/index.html',
         wasmswarm: 'examples/wasm-asteroid-swarm/index.html',
-        platformer25d: 'examples/platformer-2.5d/index.html'
+        platformer25d: 'examples/platformer-2.5d/index.html',
+        procgendungeon: 'examples/procgen-dungeon/index.html',
+        cutscenedemo: 'examples/cutscene-demo/index.html'
       },
       output: {
         manualChunks(id) {

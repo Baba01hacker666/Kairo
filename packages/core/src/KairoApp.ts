@@ -6,9 +6,11 @@ import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
-import { GlobalDebugInspector, DebugInspector, ScreenRecorder } from '@kairo/tools';
+import { GlobalDebugInspector, DebugInspector, ScreenRecorder, DebugRenderer } from '@kairo/tools';
 import { Serializer } from './Serializer.ts';
 import { SaveSystem } from './SaveSystem.ts';
+import { SceneManager } from './SceneManager.ts';
+import { CutsceneManager } from './Cutscene.ts';
 import { animate } from 'motion';
 
 export interface KairoAppConfig {
@@ -40,17 +42,23 @@ export class KairoApp {
   public pipeline: RenderPipeline;
   public screenRecorder!: ScreenRecorder;
   public save: SaveSystem;
+  public scenes: SceneManager;
+  public cutscene: CutsceneManager;
 
   public input: InputManager = GlobalInput;
   public audio: AudioManager = GlobalAudio;
   public ui: UIManager = GlobalUI;
   public debug: DebugInspector = GlobalDebugInspector;
+  public debugRenderer: DebugRenderer;
 
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig = {}) {
     this.config = config;
     this.save = new SaveSystem(config.gameId || 'default');
+    this.scenes = new SceneManager(this);
+    this.cutscene = new CutsceneManager(this);
+    this.debugRenderer = new DebugRenderer(this);
     this.engine = new Engine();
     
     // Setup physics
@@ -364,6 +372,115 @@ export class KairoApp {
       mesh.geometry.dispose();
       material.dispose();
     }};
+  }
+
+  /**
+   * Print text dynamically into the 3D scene using high-res Canvas textures.
+   * Supports any CSS font, colors, and dynamic updating.
+   */
+  public createText3D(opts: {
+    text: string;
+    position?: [number, number, number];
+    font?: string; // e.g. "bold 64px Inter, sans-serif"
+    color?: string; // e.g. "#ffffff" or "red"
+    size?: number; // Base scale size (height)
+    billboard?: boolean; // Face camera
+    align?: 'left' | 'center' | 'right';
+  }) {
+    const text = opts.text;
+    const font = opts.font || 'bold 64px sans-serif';
+    const color = opts.color || '#ffffff';
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    
+    ctx.font = font;
+    const metrics = ctx.measureText(text);
+    const textWidth = Math.ceil(metrics.width);
+    
+    let fontSize = 64;
+    const match = font.match(/(\d+)px/);
+    if (match) fontSize = parseInt(match[1], 10);
+    
+    const fontHeight = Math.ceil(metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent || fontSize * 1.2);
+    
+    canvas.width = Math.max(textWidth + 20, 2);
+    canvas.height = Math.max(fontHeight + 20, 2);
+    
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = opts.align || 'center';
+    ctx.textBaseline = 'middle';
+    
+    const drawX = ctx.textAlign === 'center' ? canvas.width / 2 : (ctx.textAlign === 'right' ? canvas.width - 10 : 10);
+    const drawY = canvas.height / 2;
+    
+    ctx.fillText(text, drawX, drawY);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    
+    const aspect = canvas.width / canvas.height;
+    const baseScale = opts.size ?? 1;
+    const planeWidth = baseScale * aspect;
+    const planeHeight = baseScale;
+    
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeWidth, planeHeight), material);
+    mesh.position.set(...(opts.position ?? [0, 0, 0]));
+    
+    this.scene.add(mesh);
+    
+    let unsub: (() => void) | undefined;
+    if (opts.billboard) {
+      unsub = this.engine.events.on('update', () => {
+        mesh.quaternion.copy(this.camera.quaternion);
+      });
+    }
+    
+    return {
+      mesh,
+      setText: (newText: string) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = font;
+        const m = ctx.measureText(newText);
+        const w = Math.ceil(m.width) + 20;
+        
+        let resized = false;
+        if (w > canvas.width) {
+          canvas.width = w;
+          resized = true;
+        }
+        
+        ctx.font = font;
+        ctx.fillStyle = color;
+        ctx.textAlign = opts.align || 'center';
+        ctx.textBaseline = 'middle';
+        
+        const dX = ctx.textAlign === 'center' ? canvas.width / 2 : (ctx.textAlign === 'right' ? canvas.width - 10 : 10);
+        ctx.fillText(newText, dX, canvas.height / 2);
+        texture.needsUpdate = true;
+        
+        if (resized) {
+          const newAspect = canvas.width / canvas.height;
+          mesh.geometry.dispose();
+          mesh.geometry = new THREE.PlaneGeometry(baseScale * newAspect, baseScale);
+        }
+      },
+      dispose: () => {
+        if (unsub) unsub();
+        this.scene.remove(mesh);
+        mesh.geometry.dispose();
+        material.dispose();
+        texture.dispose();
+      }
+    };
   }
 
   /**

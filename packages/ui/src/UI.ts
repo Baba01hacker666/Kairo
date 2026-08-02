@@ -276,6 +276,99 @@ export class UIManager {
       this.container.innerHTML = '';
     }
   }
+
+  private subtitleEl: HTMLElement | null = null;
+
+  public showSubtitle(text: string, durationMs?: number): void {
+    if (!this.container || typeof document === 'undefined') return;
+    
+    if (!this.subtitleEl) {
+      this.subtitleEl = document.createElement('div');
+      this.subtitleEl.style.cssText = `
+        position: absolute;
+        bottom: 10%;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 20px;
+        font-weight: 500;
+        text-align: center;
+        max-width: 80%;
+        opacity: 0;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        text-shadow: 1px 1px 2px black;
+      `;
+      this.container.appendChild(this.subtitleEl);
+    }
+
+    this.subtitleEl.innerText = text;
+    
+    requestAnimationFrame(() => {
+      if (this.subtitleEl) {
+        this.subtitleEl.style.opacity = '1';
+        this.subtitleEl.style.transform = 'translateX(-50%) translateY(0)';
+      }
+    });
+
+    if (durationMs) {
+      setTimeout(() => this.hideSubtitle(), durationMs);
+    }
+  }
+
+  public hideSubtitle(): void {
+    if (this.subtitleEl) {
+      this.subtitleEl.style.opacity = '0';
+      this.subtitleEl.style.transform = 'translateX(-50%) translateY(20px)';
+    }
+  }
+
+  // --- Screen Effects ---
+  
+  private overlayEl: HTMLElement | null = null;
+  
+  private getOverlayEl(): HTMLElement {
+    if (!this.overlayEl) {
+      this.overlayEl = document.createElement('div');
+      this.overlayEl.style.cssText = `
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 5000;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      `;
+      if (this.container) this.container.appendChild(this.overlayEl);
+    }
+    return this.overlayEl;
+  }
+
+  public flash(color: string = '#ffffff', durationMs: number = 500): void {
+    const el = this.getOverlayEl();
+    el.style.transition = 'none'; // Instant on
+    el.style.backgroundColor = color;
+    el.style.opacity = '1';
+    
+    // Force reflow
+    void el.offsetWidth;
+    
+    // Fade out
+    el.style.transition = `opacity ${durationMs}ms ease-out`;
+    el.style.opacity = '0';
+  }
+
+  public async fade(targetOpacity: number, color: string = '#000000', durationMs: number = 1000): Promise<void> {
+    return new Promise((resolve) => {
+      const el = this.getOverlayEl();
+      el.style.backgroundColor = color;
+      el.style.transition = `opacity ${durationMs}ms ease-in-out`;
+      el.style.opacity = targetOpacity.toString();
+      setTimeout(resolve, durationMs);
+    });
+  }
 }
 
 export const GlobalUI = new UIManager();

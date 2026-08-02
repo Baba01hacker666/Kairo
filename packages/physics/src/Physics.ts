@@ -202,6 +202,18 @@ export class PhysicsWorld {
     console.log(`[Kairo Physics] Active Physics Engine Backend set to: ${backend.toUpperCase()}`);
   }
 
+  public clear(): void {
+    for (const entry of [...this.bodies]) {
+      this.unregisterBody(entry.body);
+    }
+    this.bodies = [];
+    this.bodyLookup.clear();
+    this.collisionListeners = [];
+    this.triggerListeners = [];
+    this.activePairs.clear();
+    this.collisionEvents = [];
+  }
+
   registerBody(body: RigidBody, collider: Collider, position: Vector3 = new Vector3()): void {
     const isDynamic = body.type === RigidBodyType.Dynamic;
     const isKinematic = body.type === RigidBodyType.Kinematic;

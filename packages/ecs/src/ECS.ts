@@ -422,4 +422,57 @@ export class World {
     }
     this.nextEntityId = 1;
   }
+
+  serialize(): any {
+    const entitiesData: Record<EntityId, any> = {};
+    for (const entity of this.activeEntities) {
+      const comps = this.getAllComponents(entity);
+      entitiesData[entity] = {
+        name: this.entityNames.get(entity),
+        tags: Array.from(this.tags.get(entity) || []),
+        components: comps.map(c => ({
+          type: (c as any).constructor.name,
+          data: c
+        }))
+      };
+    }
+    return {
+      nextEntityId: this.nextEntityId,
+      entities: entitiesData,
+      parents: Array.from(this.parents.entries())
+    };
+  }
+
+  deserialize(data: any, componentRegistry: Record<string, ComponentType>): void {
+    this.clear();
+    this.nextEntityId = data.nextEntityId || 1;
+    
+    // Reconstruct entities
+    for (const [idStr, entityData] of Object.entries(data.entities)) {
+      const entity = parseInt(idStr, 10);
+      this.activeEntities.add(entity);
+      this.tags.set(entity, new Set((entityData as any).tags));
+      if ((entityData as any).name) {
+        this.entityNames.set(entity, (entityData as any).name);
+      }
+      this.children.set(entity, new Set());
+      
+      // Reconstruct components
+      for (const compData of (entityData as any).components) {
+        const Ctor = componentRegistry[compData.type];
+        if (Ctor) {
+          const comp = new Ctor();
+          Object.assign(comp, compData.data);
+          this.addComponent(entity, comp);
+        } else {
+          console.warn(`[ECS] Deserialization missing component constructor: ${compData.type}`);
+        }
+      }
+    }
+    
+    // Reconstruct parents
+    for (const [child, parent] of data.parents || []) {
+      this.setParent(child, parent as EntityId);
+    }
+  }
 }

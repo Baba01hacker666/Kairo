@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cinematic Cutscene // Kairo Engine</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    
+    /* Cinematic Black Bars */
+    .cinema-bar {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 12%;
+      background: black;
+      z-index: 100;
+      transition: transform 1s ease-in-out;
+    }
+    .cinema-bar.top { top: 0; transform: translateY(-100%); }
+    .cinema-bar.bottom { bottom: 0; transform: translateY(100%); }
+    .cinema-bar.active { transform: translateY(0); }
+
+  </style>
+</head>
+<body>
+  <div id="bar-top" class="cinema-bar top"></div>
+  <canvas id="game-canvas"></canvas>
+  <div id="bar-bottom" class="cinema-bar bottom"></div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

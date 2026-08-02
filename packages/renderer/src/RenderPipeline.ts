@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PostProcessManager } from './PostProcessManager.ts';
 
 export interface CpuProfileMap {
   webGlRenderMs: number;
@@ -40,6 +41,7 @@ export class RenderPipeline {
   public renderer: THREE.WebGLRenderer;
   public scene: THREE.Scene;
   public camera: THREE.Camera;
+  public postProcessing: PostProcessManager;
 
   public config: PostProcessingConfig = {
     bloom: false,
@@ -71,6 +73,7 @@ export class RenderPipeline {
     this.renderer = renderer;
     this.scene = scene;
     this.camera = camera;
+    this.postProcessing = new PostProcessManager(this.renderer, this.scene, this.camera);
 
     this.setupRendererDefaults();
   }
@@ -157,7 +160,7 @@ export class RenderPipeline {
 
     // Measure exact CPU render execution time
     const t0 = performance.now();
-    this.renderer.render(this.scene, this.camera);
+    this.postProcessing.render(dt / 1000); // Pass delta time in seconds
     this.metrics.cpuRenderMs = parseFloat((performance.now() - t0).toFixed(2));
 
     // Collect WebGL & JS Memory Info
