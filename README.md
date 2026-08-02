@@ -6,6 +6,19 @@
 
 ---
 
+## ✨ Major Features
+- **Dual-Engine Architecture**: Native simultaneous WebGL/WebGPU support via Three.js and Babylon.js running on unified layered canvases.
+- **Cross-Engine Physics Bridge**: A decoupled Cannon.js physics world that seamlessly bridges collisions between Three.js meshes and Babylon.js meshes.
+- **Cinematic Cutscene Sequencer**: Async/Await powered linear cutscene engine with camera shakes, UI dialogues, flash/fade screen effects, and safe task aborts.
+- **Scene Manager**: Secure memory-leak proof level loader that automatically dismantles Physics, GUI, and recursive WebGL/WebGPU scene graphs.
+- **Procedural Generation**: Includes native SimplexNoise, PRNG, and Cellular Automata mapping.
+- **Advanced Debug Renderer**: Real-time rendering of AABB bounding boxes, XZ coordinate grids, wireframe hybrids, and pivot indicators.
+- **AAA Post-Processing Pipeline**: Native integrated `EffectComposer` pipeline supporting high-fidelity Unreal Bloom, Film Grain, CRT scanlines, and glow outlines.
+- **Dynamic 3D Text**: Native Canvas2D to 3D Plane texture mapping with full CSS font/emoji support.
+- **ECS (Entity Component System)**: Includes deep `SaveSystem` world-state serialization and recursive cloning.
+
+---
+
 ## 🏗️ Monorepo Architecture (`@kairo/*` Packages)
 
 Kairo is built from 15 decoupled, modular packages:
@@ -58,6 +71,9 @@ Access all 14 interactive demos from the main hub page (`index.html`):
 - 📊 **GDP Engine Architecture Explainer**: Interactive engine cycle and ECS visualizer with voiceover.
 - 📦 **Super Easy Starter API Demo**: Beginner-friendly physics scene using `KairoApp`.
 - 🌲 **Pure TS Fox Game**: Third-person platformer game engine implementation in pure TypeScript.
+
+- 🎬 **Cinematic Cutscene Demo**: Showcases the new async cutscene sequencer, screen effects, and UI dialogue system.
+- 🏰 **Procedural Dungeon Generator**: Demonstrates Cellular Automata cave generation and PRNG terrain logic.
 
 ---
 
