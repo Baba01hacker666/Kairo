@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   base: './',
+  server: {
+    allowedHosts: ['.monkeycode-ai.live']
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -23,7 +26,8 @@ export default defineConfig({
         goraylib: 'examples/go-raylib-tester/index.html',
         editor: 'editor/index.html',
         aipathfinding: 'examples/ai-pathfinding/index.html',
-        scifiexplorer: 'examples/scifi-explorer/index.html'
+        scifiexplorer: 'examples/scifi-explorer/index.html',
+        cargame: 'examples/car-game/index.html'
       },
       output: {
         manualChunks(id) {

@@ -20,6 +20,45 @@ test('Physics gravity step and collision raycast', () => {
   assert(pos.y < 10);
 });
 
+test('Physics useGravity false body floats in place', () => {
+  const world = new PhysicsWorld();
+  world.gravity = new Vector3(0, -30, 0);
+
+  const floorBody = new RigidBody();
+  floorBody.type = RigidBodyType.Static;
+  const floorCollider = new Collider();
+  floorCollider.size = new Vector3(100, 1, 100);
+  const floorPos = new Vector3(0, -0.5, 0);
+  world.registerBody(floorBody, floorCollider, floorPos);
+
+  const falling = new RigidBody();
+  falling.type = RigidBodyType.Dynamic;
+  const fallCollider = new Collider();
+  fallCollider.size = new Vector3(1, 1, 1);
+  const fallPos = new Vector3(0, 5, 0);
+  world.registerBody(falling, fallCollider, fallPos);
+
+  const floating = new RigidBody();
+  floating.type = RigidBodyType.Dynamic;
+  floating.useGravity = false;
+  const floatCollider = new Collider();
+  floatCollider.size = new Vector3(1, 1, 1);
+  const floatPos = new Vector3(10, 8, 10);
+  world.registerBody(floating, floatCollider, floatPos);
+
+  for (let i = 0; i < 120; i++) world.step(1 / 60);
+
+  // Gravity-affected body falls and settles on the floor
+  assert(fallPos.y < 5);
+  assert(Math.abs(falling.velocity.y) < 0.01);
+
+  // Gravity-less body keeps its position and velocity
+  assert.strictEqual(floatPos.y, 8);
+  assert.strictEqual(floating.velocity.y, 0);
+  assert.strictEqual(floatPos.x, 10);
+  assert.strictEqual(floatPos.z, 10);
+});
+
 test('Physics Raycasting', () => {
   const world = new PhysicsWorld();
   const collider = new Collider();
