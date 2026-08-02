@@ -7,6 +7,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
+        racing: 'examples/racing-game/index.html',
         main: 'index.html',
         stickman: 'examples/stickman-game/index.html',
         easy: 'examples/easy-game/index.html',
