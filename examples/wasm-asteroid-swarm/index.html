@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kairo Engine - 10,000+ Entity WASM/SoA Asteroid Swarm Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #080a10;
+      color: #eceff4;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .hud-header {
+      position: absolute;
+      top: 15px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hud-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00f2fe, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 0.5px;
+    }
+    .hub-btn {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(79, 172, 254, 0.4);
+      color: #38bdf8;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    }
+    .hub-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    }
+    .telemetry-card {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(10, 14, 23, 0.85);
+      border: 1px solid rgba(79, 172, 254, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      min-width: 280px;
+      z-index: 10;
+    }
+    .telemetry-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .telemetry-row:last-child { margin-bottom: 0; }
+    .telemetry-label { color: #94a3b8; font-weight: 500; }
+    .telemetry-val { font-weight: 700; color: #38bdf8; font-family: monospace; }
+    .telemetry-val.highlight { color: #00ffcc; text-shadow: 0 0 8px rgba(0, 255, 204, 0.5); }
+    .controls-hint {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(10, 14, 23, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      backdrop-filter: blur(12px);
+    }
+    kbd {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-family: monospace;
+      color: #fff;
+    }
+  </style>
+  <script type="module" crossorigin src="../../assets/wasmswarm-DOhxOCGI.js"></script>
+  <link rel="modulepreload" crossorigin href="../../assets/modulepreload-polyfill-Dezn_h7o.js">
+  <link rel="modulepreload" crossorigin href="../../assets/three-TTkvtT6n.js">
+</head>
+<body>
+  <div class="hud-header">
+    <div class="hud-title">🚀 Kairo Engine - WASM/SoA 10,000+ Entity Physics Swarm</div>
+    <a href="../../index.html" class="hub-btn">🏠 Hub</a>
+  </div>
+
+  <div class="telemetry-card">
+    <div class="telemetry-row">
+      <span class="telemetry-label">Active Entities:</span>
+      <span id="stat-entities" class="telemetry-val highlight">5,000</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="telemetry-label">Framerate:</span>
+      <span id="stat-fps" class="telemetry-val">60 FPS</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="telemetry-label">Frame Processing:</span>
+      <span id="stat-ms" class="telemetry-val">2.4 ms / frame</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="telemetry-label">Sim Throughput:</span>
+      <span id="stat-throughput" class="telemetry-val">2,083,333 / sec</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="telemetry-label">Engine Mode:</span>
+      <span class="telemetry-val" style="color:#a78bfa;">FastSoA Vector SIMD</span>
+    </div>
+  </div>
+
+  <div class="controls-hint">
+    🎮 Controls: <kbd>WASD</kbd> Move Ship | <kbd>Space</kbd> Fire Plasma Laser | <kbd>Q</kbd>/<kbd>E</kbd> Adjust Swarm Count
+  </div>
+
+  <canvas id="game-canvas"></canvas>
+
+</body>
+</html>

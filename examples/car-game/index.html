@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NEON DRIFT // Kairo Engine</title>
+  <style>
+    :root {
+      --neon-cyan: #22d3ee;
+      --neon-purple: #a855f7;
+      --neon-pink: #ec4899;
+      --neon-gold: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0515;
+      color: var(--text);
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    canvas { display: block; width: 100vw; height: 100vh; }
+
+    /* Vignette + scanlines for the cinematic neon look */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      background:
+        radial-gradient(ellipse at center, transparent 55%, rgba(2, 0, 10, 0.55) 100%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 3px);
+      mix-blend-mode: normal;
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      font-family: 'Consolas', 'Menlo', monospace;
+    }
+
+    .hud-panel {
+      position: absolute;
+      background: rgba(8, 4, 20, 0.55);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      border-radius: 12px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 0 24px rgba(168, 85, 247, 0.18), inset 0 0 18px rgba(34, 211, 238, 0.05);
+      padding: 12px 16px;
+    }
+
+    /* Top-left title */
+    #title-panel { top: 16px; left: 16px; }
+    #title-panel h1 {
+      font-size: 20px;
+      letter-spacing: 4px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #22d3ee, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    #title-panel .sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-top: 3px; }
+
+    /* Top-right: score + boost */
+    #score-panel { top: 16px; right: 16px; text-align: right; }
+    #score-panel .label { font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+    #score-num { font-size: 30px; font-weight: 700; color: var(--neon-gold); text-shadow: 0 0 12px rgba(251,191,36,0.6); }
+
+    .boost-wrap { margin-top: 10px; width: 180px; text-align: left; }
+    .boost-bar-track {
+      height: 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      overflow: hidden;
+    }
+    #boost-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #22d3ee, #a855f7);
+      box-shadow: 0 0 10px rgba(168,85,247,0.8);
+      transition: width 0.1s linear;
+    }
+
+    /* Speedometer */
+    #speed-panel {
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      min-width: 200px;
+    }
+    #speed-num {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1;
+      color: #fff;
+      text-shadow: 0 0 18px rgba(34, 211, 238, 0.8);
+      font-variant-numeric: tabular-nums;
+    }
+    #speed-unit { font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; margin-top: 2px; }
+    #drift-indicator {
+      position: absolute;
+      top: -26px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      letter-spacing: 6px;
+      color: var(--neon-pink);
+      text-shadow: 0 0 14px rgba(236,72,153,0.9);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    /* Bottom-left: controls hint */
+    #controls-panel {
+      bottom: 28px;
+      left: 16px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+    #controls-panel b { color: var(--neon-cyan); font-weight: 600; }
+
+    /* Bottom-right: FPS + brand */
+    #stats-panel { bottom: 28px; right: 16px; text-align: right; font-size: 11px; color: var(--muted); line-height: 1.7; }
+    #stats-panel .k { color: var(--neon-purple); }
+
+    /* Start screen */
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 40%, rgba(168,85,247,0.18), rgba(5,2,15,0.94) 70%);
+      cursor: pointer;
+      text-align: center;
+    }
+    #start-screen .logo {
+      font-size: 54px;
+      font-weight: 800;
+      letter-spacing: 12px;
+      background: linear-gradient(90deg, #22d3ee, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 40px rgba(168,85,247,0.4);
+      margin-bottom: 8px;
+    }
+    #start-screen .tag { font-size: 14px; letter-spacing: 6px; color: var(--muted); margin-bottom: 42px; }
+    #start-screen .cta {
+      padding: 16px 42px;
+      border: 1px solid var(--neon-cyan);
+      border-radius: 40px;
+      font-size: 15px;
+      letter-spacing: 4px;
+      color: var(--neon-cyan);
+      background: rgba(34,211,238,0.08);
+      box-shadow: 0 0 30px rgba(34,211,238,0.35), inset 0 0 20px rgba(34,211,238,0.1);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    #start-screen .keys { margin-top: 40px; font-size: 12px; color: var(--muted); line-height: 2; }
+    #start-screen .keys b { color: var(--neon-cyan); font-weight: 600; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.04); opacity: 0.85; }
+    }
+
+    /* Mobile touch controls */
+    #touch-ui { display: none; }
+    @media (pointer: coarse) {
+      #touch-ui { display: block; }
+      #controls-panel { display: none; }
+    }
+    #joystick-zone {
+      position: fixed;
+      bottom: 34px;
+      left: 30px;
+      width: 140px;
+      height: 140px;
+      z-index: 20;
+      border-radius: 50%;
+      border: 2px solid rgba(34,211,238,0.35);
+      background: radial-gradient(circle, rgba(34,211,238,0.08), rgba(10,5,21,0.4));
+      touch-action: none;
+    }
+    #joystick-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      margin-left: -27px;
+      margin-top: -27px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #67e8f9, #0e7490);
+      box-shadow: 0 0 22px rgba(34,211,238,0.7);
+      pointer-events: none;
+    }
+    #btn-boost {
+      position: fixed;
+      bottom: 44px;
+      right: 34px;
+      width: 92px;
+      height: 92px;
+      z-index: 20;
+      border-radius: 50%;
+      border: 2px solid var(--neon-purple);
+      background: radial-gradient(circle, rgba(168,85,247,0.2), rgba(10,5,21,0.5));
+      color: var(--neon-purple);
+      font-family: 'Consolas', monospace;
+      font-size: 15px;
+      letter-spacing: 2px;
+      touch-action: none;
+      box-shadow: 0 0 26px rgba(168,85,247,0.4);
+    }
+    #btn-boost.active {
+      background: radial-gradient(circle, rgba(168,85,247,0.55), rgba(10,5,21,0.5));
+      color: #fff;
+    }
+  </style>
+  <script type="module" crossorigin src="../../assets/cargame-DUQKtu26.js"></script>
+  <link rel="modulepreload" crossorigin href="../../assets/vendor-DiHyvCRM.js">
+  <link rel="modulepreload" crossorigin href="../../assets/modulepreload-polyfill-Dezn_h7o.js">
+  <link rel="modulepreload" crossorigin href="../../assets/three-TTkvtT6n.js">
+  <link rel="modulepreload" crossorigin href="../../assets/src-lVepIQ-l.js">
+  <link rel="modulepreload" crossorigin href="../../assets/Particles-BBnGIutk.js">
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <div id="overlay"></div>
+
+  <div id="hud">
+    <div class="hud-panel" id="title-panel">
+      <h1>NEON DRIFT</h1>
+      <div class="sub">KAIRO ENGINE ARCADE RACER</div>
+    </div>
+
+    <div class="hud-panel" id="score-panel">
+      <div class="label">RINGS</div>
+      <div id="score-num">0</div>
+      <div class="boost-wrap">
+        <div class="label" style="margin-bottom:4px;">BOOST</div>
+        <div class="boost-bar-track"><div id="boost-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="hud-panel" id="speed-panel">
+      <div id="drift-indicator">DRIFT</div>
+      <div id="speed-num">0</div>
+      <div id="speed-unit">KM/H</div>
+    </div>
+
+    <div class="hud-panel" id="controls-panel">
+      <b>W/A/S/D</b> or <b>Arrows</b> — Drive<br>
+      <b>Shift</b> — Boost &nbsp; <b>Space</b> — Handbrake Drift<br>
+      <b>R</b> — Respawn
+    </div>
+
+    <div class="hud-panel" id="stats-panel">
+      <div><span class="k">LAP</span> <span id="lap-num">1</span></div>
+      <div><span class="k">FPS</span> <span id="fps-num">--</span></div>
+      <div><span class="k">DRIFT SCORE</span> <span id="drift-score">0</span></div>
+    </div>
+  </div>
+
+  <div id="touch-ui">
+    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+    <div id="btn-boost">BOOST</div>
+  </div>
+
+  <div id="start-screen">
+    <div class="logo">NEON DRIFT</div>
+    <div class="tag">A KAIRO ENGINE ARCADE RACER</div>
+    <div class="cta" id="start-btn">TAP TO START</div>
+    <div class="keys">
+      <b>W A S D</b> / <b>Arrows</b> — Drive &nbsp;|&nbsp; <b>Shift</b> — Nitro &nbsp;|&nbsp; <b>Space</b> — Drift<br>
+      <b>R</b> — Respawn &nbsp;|&nbsp; Collect rings, chain drifts, chase the glow.
+    </div>
+  </div>
+
+</body>
+</html>
