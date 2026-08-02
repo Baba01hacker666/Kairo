@@ -8,7 +8,7 @@ export interface CameraShakeConfig {
 }
 
 export class CameraController {
-  public camera: THREE.PerspectiveCamera;
+  public camera: THREE.Camera;
   public target: THREE.Vector3 = new THREE.Vector3();
   
   public distance: number = 6.0;
@@ -27,7 +27,7 @@ export class CameraController {
   private shakeIntensity: number = 0;
   private shakeDecay: number = 1.0;
 
-  constructor(camera: THREE.PerspectiveCamera) {
+  constructor(camera: THREE.Camera) {
     this.camera = camera;
     this.currentPosition.copy(this.camera.position);
   }

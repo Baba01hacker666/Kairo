@@ -52,7 +52,7 @@ app.setLighting({
 
 app.cameraController.enableCollisionAvoidance = false;
 app.cameraController.lerpSpeed = 11;
-app.camera.fov = 58;
+(app.camera as THREE.PerspectiveCamera).fov = 58;
 
 // Arcade car handling: minimize solver friction so our velocity control wins.
 const cannonWorld = (app.physics as unknown as { cannonWorld: CANNON.World }).cannonWorld;
@@ -870,8 +870,9 @@ app.onUpdate((dt) => {
   app.cameraController.pitch = 0.32;
 
   const targetFov = 58 + Math.min(20, Math.abs(speed) * 0.38);
-  app.camera.fov += (targetFov - app.camera.fov) * Math.min(1, delta * 4);
-  app.camera.updateProjectionMatrix();
+  const cam = app.camera as THREE.PerspectiveCamera;
+  cam.fov += (targetFov - cam.fov) * Math.min(1, delta * 4);
+  cam.updateProjectionMatrix();
 
   // ---- Particles ----
   particles.update(delta);

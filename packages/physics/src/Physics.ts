@@ -119,6 +119,8 @@ export class RigidBody {
   public collisionLayer: number = 1;
   public collisionMask: number = 0xFFFFFFFF;
   public fixedRotation: boolean = false;
+  public lockLinearAxis: [boolean, boolean, boolean] = [false, false, false];
+  public lockAngularAxis: [boolean, boolean, boolean] = [false, false, false];
   public cannonBody: CANNON.Body | null = null;
 
   applyForce(force: Vector3, point?: Vector3): void {
@@ -213,6 +215,17 @@ export class PhysicsWorld {
       collisionFilterGroup: body.collisionLayer,
       collisionFilterMask: body.collisionMask
     });
+
+    cannonBody.linearFactor.set(
+      body.lockLinearAxis[0] ? 0 : 1,
+      body.lockLinearAxis[1] ? 0 : 1,
+      body.lockLinearAxis[2] ? 0 : 1
+    );
+    cannonBody.angularFactor.set(
+      body.lockAngularAxis[0] ? 0 : 1,
+      body.lockAngularAxis[1] ? 0 : 1,
+      body.lockAngularAxis[2] ? 0 : 1
+    );
 
     const shape = this.createShape(collider);
     cannonBody.addShape(shape);

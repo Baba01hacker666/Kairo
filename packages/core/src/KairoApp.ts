@@ -20,6 +20,9 @@ export interface KairoAppConfig {
   fogNear?: number;
   fogFar?: number;
   gameId?: string;
+  mode?: '2d' | '3d';
+  pixelArt?: boolean;
+  orthoScale?: number;
 }
 
 /**
@@ -30,8 +33,9 @@ export class KairoApp {
   public engine: Engine;
   public physics: PhysicsWorld;
   public scene: THREE.Scene;
-  public camera: THREE.PerspectiveCamera;
+  public camera: THREE.Camera;
   public cameraController: CameraController;
+  public config: KairoAppConfig;
   public renderer: THREE.WebGLRenderer;
   public pipeline: RenderPipeline;
   public screenRecorder!: ScreenRecorder;
@@ -45,6 +49,7 @@ export class KairoApp {
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig = {}) {
+    this.config = config;
     this.save = new SaveSystem(config.gameId || 'default');
     this.engine = new Engine();
     
@@ -89,8 +94,19 @@ export class KairoApp {
     this.screenRecorder = new ScreenRecorder(canvasObj);
 
     // Setup Camera & Controller
-    this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
-    this.camera.position.set(0, 6, 12);
+    const aspect = window.innerWidth / window.innerHeight;
+    if (this.config.mode === '2d') {
+      const frustumSize = this.config.orthoScale ?? 10;
+      this.camera = new THREE.OrthographicCamera(
+        -frustumSize * aspect / 2, frustumSize * aspect / 2,
+        frustumSize / 2, -frustumSize / 2,
+        0.1, 1000
+      );
+      this.camera.position.set(0, 0, 10);
+    } else {
+      this.camera = new THREE.PerspectiveCamera(55, aspect, 0.1, 200);
+      this.camera.position.set(0, 6, 12);
+    }
     this.cameraController = new CameraController(this.camera);
 
     // Setup Render Pipeline
@@ -101,8 +117,18 @@ export class KairoApp {
 
     // Auto-resize handling
     window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
+      const aspect = window.innerWidth / window.innerHeight;
+      if (this.camera instanceof THREE.PerspectiveCamera) {
+        this.camera.aspect = aspect;
+        this.camera.updateProjectionMatrix();
+      } else if (this.camera instanceof THREE.OrthographicCamera) {
+        const frustumSize = this.config.orthoScale ?? 10;
+        this.camera.left = -frustumSize * aspect / 2;
+        this.camera.right = frustumSize * aspect / 2;
+        this.camera.top = frustumSize / 2;
+        this.camera.bottom = -frustumSize / 2;
+        this.camera.updateProjectionMatrix();
+      }
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
@@ -235,6 +261,109 @@ export class KairoApp {
       };
     }
     return { mesh };
+  }
+
+  /**
+   * Set a 2D Background Image
+   */
+  public setBackgroundImage(url: string, pixelArt: boolean = false): void {
+    const loader = new THREE.TextureLoader();
+    loader.load(url, (texture) => {
+      if (pixelArt || this.config.pixelArt) {
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+      }
+      texture.colorSpace = THREE.SRGBColorSpace;
+      this.scene.background = texture;
+    });
+  }
+
+  /**
+   * Helper to spawn a 2D textured block/sprite
+   */
+  public createBlock2D(opts: {
+    size?: [number, number];
+    position?: [number, number, number];
+    textureUrl?: string;
+    color?: number | string;
+    pixelArt?: boolean;
+    billboard?: boolean;
+    physics?: 'static' | 'dynamic';
+    mass?: number;
+    lockZAxis?: boolean;
+    fixedRotation?: boolean;
+  }) {
+    const size = opts.size ?? [1, 1];
+    
+    let material: THREE.Material;
+    if (opts.textureUrl) {
+      const texture = new THREE.TextureLoader().load(opts.textureUrl);
+      if (opts.pixelArt !== false && (opts.pixelArt || this.config.pixelArt)) {
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+      }
+      texture.colorSpace = THREE.SRGBColorSpace;
+      material = new THREE.MeshBasicMaterial({ 
+        map: texture, 
+        color: opts.color ?? 0xffffff,
+        transparent: true 
+      });
+    } else {
+      material = new THREE.MeshBasicMaterial({ color: opts.color ?? 0xffffff, transparent: true });
+    }
+
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(size[0], size[1]), material);
+    mesh.position.set(...(opts.position ?? [0, 0, 0]));
+    this.scene.add(mesh);
+
+    const unsubs: Array<() => void> = [];
+
+    if (opts.billboard) {
+      unsubs.push(this.engine.events.on('update', () => {
+        mesh.quaternion.copy(this.camera.quaternion);
+      }));
+    }
+
+    if (opts.physics) {
+      const rb = new RigidBody();
+      rb.type = opts.physics === 'static' ? RigidBodyType.Static : RigidBodyType.Dynamic;
+      rb.mass = opts.mass ?? (opts.physics === 'static' ? 0 : 1);
+      
+      if (opts.fixedRotation) rb.fixedRotation = true;
+      if (opts.lockZAxis) {
+        rb.lockLinearAxis = [false, false, true];
+        rb.lockAngularAxis = [true, true, false];
+      }
+
+      const col = new Collider();
+      col.type = ColliderType.Box;
+      col.size = new Vector3(size[0], size[1], 1); // 1 depth for 2D
+      this.physics.registerBody(rb, col, new Vector3(...mesh.position.toArray()));
+
+      unsubs.push(this.engine.events.on('update', () => {
+        if (rb.cannonBody) {
+          mesh.position.set(rb.cannonBody.position.x, rb.cannonBody.position.y, rb.cannonBody.position.z);
+          if (!opts.billboard) {
+            mesh.quaternion.set(rb.cannonBody.quaternion.x, rb.cannonBody.quaternion.y, rb.cannonBody.quaternion.z, rb.cannonBody.quaternion.w);
+          }
+        }
+      }));
+
+      return { mesh, rb, col, dispose: () => {
+        unsubs.forEach(u => u());
+        this.scene.remove(mesh);
+        this.physics.unregisterBody(rb);
+        mesh.geometry.dispose();
+        material.dispose();
+      }};
+    }
+    
+    return { mesh, dispose: () => {
+      unsubs.forEach(u => u());
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      material.dispose();
+    }};
   }
 
   /**

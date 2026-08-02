@@ -39,7 +39,7 @@ export interface PostProcessingConfig {
 export class RenderPipeline {
   public renderer: THREE.WebGLRenderer;
   public scene: THREE.Scene;
-  public camera: THREE.PerspectiveCamera;
+  public camera: THREE.Camera;
 
   public config: PostProcessingConfig = {
     bloom: false,
@@ -67,7 +67,7 @@ export class RenderPipeline {
   private frameCount: number = 0;
   private fpsTimer: number = 0;
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
+  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
     this.renderer = renderer;
     this.scene = scene;
     this.camera = camera;

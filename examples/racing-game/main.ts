@@ -150,8 +150,9 @@ vehicle.addToWorld(physics);
 // Resize handler
 window.addEventListener('resize', () => {
   renderer.renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.camera.aspect = window.innerWidth / window.innerHeight;
-  camera.camera.updateProjectionMatrix();
+  const cam = camera.camera as THREE.PerspectiveCamera;
+  cam.aspect = window.innerWidth / window.innerHeight;
+  cam.updateProjectionMatrix();
 });
 
 // Controls
