@@ -344,19 +344,31 @@ export class PhysicsWorld {
     return results;
   }
 
-  overlapBox(center: Vector3, halfExtents: Vector3): RigidBody[] {
-    const queryBox = new BoundingBox(
-      center.clone().sub(halfExtents),
-      center.clone().add(halfExtents)
-    );
+  overlapBox(center: Vector3, halfExtentsOrSize: Vector3, isHalfExtents: boolean = true): RigidBody[] {
+    const hx = isHalfExtents ? halfExtentsOrSize.x : halfExtentsOrSize.x * 0.5;
+    const hy = isHalfExtents ? halfExtentsOrSize.y : halfExtentsOrSize.y * 0.5;
+    const hz = isHalfExtents ? halfExtentsOrSize.z : halfExtentsOrSize.z * 0.5;
+
+    const minX = center.x - hx;
+    const maxX = center.x + hx;
+    const minY = center.y - hy;
+    const maxY = center.y + hy;
+    const minZ = center.z - hz;
+    const maxZ = center.z + hz;
+
     const results: RigidBody[] = [];
 
     // ⚡ Bolt Optimization:
-    // Avoid .filter().map() chaining in this hot path.
+    // Avoid intermediate BoundingBox allocations and .filter().map() chaining in hot path.
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
+      if (!body.cannonBody) continue;
       const bounds = collider.getBoundingBox(position);
-      if (queryBox.intersectsBox(bounds)) {
+      if (
+        maxX >= bounds.min.x && minX <= bounds.max.x &&
+        maxY >= bounds.min.y && minY <= bounds.max.y &&
+        maxZ >= bounds.min.z && minZ <= bounds.max.z
+      ) {
         results.push(body);
       }
     }

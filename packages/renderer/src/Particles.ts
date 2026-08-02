@@ -180,11 +180,16 @@ export class ParticleSystem {
       const progress = this.lives[i] / this.maxLives[i];
       const currentScale = this.sizes[i] * (1 - progress);
 
-      this.dummy.position.set(this.positionsX[i], this.positionsY[i], this.positionsZ[i]);
-      this.dummy.scale.set(currentScale, currentScale, currentScale);
-      this.dummy.updateMatrix();
+      const px = this.positionsX[i];
+      const py = this.positionsY[i];
+      const pz = this.positionsZ[i];
 
-      this.mesh.setMatrixAt(aliveCount, this.dummy.matrix);
+      const im = this.mesh.instanceMatrix.array as Float32Array;
+      const offset = aliveCount * 16;
+      im[offset + 0] = currentScale;  im[offset + 1] = 0;             im[offset + 2] = 0;             im[offset + 3] = 0;
+      im[offset + 4] = 0;             im[offset + 5] = currentScale;  im[offset + 6] = 0;             im[offset + 7] = 0;
+      im[offset + 8] = 0;             im[offset + 9] = 0;             im[offset + 10] = currentScale; im[offset + 11] = 0;
+      im[offset + 12] = px;           im[offset + 13] = py;           im[offset + 14] = pz;           im[offset + 15] = 1;
 
       // Pack active particles to the front
       if (aliveCount !== i) {

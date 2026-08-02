@@ -79,7 +79,34 @@ export class World {
 
   private systems: System[] = [];
 
+  private componentIdMap: WeakMap<ComponentType, number> = new WeakMap();
+  private nextComponentTypeId: number = 1;
+  private queryCache: Map<string, EntityId[]> = new Map();
+
+  private getComponentTypeId(comp: ComponentType): number {
+    let id = this.componentIdMap.get(comp);
+    if (id === undefined) {
+      id = this.nextComponentTypeId++;
+      this.componentIdMap.set(comp, id);
+    }
+    return id;
+  }
+
+  private getQueryCacheKey(queryDesc: Query): string {
+    const allKey = queryDesc.all ? queryDesc.all.map(c => this.getComponentTypeId(c)).sort((a,b)=>a-b).join(',') : '';
+    const anyKey = queryDesc.any ? queryDesc.any.map(c => this.getComponentTypeId(c)).sort((a,b)=>a-b).join(',') : '';
+    const noneKey = queryDesc.none ? queryDesc.none.map(c => this.getComponentTypeId(c)).sort((a,b)=>a-b).join(',') : '';
+    return `${allKey}|${anyKey}|${noneKey}`;
+  }
+
+  private invalidateQueryCache(): void {
+    if (this.queryCache.size > 0) {
+      this.queryCache.clear();
+    }
+  }
+
   createEntity(name?: string): EntityId {
+    this.invalidateQueryCache();
     const id = this.nextEntityId++;
     this.activeEntities.add(id);
     this.tags.set(id, new Set());
@@ -136,6 +163,7 @@ export class World {
     this.children.delete(entity);
     this.entityNames.delete(entity);
     this.activeEntities.delete(entity);
+    this.invalidateQueryCache();
   }
 
   setParent(child: EntityId, parent: EntityId | null): void {
@@ -173,6 +201,7 @@ export class World {
   }
 
   addComponent<T>(entity: EntityId, component: T): T {
+    this.invalidateQueryCache();
     const cType = (component as any).constructor as ComponentType<T>;
     // Re-adding a component supersedes any disabled instance of the same type,
     // otherwise enableComponent would resurrect the old one and overwrite this.
@@ -191,6 +220,7 @@ export class World {
   }
 
   removeComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
+    this.invalidateQueryCache();
     const storage = this.components.get(componentType);
     if (storage && storage.has(entity)) {
       const comp = storage.get(entity);
@@ -202,6 +232,7 @@ export class World {
   }
 
   disableComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
+    this.invalidateQueryCache();
     const storage = this.components.get(componentType);
     if (storage && storage.has(entity)) {
       const comp = storage.get(entity);
@@ -218,6 +249,7 @@ export class World {
   }
 
   enableComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
+    this.invalidateQueryCache();
     const disabledStorage = this.disabledComponents.get(componentType);
     if (disabledStorage && disabledStorage.has(entity)) {
       const comp = disabledStorage.get(entity);
@@ -272,6 +304,12 @@ export class World {
 
 
   query(queryDesc: Query): EntityId[] {
+    const key = this.getQueryCacheKey(queryDesc);
+    const cached = this.queryCache.get(key);
+    if (cached) {
+      return cached;
+    }
+
     let candidateEntities: Iterable<EntityId>;
 
     // ⚡ Bolt Optimization:
@@ -285,6 +323,7 @@ export class World {
       for (const compType of queryDesc.all) {
         const storage = this.components.get(compType);
         if (!storage || storage.size === 0) {
+          this.queryCache.set(key, []);
           return []; // If any required component is missing, no entity can match
         }
         if (storage.size < minSize) {
@@ -303,6 +342,7 @@ export class World {
         results.push(entity);
       }
     }
+    this.queryCache.set(key, results);
     return results;
   }
 

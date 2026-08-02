@@ -27,7 +27,8 @@ export default defineConfig({
         editor: 'editor/index.html',
         aipathfinding: 'examples/ai-pathfinding/index.html',
         scifiexplorer: 'examples/scifi-explorer/index.html',
-        cargame: 'examples/car-game/index.html'
+        cargame: 'examples/car-game/index.html',
+        wasmswarm: 'examples/wasm-asteroid-swarm/index.html'
       },
       output: {
         manualChunks(id) {
