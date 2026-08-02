@@ -12,6 +12,7 @@ import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
 import { animate } from 'motion';
+import * as BABYLON from '@babylonjs/core';
 
 export interface KairoAppConfig {
   canvas?: HTMLCanvasElement | string;
@@ -25,6 +26,8 @@ export interface KairoAppConfig {
   mode?: '2d' | '3d';
   pixelArt?: boolean;
   orthoScale?: number;
+  enableBabylon?: boolean; // Experimental dual-engine mode
+  rendererBackend?: 'webgl' | 'webgpu'; // WebGPU support!
 }
 
 /**
@@ -44,6 +47,11 @@ export class KairoApp {
   public save: SaveSystem;
   public scenes: SceneManager;
   public cutscene: CutsceneManager;
+  
+  // Babylon.js Dual-Engine Integration
+  public babylonEngine?: any; // Engine | WebGPUEngine
+  public babylonScene?: BABYLON.Scene;
+  public babylonCanvas?: HTMLCanvasElement;
 
   public input: InputManager = GlobalInput;
   public audio: AudioManager = GlobalAudio;
@@ -98,6 +106,41 @@ export class KairoApp {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
+    // Set Three.js canvas CSS for layering
+    canvasObj.style.position = 'absolute';
+    canvasObj.style.top = '0';
+    canvasObj.style.left = '0';
+    canvasObj.style.zIndex = '1';
+
+    // Experimental Babylon.js Dual-Engine Mode
+    if (config.enableBabylon) {
+      this.babylonCanvas = document.createElement('canvas');
+      this.babylonCanvas.id = 'babylon-canvas';
+      this.babylonCanvas.style.position = 'absolute';
+      this.babylonCanvas.style.top = '0';
+      this.babylonCanvas.style.left = '0';
+      this.babylonCanvas.style.width = '100%';
+      this.babylonCanvas.style.height = '100%';
+      this.babylonCanvas.style.pointerEvents = 'none';
+      this.babylonCanvas.style.zIndex = '2';
+      document.body.appendChild(this.babylonCanvas);
+      
+      // Note: Babylon WebGPU requires async initialization. 
+      // If WebGPU is requested, it will be initialized asynchronously in start().
+      if (config.rendererBackend !== 'webgpu') {
+        try {
+          this.babylonEngine = new BABYLON.Engine(this.babylonCanvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true });
+          this.babylonScene = new BABYLON.Scene(this.babylonEngine);
+          this.babylonScene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+
+          const babylonCamera = new BABYLON.FreeCamera("babylonCam", new BABYLON.Vector3(0, 6, 12), this.babylonScene);
+          babylonCamera.setTarget(BABYLON.Vector3.Zero());
+        } catch (err) {
+          console.error("Failed to initialize Babylon.js dual-engine layer:", err);
+        }
+      }
+    }
 
     this.screenRecorder = new ScreenRecorder(canvasObj);
 
@@ -138,17 +181,46 @@ export class KairoApp {
         this.camera.updateProjectionMatrix();
       }
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // Sync Babylon aspect ratio
+      if (this.babylonEngine) {
+        this.babylonEngine.resize();
+        if (this.babylonScene && this.babylonScene.activeCamera && this.camera instanceof THREE.PerspectiveCamera) {
+          // Sync FOV roughly
+          // Babylon uses vertical fov by default, Three uses vertical fov in degrees
+          (this.babylonScene.activeCamera as BABYLON.FreeCamera).fov = this.camera.fov * (Math.PI / 180);
+        }
+      }
     });
 
     // Core loops
     this.engine.events.on('update', (dt: number) => {
       this.physics.step(dt);
       this.cameraController.update(dt, this.sceneObstacles);
+      
+      // Sync Babylon camera to Three camera continuously
+      if (this.babylonScene && this.babylonScene.activeCamera) {
+        this.babylonScene.activeCamera.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+        // Quaternion sync
+        const threeQuat = this.camera.quaternion;
+        if ((this.babylonScene.activeCamera as any).rotationQuaternion === undefined) {
+          (this.babylonScene.activeCamera as any).rotationQuaternion = new BABYLON.Quaternion();
+        }
+        (this.babylonScene.activeCamera as any).rotationQuaternion.set(threeQuat.x, threeQuat.y, threeQuat.z, threeQuat.w);
+      }
+      
       this.input.endFrame();
     });
 
     this.engine.events.on('render', () => {
       this.pipeline.render();
+      if (this.babylonScene) {
+        try {
+          this.babylonScene.render();
+        } catch (err) {
+          console.error("Babylon render error:", err);
+        }
+      }
       this.debug.update(this.pipeline.metrics, this.engine.activeScene.root.children.length);
     });
 
@@ -203,8 +275,37 @@ export class KairoApp {
     this.engine.events.on('update', callback);
   }
 
-  public start() {
+  public async start() {
     this.audio.init();
+    
+    // Initialize WebGPU if requested
+    if (this.config.rendererBackend === 'webgpu') {
+      console.log("Kairo: Initializing WebGPU Backend...");
+      if (this.config.enableBabylon && this.babylonCanvas && !this.babylonEngine) {
+        try {
+          const webGpuEngine = new BABYLON.WebGPUEngine(this.babylonCanvas, { stencil: true });
+          await webGpuEngine.initAsync();
+          this.babylonEngine = webGpuEngine;
+          this.babylonScene = new BABYLON.Scene(this.babylonEngine);
+          this.babylonScene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+          
+          const babylonCamera = new BABYLON.FreeCamera("babylonCam", new BABYLON.Vector3(0, 6, 12), this.babylonScene);
+          babylonCamera.setTarget(BABYLON.Vector3.Zero());
+          console.log("Kairo: Babylon.js WebGPU Engine Started successfully.");
+        } catch (e) {
+          console.error("Kairo: WebGPU not supported or failed to initialize in Babylon. Falling back to WebGL.", e);
+          this.babylonEngine = new BABYLON.Engine(this.babylonCanvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true });
+          this.babylonScene = new BABYLON.Scene(this.babylonEngine);
+          this.babylonScene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+          const babylonCamera = new BABYLON.FreeCamera("babylonCam", new BABYLON.Vector3(0, 6, 12), this.babylonScene);
+          babylonCamera.setTarget(BABYLON.Vector3.Zero());
+        }
+      }
+      
+      // Note: For Three.js WebGPU, we rely on WebGL fallback via standard WebGLRenderer for now until NodeMaterials are standard.
+      // Next-gen WebGPURenderer is imported dynamically when fully production ready.
+    }
+    
     this.engine.start();
   }
 
@@ -269,6 +370,64 @@ export class KairoApp {
       };
     }
     return { mesh };
+  }
+
+  /**
+   * Helper to spawn a physically simulated box in BABYLON.js, synced to the Cannon.js physics engine just like Three.js
+   */
+  public createBabylonBox(opts: {
+    name?: string;
+    size?: [number, number, number];
+    position?: [number, number, number];
+    color?: [number, number, number];
+    physics?: 'static' | 'dynamic';
+    mass?: number;
+  }) {
+    if (!this.babylonScene) throw new Error("Babylon is not enabled. Set enableBabylon: true in KairoAppConfig.");
+    
+    const size = opts.size ?? [1, 1, 1];
+    const box = BABYLON.MeshBuilder.CreateBox(opts.name ?? "babylonBox", { width: size[0], height: size[1], depth: size[2] }, this.babylonScene);
+    box.position.set(...(opts.position ?? [0, 0, 0]));
+    
+    if (opts.color) {
+      const mat = new BABYLON.StandardMaterial("babylonMat", this.babylonScene);
+      mat.diffuseColor = new BABYLON.Color3(...opts.color);
+      box.material = mat;
+    }
+
+    if (opts.physics) {
+      const rb = new RigidBody();
+      rb.type = opts.physics === 'static' ? RigidBodyType.Static : RigidBodyType.Dynamic;
+      rb.mass = opts.mass ?? (opts.physics === 'static' ? 0 : 1);
+      const col = new Collider();
+      col.type = ColliderType.Box;
+      col.size = new Vector3(...size);
+      
+      // We pass the starting position to the shared Physics Engine
+      this.physics.registerBody(rb, col, new Vector3(box.position.x, box.position.y, box.position.z));
+
+      // Sync physics body to visual babylon mesh
+      box.rotationQuaternion = new BABYLON.Quaternion();
+      
+      const unsubscribe = this.engine.events.on('update', () => {
+        if (rb.cannonBody) {
+          box.position.set(rb.cannonBody.position.x, rb.cannonBody.position.y, rb.cannonBody.position.z);
+          box.rotationQuaternion!.set(rb.cannonBody.quaternion.x, rb.cannonBody.quaternion.y, rb.cannonBody.quaternion.z, rb.cannonBody.quaternion.w);
+        }
+      });
+
+      return {
+        mesh: box,
+        rb,
+        col,
+        dispose: () => {
+          unsubscribe();
+          box.dispose();
+          this.physics.unregisterBody(rb);
+        }
+      };
+    }
+    return { mesh: box, dispose: () => box.dispose() };
   }
 
   /**
