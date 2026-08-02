@@ -305,7 +305,10 @@ export class PhysicsWorld {
       distance: maxDist
     };
 
-    for (const { body, collider, position } of this.bodies) {
+    // ⚡ Bolt Optimization:
+    // Avoid creating new arrays via mapping and filter arrays.
+    for (let i = 0; i < this.bodies.length; i++) {
+      const { body, collider, position } = this.bodies[i];
       const bounds = collider.getBoundingBox(position);
       const hit = ray.intersectBox(bounds);
       if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestHit.distance) {
@@ -332,7 +335,12 @@ export class PhysicsWorld {
 
   overlapSphere(center: Vector3, radius: number): RigidBody[] {
     const radiusSq = radius * radius;
-    return this.bodies.filter(({ collider, position }) => {
+    const results: RigidBody[] = [];
+
+    // ⚡ Bolt Optimization:
+    // Avoid .filter().map() chaining in this hot path.
+    for (let i = 0; i < this.bodies.length; i++) {
+      const { body, collider, position } = this.bodies[i];
       const bounds = collider.getBoundingBox(position);
       const closestX = clamp(center.x, bounds.min.x, bounds.max.x);
       const closestY = clamp(center.y, bounds.min.y, bounds.max.y);
@@ -340,8 +348,11 @@ export class PhysicsWorld {
       const dx = center.x - closestX;
       const dy = center.y - closestY;
       const dz = center.z - closestZ;
-      return dx * dx + dy * dy + dz * dz <= radiusSq;
-    }).map(({ body }) => body);
+      if (dx * dx + dy * dy + dz * dz <= radiusSq) {
+        results.push(body);
+      }
+    }
+    return results;
   }
 
   overlapBox(center: Vector3, halfExtents: Vector3): RigidBody[] {
@@ -349,10 +360,18 @@ export class PhysicsWorld {
       center.clone().sub(halfExtents),
       center.clone().add(halfExtents)
     );
-    return this.bodies.filter(({ collider, position }) => {
+    const results: RigidBody[] = [];
+
+    // ⚡ Bolt Optimization:
+    // Avoid .filter().map() chaining in this hot path.
+    for (let i = 0; i < this.bodies.length; i++) {
+      const { body, collider, position } = this.bodies[i];
       const bounds = collider.getBoundingBox(position);
-      return queryBox.intersectsBox(bounds);
-    }).map(({ body }) => body);
+      if (queryBox.intersectsBox(bounds)) {
+        results.push(body);
+      }
+    }
+    return results;
   }
 
   private createShape(collider: Collider): CANNON.Shape {
