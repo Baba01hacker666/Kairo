@@ -182,7 +182,7 @@ export class PhysicsWorld {
   private bodyLookup: Map<CANNON.Body, BodyEntry> = new Map();
   private collisionListeners: Array<(event: CollisionEvent) => void> = [];
   private triggerListeners: Array<(event: CollisionEvent) => void> = [];
-  private activePairs: Set<string> = new Set();
+  private activePairs: Map<string, [BodyEntry, BodyEntry]> = new Map();
   private collisionEvents: CollisionEvent[] = [];
 
   private static readonly FIXED_TIMESTEP = 1 / 60;
@@ -415,22 +415,23 @@ export class PhysicsWorld {
   }
 
   private collectCollisionEvents(): void {
-    const nextPairs = new Set<string>();
+    const nextPairs = new Map<string, [BodyEntry, BodyEntry]>();
     this.collisionEvents = [];
     for (const contact of this.cannonWorld.contacts) {
       const a = this.bodyLookup.get(contact.bi);
       const b = this.bodyLookup.get(contact.bj);
       if (!a || !b) continue;
       const key = pairKey(contact.bi.id, contact.bj.id);
-      nextPairs.add(key);
+      nextPairs.set(key, [a, b]);
       this.emitCollision(this.activePairs.has(key) ? 'stay' : 'enter', a, b);
     }
-    for (const key of this.activePairs) {
+    for (const [key, pair] of this.activePairs.entries()) {
       if (!nextPairs.has(key)) {
-        const [aId, bId] = key.split(':').map(Number);
-        const a = this.bodies.find(entry => entry.body.cannonBody?.id === aId);
-        const b = this.bodies.find(entry => entry.body.cannonBody?.id === bId);
-        if (a && b) this.emitCollision('exit', a, b);
+        const [a, b] = pair;
+        // Verify both bodies are still registered in the physics world
+        if (this.bodyLookup.has(a.body.cannonBody!) && this.bodyLookup.has(b.body.cannonBody!)) {
+          this.emitCollision('exit', a, b);
+        }
       }
     }
     this.activePairs = nextPairs;
