@@ -5,12 +5,10 @@ import{D as e,E as t,O as n,S as r,T as i,_ as a,a as o,b as s,c,d as l,f as u,g
       width: 100%;
       height: 100%;
       pointer-events: none;
-      font-family: ${this.theme.fontFamily};
-      color: ${this.theme.textColor};
       z-index: 1000;
       overflow: hidden;
       box-sizing: border-box;
-    `)}showToast(e,t=3e3,n=`info`){if(!this.container||typeof document>`u`)return;let r=document.createElement(`div`);r.style.cssText=`
+    `,this.container.style.fontFamily=this.theme.fontFamily,this.container.style.color=this.theme.textColor)}showToast(e,t=3e3,n=`info`){if(!this.container||typeof document>`u`)return;let r=document.createElement(`div`);r.style.cssText=`
       position: absolute;
       top: 24px;
       left: 50%;
@@ -43,32 +41,27 @@ import{D as e,E as t,O as n,S as r,T as i,_ as a,a as o,b as s,c,d as l,f as u,g
       opacity: 0;
       transition: opacity 0.25s ease;
     `;let i=document.createElement(`div`);i.style.cssText=`
-      background: ${this.theme.cardBackground};
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: ${this.theme.borderRadius};
       padding: 32px;
       max-width: 480px;
       width: 90%;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
       transform: scale(0.9);
       transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    `;let a=document.createElement(`h2`);a.style.cssText=`margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: ${this.theme.textColor};`,a.innerText=e;let o=document.createElement(`div`);o.style.cssText=`margin-bottom: 24px; color: ${this.theme.mutedTextColor}; font-size: 15px; line-height: 1.6;`,o.innerHTML=t;let s=document.createElement(`div`);return s.style.cssText=`display: flex; gap: 12px; justify-content: flex-end;`,n.forEach(e=>{let t=document.createElement(`button`);t.innerText=e.text,t.style.cssText=`
+    `,i.style.background=this.theme.cardBackground,i.style.borderRadius=this.theme.borderRadius;let a=document.createElement(`h2`);a.style.cssText=`margin: 0 0 16px 0; font-size: 24px; font-weight: 700;`,a.style.color=this.theme.textColor,a.innerText=e;let o=document.createElement(`div`);o.style.cssText=`margin-bottom: 24px; font-size: 15px; line-height: 1.6;`,o.style.color=this.theme.mutedTextColor,o.innerHTML=t;let s=document.createElement(`div`);return s.style.cssText=`display: flex; gap: 12px; justify-content: flex-end;`,n.forEach(e=>{let t=document.createElement(`button`);t.innerText=e.text,t.style.cssText=`
         padding: 10px 20px;
         border-radius: 8px;
         font-weight: 600;
         font-size: 14px;
         cursor: pointer;
         border: none;
-        background: ${e.primary?this.theme.primaryColor:`rgba(255, 255, 255, 0.1)`};
         color: white;
         transition: transform 0.15s, background 0.15s;
-      `,t.onmouseenter=()=>t.style.transform=`scale(1.04)`,t.onmouseleave=()=>t.style.transform=`scale(1)`,t.onclick=()=>{t.disabled||(s.querySelectorAll(`button`).forEach(e=>e.disabled=!0),r.style.opacity=`0`,i.style.transform=`scale(0.9)`,setTimeout(()=>r.remove(),250),e.onClick())},s.appendChild(t)}),i.appendChild(a),i.appendChild(o),i.appendChild(s),r.appendChild(i),this.container.appendChild(r),requestAnimationFrame(()=>{r.style.opacity=`1`,i.style.transform=`scale(1)`}),r}showAchievement(e,t,n=`🏆`){if(!this.container||typeof document>`u`)return;let r=document.createElement(`div`);r.style.cssText=`
+      `,t.style.background=e.primary?this.theme.primaryColor:`rgba(255, 255, 255, 0.1)`,t.onmouseenter=()=>t.style.transform=`scale(1.04)`,t.onmouseleave=()=>t.style.transform=`scale(1)`,t.onclick=()=>{t.disabled||(s.querySelectorAll(`button`).forEach(e=>e.disabled=!0),r.style.opacity=`0`,i.style.transform=`scale(0.9)`,setTimeout(()=>r.remove(),250),e.onClick())},s.appendChild(t)}),i.appendChild(a),i.appendChild(o),i.appendChild(s),r.appendChild(i),this.container.appendChild(r),requestAnimationFrame(()=>{r.style.opacity=`1`,i.style.transform=`scale(1)`}),r}showAchievement(e,t,n=`🏆`){if(!this.container||typeof document>`u`)return;let r=document.createElement(`div`);r.style.cssText=`
       position: absolute;
       top: 24px;
       right: 24px;
-      background: ${this.theme.cardBackground};
       border: 1px solid rgba(255, 215, 0, 0.4);
-      border-radius: ${this.theme.borderRadius};
       padding: 16px 20px;
       display: flex;
       align-items: center;
@@ -77,14 +70,7 @@ import{D as e,E as t,O as n,S as r,T as i,_ as a,a as o,b as s,c,d as l,f as u,g
       transform: translateX(120%);
       transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
       z-index: 9999;
-    `,r.innerHTML=`
-      <div style="font-size: 32px;">${n}</div>
-      <div>
-        <div style="font-size: 12px; font-weight: bold; color: #facc15; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Achievement Unlocked</div>
-        <div style="font-size: 16px; font-weight: 600; color: white;">${e}</div>
-        <div style="font-size: 13px; color: ${this.theme.mutedTextColor}; margin-top: 2px;">${t}</div>
-      </div>
-    `,this.container.appendChild(r),requestAnimationFrame(()=>{r.style.transform=`translateX(0)`}),setTimeout(()=>{r.style.opacity=`0`,r.style.transform=`translateX(120%)`,setTimeout(()=>r.remove(),400)},4e3)}createGameMenu(e,t){if(!this.container||typeof document>`u`)return null;let n=document.createElement(`div`);n.style.cssText=`
+    `,r.style.background=this.theme.cardBackground,r.style.borderRadius=this.theme.borderRadius;let i=document.createElement(`div`);i.style.cssText=`font-size: 32px;`,i.innerText=n;let a=document.createElement(`div`),o=document.createElement(`div`);o.style.cssText=`font-size: 12px; font-weight: bold; color: #facc15; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;`,o.innerText=`Achievement Unlocked`;let s=document.createElement(`div`);s.style.cssText=`font-size: 16px; font-weight: 600; color: white;`,s.innerText=e;let c=document.createElement(`div`);c.style.cssText=`font-size: 13px; margin-top: 2px;`,c.style.color=this.theme.mutedTextColor,c.innerText=t,a.appendChild(o),a.appendChild(s),a.appendChild(c),r.appendChild(i),r.appendChild(a),this.container.appendChild(r),requestAnimationFrame(()=>{r.style.transform=`translateX(0)`}),setTimeout(()=>{r.style.opacity=`0`,r.style.transform=`translateX(120%)`,setTimeout(()=>r.remove(),400)},4e3)}createGameMenu(e,t){if(!this.container||typeof document>`u`)return null;let n=document.createElement(`div`);n.style.cssText=`
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.85);
@@ -94,10 +80,10 @@ import{D as e,E as t,O as n,S as r,T as i,_ as a,a as o,b as s,c,d as l,f as u,g
       pointer-events: auto;
     `;let r=document.createElement(`h1`);r.innerText=e,r.style.cssText=`font-size: 48px; font-weight: 800; color: white; margin-bottom: 40px; text-shadow: 0 4px 20px rgba(0,0,0,0.5);`;let i=document.createElement(`div`);return i.style.cssText=`display: flex; flex-direction: column; gap: 16px; width: 300px;`,t.forEach(e=>{let t=document.createElement(`button`);t.innerText=e.text;let r=e.color||`rgba(255, 255, 255, 0.1)`;t.style.cssText=`
         padding: 16px 24px; font-size: 18px; font-weight: 600; color: white;
-        background: ${r}; border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.1);
         border-radius: 12px; cursor: pointer; transition: all 0.2s;
         text-align: center;
-      `,t.onmouseenter=()=>{t.style.transform=`scale(1.05)`,t.style.background=e.color?e.color:`rgba(255,255,255,0.2)`},t.onmouseleave=()=>{t.style.transform=`scale(1)`,t.style.background=r},t.onclick=()=>{n.style.opacity=`0`,setTimeout(()=>{n.remove(),e.onClick()},300)},i.appendChild(t)}),n.appendChild(r),n.appendChild(i),this.container.appendChild(n),requestAnimationFrame(()=>{n.style.opacity=`1`}),n}clear(){this.container&&(this.container.innerHTML=``)}subtitleEl=null;showSubtitle(e,t){!this.container||typeof document>`u`||(this.subtitleEl||(this.subtitleEl=document.createElement(`div`),this.subtitleEl.style.cssText=`
+      `,t.style.background=r,t.onmouseenter=()=>{t.style.transform=`scale(1.05)`,t.style.background=e.color?e.color:`rgba(255,255,255,0.2)`},t.onmouseleave=()=>{t.style.transform=`scale(1)`,t.style.background=r},t.onclick=()=>{n.style.opacity=`0`,setTimeout(()=>{n.remove(),e.onClick()},300)},i.appendChild(t)}),n.appendChild(r),n.appendChild(i),this.container.appendChild(n),requestAnimationFrame(()=>{n.style.opacity=`1`}),n}clear(){this.container&&(this.container.innerHTML=``)}subtitleEl=null;showSubtitle(e,t){!this.container||typeof document>`u`||(this.subtitleEl||(this.subtitleEl=document.createElement(`div`),this.subtitleEl.style.cssText=`
         position: absolute;
         bottom: 10%;
         left: 50%;
