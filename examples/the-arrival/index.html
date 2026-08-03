@@ -31,7 +31,7 @@
       position: absolute;
       left: 0;
       width: 100%;
-      height: 13%;
+      height: 11%;
       background: #000;
       z-index: 100;
       transition: transform 1.4s cubic-bezier(0.77, 0, 0.18, 1);
@@ -86,26 +86,6 @@
     }
     #title-card.show #big-title { opacity: 1; transform: scale(1); }
 
-    /* Intro hint */
-    #hint {
-      position: absolute;
-      bottom: 8%;
-      left: 0;
-      right: 0;
-      text-align: center;
-      z-index: 80;
-      font-size: 13px;
-      letter-spacing: 0.35em;
-      text-indent: 0.35em;
-      text-transform: uppercase;
-      color: rgba(226, 232, 240, 0.55);
-      animation: breath 3s ease-in-out infinite;
-      transition: opacity 0.8s ease;
-      pointer-events: auto;
-      cursor: pointer;
-    }
-    @keyframes breath { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
-
     /* Replay overlay */
     #end-card {
       position: absolute;
@@ -152,7 +132,7 @@
       pointer-events: none;
     }
   </style>
-  <script type="module" crossorigin src="../../assets/arrival-Ck-gYZel.js"></script>
+  <script type="module" crossorigin src="../../assets/arrival-KlUuTUB2.js"></script>
   <link rel="modulepreload" crossorigin href="../../assets/modulepreload-polyfill-Dezn_h7o.js">
   <link rel="modulepreload" crossorigin href="../../assets/three-CdyXAbVp.js">
   <link rel="modulepreload" crossorigin href="../../assets/vendor-k3-A6fAs.js">
@@ -170,7 +150,6 @@
       <h1 id="big-title">THE ARRIVAL</h1>
     </div>
 
-    <div id="hint">Begin the transmission ▸</div>
     <div id="skip-note">ESC to skip</div>
 
     <div id="end-card">
