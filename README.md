@@ -1,6 +1,6 @@
 # Kairo Engine 🚀
 
-**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 15 modular `@kairo/*` engine packages, 21 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
+**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 16 modular `@kairo/*` engine packages, 22 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
 
 🌍 **Live Hub & Studio Editor:** [Play Kairo Engine Demos & Studio Here!](https://Baba01hacker666.github.io/Kairo/)
 
@@ -12,6 +12,7 @@
 - **Cinematic Cutscene Sequencer**: Async/Await powered linear cutscene engine with camera shakes, UI dialogues, flash/fade screen effects, and safe task aborts.
 - **Scene Manager**: Secure memory-leak proof level loader that automatically dismantles Physics, GUI, and recursive WebGL/WebGPU scene graphs.
 - **Procedural Generation**: Includes native SimplexNoise, PRNG, and Cellular Automata mapping.
+- **Reusable Procedural Geometry (`@kairo/geometry`)**: One-line heightmap terrain (with surface sampling), instanced grass fields, low-poly trees/rocks/clouds, and PBR primitives — deterministic per seed, no asset URLs.
 - **Advanced Debug Renderer**: Real-time rendering of AABB bounding boxes, XZ coordinate grids, wireframe hybrids, and pivot indicators.
 - **AAA Post-Processing Pipeline**: Native integrated `EffectComposer` pipeline supporting high-fidelity Unreal Bloom, Film Grain, CRT scanlines, and glow outlines.
 - **Dynamic 3D Text**: Native Canvas2D to 3D Plane texture mapping with full CSS font/emoji support.
@@ -21,7 +22,7 @@
 
 ## 🏗️ Monorepo Architecture (`@kairo/*` Packages)
 
-Kairo is built from 15 decoupled, modular packages:
+Kairo is built from 16 decoupled, modular packages:
 
 1. **`@kairo/core`**: Engine loop (`Engine`), High-level app wrapper (`KairoApp`), EventSystem, Vector/Quaternion math, ObjectPool, SaveSystem, and Serializer.
 2. **`@kairo/ecs`**: Fast Component-Entity-System pipeline with Query indexing, World state management, and archetypes.
@@ -36,8 +37,9 @@ Kairo is built from 15 decoupled, modular packages:
 11. **`@kairo/plugins`**: Plugin architecture with lifecycle hooks (`onLoad`, `onUpdate`, `onRender`, `onUnload`) and dependency tracking.
 12. **`@kairo/ui`**: High-performance HTML5 overlay UI framework, toast notifications, modals, achievements, and game HUD menus.
 13. **`@kairo/tools`**: Real-time CPU/GPU Profiler map, AOT Engine Compiler, MeshCompressor, and 60 FPS WebGL ScreenRecorder.
-14. **`packages/go-raylib`**: Native Golang WebAssembly Raylib API bindings and math library.
-15. **`packages/c-raylib`**: Native C/C++ Raylib bindings.
+14. **`@kairo/geometry`**: One-line procedural meshes — heightmap terrain with surface sampling, instanced grass, low-poly scenery (trees/rocks/clouds), and PBR primitives (blocks, spheres, torus, capsules, etc.). Deterministic per seed, no asset URLs.
+15. **`packages/go-raylib`**: Native Golang WebAssembly Raylib API bindings and math library.
+16. **`packages/c-raylib`**: Native C/C++ Raylib bindings.
 
 ---
 
@@ -75,6 +77,7 @@ Access all interactive demos from the main hub page (`index.html`):
 - 🎬 **Cinematic Cutscene Demo**: Showcases the new async cutscene sequencer, screen effects, and UI dialogue system.
 - 🎬 **The Arrival — Cinematic Short**: A fully choreographed sci-fi film — bloom post-processing, orbiting starfield, 3D canvas text, camera choreography, dialogue subtitles, and an awakening monolith.
 - 🏰 **Procedural Dungeon Generator**: Demonstrates Cellular Automata cave generation and PRNG terrain logic.
+- 🏔️ **Procedural Geometry Library**: One-line terrain, instanced grass, trees, rocks, clouds and primitives from the new `@kairo/geometry` package — no hand-written mesh math.
 
 ---
 

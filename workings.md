@@ -7,7 +7,7 @@ A map of how this repo *works*, what runs things, and how to build on it — so 
 ## 1. What this is
 
 Kairo is a **TypeScript-first, monorepo game engine** with:
-- 14+ decoupled `@kairo/*` source packages (ECS, physics, renderer, audio, AI, UI, etc.).
+- 15+ decoupled `@kairo/*` source packages (ECS, physics, renderer, audio, AI, UI, geometry, etc.).
 - A high-level facade class, **`KairoApp`**, that wires the whole runtime together in one object.
 - 21 standalone **examples** under `examples/` (games, cinematic, physics, Go WASM demos).
 - A **Web Studio Editor** under `editor/`.
@@ -117,6 +117,7 @@ Pushing to `main` (direct commits are the norm here — see `agents.md`) trigger
 - **Audio** (`@kairo/audio`) — synthesized retro SFX via Web Audio.
 - **AI** (`@kairo/ai`) — A* pathfinding + behavior trees.
 - **Procedural** (in `@kairo/core`) — seeded PRNG, SimplexNoise, Cellular Automata cave gen.
+- **Geometry** (`@kairo/geometry`) — one-line procedural meshes: `createTerrain` (seeded heightmap + `heightAt` sampling), `createGrassField` (instanced blades, single draw call), primitives (`createBlock`, `createSphere`, `createPlane`, `createCylinder`, `createCone`, `createTorus`, `createCapsule`, `createIcosahedron`, `createDodecahedron`), and scenery (`createTree`, `createRock`, `createCloud`). Deterministic per seed — no asset URLs needed.
 - **Tools** (`@kairo/tools`) — debug inspector, screen recorder, debug renderer.
 - **Babylon.js dual-engine** — optional second render layer.
 

@@ -131,3 +131,36 @@ Screen effects:
 `GlobalUI` is a singleton `UIManager` with the default theme.
 
 Security note: theme and option color values are assigned through the DOM CSSOM (never concatenated into raw CSS strings), so untrusted color inputs cannot break out of style rules.
+
+---
+
+## 7. `@kairo/geometry`
+
+Reusable procedural geometry builders — one-line meshes so examples stop hand-writing `BufferGeometry` math. Every helper returns a ready-to-use `THREE.Object3D` with shadows and a standard PBR material configured; add it to `app.scene` yourself.
+
+### Primitives
+All primitives accept the shared `PrimitiveOptions`: `position`, `rotation`, `scale`, `color`, `roughness`, `metalness`, `emissive`, `emissiveIntensity`, `transparent`, `opacity`, `side`, `castShadow`, `receiveShadow`, or a prebuilt `material`.
+
+- `createBlock([w, h, d], opts?): THREE.Mesh` — Box.
+- `createSphere(radius, opts?): THREE.Mesh` — UV sphere.
+- `createPlane(width, height, opts?): THREE.Mesh` — Flat ground plane (XZ by default).
+- `createCylinder(radiusTop, radiusBottom, height, opts?): THREE.Mesh` — Pillar.
+- `createCone(radius, height, opts?): THREE.Mesh` — Spike.
+- `createTorus(radius, tube, opts?): THREE.Mesh` — Ring.
+- `createCapsule(radius, length, opts?): THREE.Mesh` — Pill.
+- `createIcosahedron(radius, detail?, opts?): THREE.Mesh` — Low-poly gem/orb.
+- `createDodecahedron(radius, detail?, opts?): THREE.Mesh` — Low-poly rock/crystal.
+
+### Terrain
+- `createTerrain(opts): { mesh, geometry, heightAt(x, z), heights }` — Seeded `SimplexNoise` heightmap laid on the XZ plane with per-vertex height gradient colors and computed normals. Options: `size`, `segments`, `seed`, `amplitude`, `frequency`, `octaves`, `persistence`, `position`, `color` / `highColor` (low→high gradient), `roughness`, `metalness`, `wireframe`.
+  - `heightAt(x, z): number` — Sample the surface height at world coordinates (position offset applied) so you can scatter trees/rocks/players exactly on the ground.
+
+### Grass
+- `createGrassField(opts): THREE.InstancedMesh` — Thousands of tapered blades in a **single draw call**. Options: `count`, `area`, `height: [min, max]`, `width`, `seed`, `color` / `tipColor` (base→tip gradient), `position`, `castShadow`.
+
+### Scenery
+- `createTree(opts): THREE.Group` — Low-poly trunk + dodecahedron canopy (+ secondary blob). Options: `position`, `scale`, `seed`, `trunkColor`, `canopyColor`, `trunkHeight`, `trunkRadius`, `canopyRadius`.
+- `createRock(opts): THREE.Mesh` — Perturbed dodecahedron. Options: `position`, `scale`, `seed`, `color`, `radius`.
+- `createCloud(opts): THREE.Group` — Overlapping flattened spheres. Options: `position`, `scale`, `color`.
+
+> All geometry is generated in code (no asset URLs needed) — same seed → identical geometry, so levels can be generated deterministically.

@@ -32,7 +32,8 @@ export default defineConfig({
         platformer25d: 'examples/platformer-2.5d/index.html',
         procgendungeon: 'examples/procgen-dungeon/index.html',
         cutscenedemo: 'examples/cutscene-demo/index.html',
-        arrival: 'examples/the-arrival/index.html'
+        arrival: 'examples/the-arrival/index.html',
+        geometryshowcase: 'examples/geometry-showcase/index.html'
       },
       output: {
         manualChunks(id) {
@@ -48,6 +49,7 @@ export default defineConfig({
       '@kairo/ecs': '/packages/ecs/src/index.ts',
       '@kairo/renderer': '/packages/renderer/src/index.ts',
       '@kairo/physics': '/packages/physics/src/index.ts',
+      '@kairo/geometry': '/packages/geometry/src/index.ts',
       '@kairo/animation': '/packages/animation/src/index.ts',
       '@kairo/audio': '/packages/audio/src/index.ts',
       '@kairo/input': '/packages/input/src/index.ts',
