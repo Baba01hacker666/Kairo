@@ -53,12 +53,14 @@ export class UIManager {
       width: 100%;
       height: 100%;
       pointer-events: none;
-      font-family: ${this.theme.fontFamily};
-      color: ${this.theme.textColor};
       z-index: 1000;
       overflow: hidden;
       box-sizing: border-box;
     `;
+    // Assign theme values through the CSSOM so they are parsed as property
+    // values instead of being concatenated into CSS (prevents CSS injection).
+    this.container.style.fontFamily = this.theme.fontFamily;
+    this.container.style.color = this.theme.textColor;
   }
 
   public showToast(message: string, durationMs: number = 3000, type: 'info' | 'success' | 'warning' = 'info'): void {
@@ -119,9 +121,7 @@ export class UIManager {
 
     const card = document.createElement('div');
     card.style.cssText = `
-      background: ${this.theme.cardBackground};
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: ${this.theme.borderRadius};
       padding: 32px;
       max-width: 480px;
       width: 90%;
@@ -129,13 +129,17 @@ export class UIManager {
       transform: scale(0.9);
       transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     `;
+    card.style.background = this.theme.cardBackground;
+    card.style.borderRadius = this.theme.borderRadius;
 
     const titleEl = document.createElement('h2');
-    titleEl.style.cssText = `margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: ${this.theme.textColor};`;
+    titleEl.style.cssText = `margin: 0 0 16px 0; font-size: 24px; font-weight: 700;`;
+    titleEl.style.color = this.theme.textColor;
     titleEl.innerText = title;
 
     const bodyEl = document.createElement('div');
-    bodyEl.style.cssText = `margin-bottom: 24px; color: ${this.theme.mutedTextColor}; font-size: 15px; line-height: 1.6;`;
+    bodyEl.style.cssText = `margin-bottom: 24px; font-size: 15px; line-height: 1.6;`;
+    bodyEl.style.color = this.theme.mutedTextColor;
     bodyEl.innerHTML = contentHtml;
 
     const btnRow = document.createElement('div');
@@ -151,10 +155,10 @@ export class UIManager {
         font-size: 14px;
         cursor: pointer;
         border: none;
-        background: ${b.primary ? this.theme.primaryColor : 'rgba(255, 255, 255, 0.1)'};
         color: white;
         transition: transform 0.15s, background 0.15s;
       `;
+      btn.style.background = b.primary ? this.theme.primaryColor : 'rgba(255, 255, 255, 0.1)';
       btn.onmouseenter = () => btn.style.transform = 'scale(1.04)';
       btn.onmouseleave = () => btn.style.transform = 'scale(1)';
       btn.onclick = () => {
@@ -189,9 +193,7 @@ export class UIManager {
       position: absolute;
       top: 24px;
       right: 24px;
-      background: ${this.theme.cardBackground};
       border: 1px solid rgba(255, 215, 0, 0.4);
-      border-radius: ${this.theme.borderRadius};
       padding: 16px 20px;
       display: flex;
       align-items: center;
@@ -201,15 +203,31 @@ export class UIManager {
       transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
       z-index: 9999;
     `;
-    
-    toast.innerHTML = `
-      <div style="font-size: 32px;">${icon}</div>
-      <div>
-        <div style="font-size: 12px; font-weight: bold; color: #facc15; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Achievement Unlocked</div>
-        <div style="font-size: 16px; font-weight: 600; color: white;">${title}</div>
-        <div style="font-size: 13px; color: ${this.theme.mutedTextColor}; margin-top: 2px;">${description}</div>
-      </div>
-    `;
+    toast.style.background = this.theme.cardBackground;
+    toast.style.borderRadius = this.theme.borderRadius;
+
+    const iconEl = document.createElement('div');
+    iconEl.style.cssText = 'font-size: 32px;';
+    iconEl.innerText = icon;
+
+    const textWrap = document.createElement('div');
+    const labelEl = document.createElement('div');
+    labelEl.style.cssText = 'font-size: 12px; font-weight: bold; color: #facc15; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;';
+    labelEl.innerText = 'Achievement Unlocked';
+    const achTitleEl = document.createElement('div');
+    achTitleEl.style.cssText = 'font-size: 16px; font-weight: 600; color: white;';
+    achTitleEl.innerText = title;
+    const descEl = document.createElement('div');
+    descEl.style.cssText = 'font-size: 13px; margin-top: 2px;';
+    descEl.style.color = this.theme.mutedTextColor;
+    descEl.innerText = description;
+
+    textWrap.appendChild(labelEl);
+    textWrap.appendChild(achTitleEl);
+    textWrap.appendChild(descEl);
+
+    toast.appendChild(iconEl);
+    toast.appendChild(textWrap);
     
     this.container.appendChild(toast);
     
@@ -250,10 +268,11 @@ export class UIManager {
       const baseBg = opt.color || 'rgba(255, 255, 255, 0.1)';
       btn.style.cssText = `
         padding: 16px 24px; font-size: 18px; font-weight: 600; color: white;
-        background: ${baseBg}; border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.1);
         border-radius: 12px; cursor: pointer; transition: all 0.2s;
         text-align: center;
       `;
+      btn.style.background = baseBg;
       btn.onmouseenter = () => { btn.style.transform = 'scale(1.05)'; btn.style.background = opt.color ? opt.color : 'rgba(255,255,255,0.2)'; };
       btn.onmouseleave = () => { btn.style.transform = 'scale(1)'; btn.style.background = baseBg; };
       btn.onclick = () => {
