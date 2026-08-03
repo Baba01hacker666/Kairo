@@ -3,6 +3,7 @@ import { Engine } from './Engine.ts';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
 import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
+import { deriveCollider } from '@kairo/geometry';
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
@@ -370,6 +371,66 @@ export class KairoApp {
       };
     }
     return { mesh };
+  }
+
+  /**
+   * Make any THREE mesh physical (solid by default): derives a collider from
+   * its geometry, registers a rigid body, and syncs the cannon body back to
+   * the mesh every frame. Pass-through is the explicit opt-out — skip this
+   * call (or set a custom collision layer) and the mesh stays ghosted.
+   */
+  public attachPhysics(mesh: THREE.Object3D, opts: {
+    type?: 'static' | 'dynamic';
+    mass?: number;
+    colliderType?: 'box' | 'sphere' | 'capsule';
+    size?: [number, number, number];
+    addToScene?: boolean;
+    castShadow?: boolean;
+  } = {}) {
+    const rb = new RigidBody();
+    rb.type = opts.type === 'static' ? RigidBodyType.Static : RigidBodyType.Dynamic;
+    rb.mass = opts.mass ?? (rb.type === RigidBodyType.Dynamic ? 1 : 0);
+
+    const collider = opts.colliderType || opts.size
+      ? (() => {
+          const c = new Collider();
+          c.type = (opts.colliderType === 'sphere' ? ColliderType.Sphere
+            : opts.colliderType === 'capsule' ? ColliderType.Capsule
+            : ColliderType.Box);
+          c.size = new Vector3(...(opts.size ?? [1, 1, 1]));
+          return c;
+        })()
+      : deriveCollider(mesh);
+
+    if (collider.size.x <= 0 || collider.size.y <= 0 || collider.size.z <= 0) {
+      collider.size.set(0.1, 0.1, 0.1);
+    }
+
+    if (opts.addToScene) {
+      mesh.castShadow = opts.castShadow ?? true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+    }
+
+    this.physics.registerBody(rb, collider, new Vector3(...mesh.getWorldPosition(new THREE.Vector3()).toArray()));
+
+    const unsubscribe = this.engine.events.on('update', () => {
+      if (rb.cannonBody) {
+        mesh.position.set(rb.cannonBody.position.x, rb.cannonBody.position.y, rb.cannonBody.position.z);
+        mesh.quaternion.set(rb.cannonBody.quaternion.x, rb.cannonBody.quaternion.y, rb.cannonBody.quaternion.z, rb.cannonBody.quaternion.w);
+      }
+    });
+
+    return {
+      mesh,
+      rb,
+      collider,
+      dispose: () => {
+        unsubscribe();
+        this.scene.remove(mesh);
+        this.physics.unregisterBody(rb);
+      }
+    };
   }
 
   /**

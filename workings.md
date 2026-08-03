@@ -111,13 +111,13 @@ Pushing to `main` (direct commits are the norm here — see `agents.md`) trigger
 - **ECS** (`@kairo/ecs`) — entities/components/systems, queries.
 - **Physics** (`@kairo/physics`) — Cannon-based rigid bodies + colliders, raycasts; optional Go WASM backends.
 - **Renderer** (`@kairo/renderer`) — Three.js scene graph, PBR lighting (`app.setLighting`), **post-processing**: bloom, film grain, pixelation, selection outlines (`app.pipeline.postProcessing.*`). Tone mapping exposure.
-- **`KairoApp` helpers** — `createBox`, `createBlock2D`, `createText3D` (canvas-texture text in 3D), screen capture + **video recording** (`captureScreenshot`, `startRecording`), `onUpdate`.
+- **`KairoApp` helpers** — `createBox`, `createBlock2D`, `createText3D` (canvas-texture text in 3D), screen capture + **video recording** (`captureScreenshot`, `startRecording`), `onUpdate`. **`attachPhysics(mesh, opts)`** makes any mesh solid by default (derives a collider from its geometry, registers a rigid body, syncs it each frame) — pass-through/ghosting is the explicit opt-out.
 - **Cutscene** (`@kairo/core`) — `app.cutscene.play(async ctx => ...)` with `moveCamera`, `lookAt`, `showDialogue`, `shakeCamera`, `flashScreen`, `fadeScreen`, and **abort-safe awaits** (ESC skip).
 - **UI** (`@kairo/ui`) — `UIManager`: toast, subtitle, achievement, modals, game menu, `flash`/`fade` screen effects. Themeable via `UITheme`. (Values are pushed through the CSS DOM, never concatenated into CSS strings — don't regress that.)
 - **Audio** (`@kairo/audio`) — synthesized retro SFX via Web Audio.
 - **AI** (`@kairo/ai`) — A* pathfinding + behavior trees.
 - **Procedural** (in `@kairo/core`) — seeded PRNG, SimplexNoise, Cellular Automata cave gen.
-- **Geometry** (`@kairo/geometry`) — one-line procedural meshes: `createTerrain` (seeded heightmap + `heightAt` sampling), `createGrassField` (instanced blades, single draw call), primitives (`createBlock`, `createSphere`, `createPlane`, `createCylinder`, `createCone`, `createTorus`, `createCapsule`, `createIcosahedron`, `createDodecahedron`), and scenery (`createTree`, `createRock`, `createCloud`). Deterministic per seed — no asset URLs needed.
+- **Geometry** (`@kairo/geometry`) — one-line procedural meshes: `createTerrain` (seeded heightmap + `heightAt` sampling), `createGrassField` (instanced blades, single draw call; pass `heightAt` to pin blades to terrain and avoid floating "fuzz"), primitives (`createBlock`, `createSphere`, `createPlane`, `createCylinder`, `createCone`, `createTorus`, `createCapsule`, `createIcosahedron`, `createDodecahedron`), scenery (`createTree`, `createRock`, `createCloud`), and **`deriveCollider(mesh)`** (geometry → `Collider` mapping so objects are physical by default). Deterministic per seed — no asset URLs needed.
 - **Tools** (`@kairo/tools`) — debug inspector, screen recorder, debug renderer.
 - **Babylon.js dual-engine** — optional second render layer.
 

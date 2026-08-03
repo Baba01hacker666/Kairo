@@ -14,8 +14,10 @@ import {
   createTorus,
   createCapsule,
   createIcosahedron,
-  createDodecahedron
+  createDodecahedron,
+  deriveCollider
 } from '../packages/geometry/src/index.ts';
+import { ColliderType } from '../packages/physics/src/Physics.ts';
 
 test('createTerrain builds a heightmap mesh with deterministic heights', () => {
   const a = createTerrain({ size: 40, segments: 16, seed: 42, amplitude: 5, frequency: 0.08 });
@@ -75,6 +77,41 @@ test('scenery helpers return sensible object graphs', () => {
   const rock = createRock({ position: [0, 1, 0], scale: 2 });
   assert.ok(rock instanceof THREE.Mesh);
   assert.ok(rock.geometry.attributes.position.count >= 12);
+});
+
+test('deriveCollider maps primitive geometry to the right collider type', () => {
+  const box = deriveCollider(createBlock([2, 1, 3]));
+  assert.strictEqual(box.type, ColliderType.Box);
+  assert.ok(Math.abs(box.size.x - 2) < 1e-6 && Math.abs(box.size.y - 1) < 1e-6 && Math.abs(box.size.z - 3) < 1e-6);
+
+  const sphere = deriveCollider(createSphere(1));
+  assert.strictEqual(sphere.type, ColliderType.Sphere);
+  assert.ok(Math.abs(sphere.size.x - 2) < 1e-6, 'sphere diameter ~2');
+
+  const capsule = deriveCollider(createCapsule(0.5, 1));
+  assert.strictEqual(capsule.type, ColliderType.Capsule);
+  assert.ok(capsule.size.x > 0 && capsule.size.y > 0, 'capsule collider has positive extents');
+
+  const torus = deriveCollider(createTorus(1, 0.4));
+  assert.strictEqual(torus.type, ColliderType.Box, 'torus falls back to a box');
+
+  // A scaled mesh yields a scaled collider (world scale is respected).
+  const scaled = createBlock([2, 1, 3]);
+  scaled.scale.set(2, 2, 2);
+  const scaledBox = deriveCollider(scaled);
+  assert.ok(Math.abs(scaledBox.size.y - 2) < 1e-6, 'size follows world scale');
+});
+
+test('createGrassField pins blades to the terrain via heightAt', () => {
+  const grass = createGrassField({ count: 1, height: [1, 1], seed: 3, heightAt: () => 5 });
+  // instanceMatrix is column-major; element [13] is the translation y.
+  const ty = grass.instanceMatrix.array[13];
+  // Blade base is anchored 0.03 below the surface so it grows out of the ground.
+  assert.ok(Math.abs(ty - 4.97) < 1e-4, `blade should sit on height ${ty}, expected ~4.97`);
+
+  // Without heightAt the blade rests at y ≈ -0.03 (the base anchor, below the plane).
+  const flat = createGrassField({ count: 1, height: [1, 1], seed: 3 });
+  assert.ok(Math.abs(flat.instanceMatrix.array[13] + 0.03) < 1e-6, 'flat grass sits at the base anchor');
 });
 
 test('primitives build ready-to-use meshes with shadows enabled', () => {

@@ -30,6 +30,7 @@ This document provides a comprehensive reference for all core packages in the Ka
 - `app.cutscene`: `CutsceneManager` (see below).
 - `app.audio`, `app.input`, `app.debug`: Global audio / input / debug managers.
 - `createBox(opts)`: Spawn a box mesh (optionally a physics rigid body).
+- `attachPhysics(mesh, opts?): { mesh, rb, collider, dispose }` — Make **any** THREE mesh solid: derives a collider from its geometry (`deriveCollider`), registers a rigid body, and syncs the physics body back to the mesh every frame. Physics is on by default; pass-through is the explicit opt-out (skip this call and the mesh just renders). Options: `type: 'static' | 'dynamic'` (default `dynamic`), `mass` (default `1`, `0` for static), `colliderType: 'box' | 'sphere' | 'capsule'`, `size: [w, h, d]` (manual collider size), `addToScene` (add the mesh to the scene + enable shadows), `castShadow`. `dispose()` unregisters the body and removes the mesh.
 - `createBlock2D(opts)`: Spawn a 2D textured sprite or billboard plane.
 - `createText3D(opts)`: Render text into the 3D scene via a canvas texture; returns `{ mesh, setText(newText), dispose }` for dynamic updates.
 - `setLighting(opts)`: Configure sun / ambient lighting.
@@ -157,6 +158,10 @@ All primitives accept the shared `PrimitiveOptions`: `position`, `rotation`, `sc
 
 ### Grass
 - `createGrassField(opts): THREE.InstancedMesh` — Thousands of tapered blades in a **single draw call**. Options: `count`, `area`, `height: [min, max]`, `width`, `seed`, `color` / `tipColor` (base→tip gradient), `position`, `castShadow`.
+  - `heightAt(x, z): number` — Pass the `heightAt` sampler from `createTerrain` and every blade base is pinned 0.03 below the surface height, so grass grows out of rolling terrain instead of hovering over or burying into it (no more "fuzz").
+
+### Physics
+- `deriveCollider(mesh: THREE.Object3D): Collider` — Maps a primitive's geometry to a Kairo `Collider` so objects are solid by default: `BoxGeometry` → box, `SphereGeometry` / `Icosahedron` / `Dodecahedron` → sphere, `Capsule` / `Cylinder` / `Cone` → capsule, `Torus` → box, anything else → box fitted to its world bounding box. Sizes respect the mesh's world scale. Pure and engine-free — registering the body in a `PhysicsWorld` is the caller's job (usually done via `KairoApp.attachPhysics`).
 
 ### Scenery
 - `createTree(opts): THREE.Group` — Low-poly trunk + dodecahedron canopy (+ secondary blob). Options: `position`, `scale`, `seed`, `trunkColor`, `canopyColor`, `trunkHeight`, `trunkRadius`, `canopyRadius`.

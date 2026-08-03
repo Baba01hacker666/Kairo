@@ -18,6 +18,14 @@ export interface GrassOptions {
   tipColor?: number | string;  // Slight lerp toward this at the tip
   position?: [number, number, number];
   castShadow?: boolean;
+  /**
+   * Height sampler, e.g. the `heightAt(x, z)` returned by `createTerrain`.
+   * When provided, every blade base is pinned to the surface height instead of
+   * hovering over or burying into the ground (fixes grass-on-terrain fuzz).
+   */
+  heightAt?: (x: number, z: number) => number;
+  /** Fade height (kept above 0 for numerical safety). */
+  fadeDistance?: number;
 }
 
 export function createGrassField(opts: GrassOptions = {}): THREE.InstancedMesh {
@@ -27,6 +35,7 @@ export function createGrassField(opts: GrassOptions = {}): THREE.InstancedMesh {
   const width = opts.width ?? 0.12;
   const seed = opts.seed ?? 1;
   const position = opts.position ?? [0, 0, 0];
+  const heightAt = opts.heightAt ?? null;
 
   const prng = new PRNG(seed);
 
@@ -59,11 +68,14 @@ export function createGrassField(opts: GrassOptions = {}): THREE.InstancedMesh {
   const half = area / 2;
   const dummy = new THREE.Object3D();
   for (let i = 0; i < count; i++) {
+    const x = prng.nextFloat(-half, half);
+    const z = prng.nextFloat(-half, half);
     const h = prng.nextFloat(hMin, hMax);
+    const surfaceY = heightAt ? heightAt(x + position[0], z + position[2]) - position[1] : 0;
     dummy.position.set(
-      prng.nextFloat(-half, half),
-      h / 2, // center the pivot so it grows from y=0
-      prng.nextFloat(-half, half)
+      x,
+      surfaceY - 0.03, // base anchored slightly below the surface so it grows out of it
+      z
     );
     dummy.rotation.set(
       0,
