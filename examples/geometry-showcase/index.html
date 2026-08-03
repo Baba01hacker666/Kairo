@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Kairo - Procedural Geometry Library</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0b1020; font-family: system-ui, sans-serif; }
+    canvas { display: block; }
+    #ui {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      color: #e2e8f0; pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+    #ui h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    #ui p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+    #hint {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+      color: #cbd5e1; font-size: 12px; opacity: 0.7; pointer-events: none;
+    }
+  </style>
+  <script type="module" crossorigin src="../../assets/geometryshowcase-DNmJKjBI.js"></script>
+  <link rel="modulepreload" crossorigin href="../../assets/modulepreload-polyfill-Dezn_h7o.js">
+  <link rel="modulepreload" crossorigin href="../../assets/three-CdyXAbVp.js">
+  <link rel="modulepreload" crossorigin href="../../assets/vendor-k3-A6fAs.js">
+  <link rel="modulepreload" crossorigin href="../../assets/src-DSGYZJ6k.js">
+  <link rel="modulepreload" crossorigin href="../../assets/Procedural-CEnlBdn-.js">
+</head>
+<body>
+  <div id="ui">
+    <h1>@kairo/geometry</h1>
+    <p>Procedural terrain, grass, trees, rocks &amp; primitives — one line each, no raw math.</p>
+  </div>
+  <div id="hint">Drag to orbit &middot; scroll to zoom</div>
+</body>
+</html>
