@@ -1,3 +1,7 @@
 ## 2024-11-23 - High-Frequency Physics Queries Anti-Pattern
 **Learning:** In high-frequency physics queries like `overlapSphere`, `overlapBox`, and `raycast`, using `.filter().map()` array chaining and performing object allocations (e.g., `new BoundingBox()`, `Vector3.clone()`) via `collider.getBoundingBox(position)` creates significant GC overhead and performance bottlenecks. These methods can be called thousands of times per frame in dense scenes.
 **Action:** Replace `.filter().map()` chains with traditional `for` loops in hot paths. Inline bounding box dimension calculations (e.g. `const hx = collider.size.x * 0.5`) and re-use objects or avoid allocations entirely to prevent unnecessary garbage collection. This optimization was observed to yield roughly a 3x speedup in synthetic benchmarks.
+
+## 2024-11-23 - Collision Pair Validation Array Allocation Spikes
+**Learning:** In continuous physics update functions like `collectCollisionEvents`, processing separating collision pairs by string parsing (e.g. `key.split(':').map(Number)`) followed by O(N) full-array `this.bodies.find` lookups causes unacceptable CPU delays and garbage collection spikes because it happens every frame for every collision.
+**Action:** When tracking paired data for exit/separation events across frames, always persist the full Object references directly inside a Tuple map (`Map<string, [BodyEntry, BodyEntry]>`). Iterating Map entries provides O(1) direct object lookup in the hot frame loop and bypasses garbage string generation.
