@@ -25,9 +25,8 @@ app.setLighting({
   sunColor: 0x9db4ff
 });
 
-// Cinematic post-processing: soft bloom + subtle film grain.
-app.pipeline.postProcessing.toggleBloom(true, 0.75);
-app.pipeline.postProcessing.toggleFilmGrain(true);
+// Cinematic post-processing: soft bloom.
+app.pipeline.postProcessing.toggleBloom(true, 0.6);
 
 // ── Starfield ────────────────────────────────────────────────
 function createStarfield(count: number, radius: number): THREE.Points {
@@ -147,18 +146,19 @@ const core = new THREE.Mesh(
 core.position.y = 4.0;
 monolithGroup.add(core);
 
-// Glowing edges.
+// Glowing edges (scaled slightly out so they never z-fight the stone body).
 const edges = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.BoxGeometry(2.3, 8.0, 2.5)),
   new THREE.LineBasicMaterial({
     color: 0xffd166,
     transparent: true,
-    opacity: 0.95,
+    opacity: 0.9,
     blending: THREE.AdditiveBlending,
     depthWrite: false
   })
 );
 edges.position.y = 4.0;
+edges.scale.set(1.015, 1.015, 1.015);
 monolithGroup.add(edges);
 
 // Rotating energy ring.
@@ -360,7 +360,6 @@ app.onUpdate((dt) => {
 
 // ── DOM orchestration ────────────────────────────────────────
 const stage = document.getElementById('stage')!;
-const hint = document.getElementById('hint')!;
 const titleCard = document.getElementById('title-card')!;
 const endCard = document.getElementById('end-card')!;
 const replayBtn = document.getElementById('replay-btn')!;
@@ -373,7 +372,6 @@ app.ui.fade(1.0, '#000000', 0);
 async function playMovie(): Promise<void> {
   started = true;
   stage.classList.add('movie');   // slide in letterbox bars
-  hint.style.opacity = '0';
 
   const moviePromise = app.cutscene.play(async (ctx) => {
     // Opening: fade in from black.
@@ -453,6 +451,7 @@ async function playMovie(): Promise<void> {
 }
 
 function startOrReplay(): void {
+  if (app.cutscene.isPlaying) return; // already running
   endCard.classList.remove('show');
   lit = false;
   // Reset a couple of lit-dependent visuals instantly.
@@ -461,7 +460,6 @@ function startOrReplay(): void {
   playMovie();
 }
 
-hint.addEventListener('click', startOrReplay);
 replayBtn.addEventListener('click', startOrReplay);
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape' && started && app.cutscene.isPlaying) {
@@ -476,3 +474,6 @@ window.addEventListener('keydown', (e) => {
 
 // Run the engine.
 app.start();
+
+// The film starts itself after a short beat — no click required.
+setTimeout(() => startOrReplay(), 650);
