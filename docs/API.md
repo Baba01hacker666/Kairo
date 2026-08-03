@@ -20,7 +20,38 @@ This document provides a comprehensive reference for all core packages in the Ka
 - `start()`: Start main game loop.
 - `pause()`: Pause update and render updates.
 - `resume()`: Resume execution.
-- `stop()`: Terminate loop and clean up animation frames.
+- `stop()`: Terminate the game loop and clean up animation frames.
+
+### `KairoApp`
+- `new KairoApp(config?: KairoAppConfig)`: Create the high-level engine wrapper (background, gravity, shadows, fog, `mode: '2d' | '3d'`, `pixelArt`, `rendererBackend`).
+- `app.scene`, `app.camera`, `app.renderer`: Exposed Three.js scene, camera and renderer.
+- `app.physics`: Shared `PhysicsWorld` instance.
+- `app.ui`: `UIManager` overlay system (see `@kairo/ui`).
+- `app.cutscene`: `CutsceneManager` (see below).
+- `app.audio`, `app.input`, `app.debug`: Global audio / input / debug managers.
+- `createBox(opts)`: Spawn a box mesh (optionally a physics rigid body).
+- `createBlock2D(opts)`: Spawn a 2D textured sprite or billboard plane.
+- `createText3D(opts)`: Render text into the 3D scene via a canvas texture; returns `{ mesh, setText(newText), dispose }` for dynamic updates.
+- `setLighting(opts)`: Configure sun / ambient lighting.
+- `setBackgroundImage(url, pixelArt?)`: Set a 2D backdrop image.
+- `onUpdate(cb)`: Register a per-frame update callback receiving `dt`.
+- `start()`, `stop()`: Launch / halt the render + update loop.
+- `captureScreenshot()`, `startRecording(fps?)`, `stopRecording(filename?)`: Output tools.
+- `app.pipeline.postProcessing`: Toggle bloom, film grain, pixelation and selection outlines.
+
+### `CutsceneManager`
+- `play(script)`: Run an async cinematic script, aborting any running cutscene first. Each `await` in the script can be cancelled instantly on skip.
+- `skip()` / `stop()`: Abort the active cutscene, firing `CutsceneAbortError`.
+- `isPlaying: boolean`: Whether a cutscene is currently running.
+
+### `CutsceneContext`
+- `wait(seconds)`: Pause for a duration (abort-safe).
+- `moveCamera(targetPos, duration?)`: Smooth camera movement to a target position.
+- `lookAt(targetPos, duration?)`: Interpolate camera rotation toward a point.
+- `showDialogue(text, duration?)`: Show then auto-hide a subtitle.
+- `shakeCamera(intensity, duration, decay?)`: Camera shake impulse.
+- `flashScreen(color?, durationMs?)`: Instant full-screen color flash.
+- `fadeScreen(targetOpacity, color?, durationMs?)`: Fade the screen overlay to a target opacity.
 
 ---
 
@@ -61,3 +92,42 @@ This document provides a comprehensive reference for all core packages in the Ka
 - `SelectorNode`: Execute children until one succeeds.
 - `SequenceNode`: Execute children until one fails.
 - `ActionNode`: Custom action callback node.
+
+---
+
+## 6. `@kairo/ui`
+
+Animated, themeable HUD overlays, menus, modals, toasts and screen effects. Access it through `app.ui` anywhere, or import `UIManager` / `GlobalUI` directly.
+
+### `UITheme`
+Theming for every UI element:
+- `primaryColor`, `accentColor`: Brand colors.
+- `backgroundColor`, `cardBackground`: Surface colors.
+- `textColor`, `mutedTextColor`: Text colors.
+- `fontFamily`, `borderRadius`: Typography and corner radii.
+
+`DefaultTheme` provides the built-in fallback theme.
+
+### `UIManager`
+- `new UIManager(theme?: UITheme)`: Create a manager, optionally mounting a `#kairo-ui-overlay` container and applying global styles.
+- `container: HTMLElement | null`: The overlay root element (created on first usage in the browser).
+- `theme: UITheme`: The active theme.
+
+Overlays & feedback:
+- `showToast(message, durationMs?, type?)`: Bottom pop-in toast, then auto-dismiss.
+- `showSubtitle(text, durationMs?)` / `hideSubtitle()`: Bottom subtitle line for dialogue / cutscenes.
+- `showAchievement(title, description, icon?)`: Top-right achievement toast.
+- `showDialogue` is a cutscene convenience that wraps `showSubtitle` (see `@kairo/core`).
+
+Modals & menus:
+- `createModal(title, contentHtml, buttons): HTMLElement | null`: Centered modal card; each button `{ text, primary?, onClick() }` auto-disables all buttons on click and closes.
+- `createGameMenu(title, options): HTMLElement | null`: Full-screen menu; each option `{ text, onClick(), color? }`.
+
+Screen effects:
+- `flash(color?, durationMs?)`: Instant full-screen color flash (e.g. lightning, damage).
+- `fade(targetOpacity, color?, durationMs?): Promise<void>`: Smooth full-screen fade to a target opacity.
+- `clear()`: Remove all created overlays.
+
+`GlobalUI` is a singleton `UIManager` with the default theme.
+
+Security note: theme and option color values are assigned through the DOM CSSOM (never concatenated into raw CSS strings), so untrusted color inputs cannot break out of style rules.

@@ -1,6 +1,6 @@
 # Kairo Engine 🚀
 
-**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 15 modular `@kairo/*` engine packages, 14 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
+**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 15 modular `@kairo/*` engine packages, 21 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
 
 🌍 **Live Hub & Studio Editor:** [Play Kairo Engine Demos & Studio Here!](https://Baba01hacker666.github.io/Kairo/)
 
@@ -54,7 +54,7 @@ Kairo features a complete in-browser game studio editor:
 
 ## 🎮 Playable Examples (`examples/`)
 
-Access all 14 interactive demos from the main hub page (`index.html`):
+Access all interactive demos from the main hub page (`index.html`):
 
 - 🎛️ **Kairo Studio & Web Editor**: Dual 2D/3D visual level editor and game studio.
 - 🦊 **Go + Three.js Fox Adventure**: Hybrid WASM physics backend with Three.js rendering & GLTF animations.
@@ -73,6 +73,7 @@ Access all 14 interactive demos from the main hub page (`index.html`):
 - 🌲 **Pure TS Fox Game**: Third-person platformer game engine implementation in pure TypeScript.
 
 - 🎬 **Cinematic Cutscene Demo**: Showcases the new async cutscene sequencer, screen effects, and UI dialogue system.
+- 🎬 **The Arrival — Cinematic Short**: A fully choreographed sci-fi film — bloom post-processing, orbiting starfield, 3D canvas text, camera choreography, dialogue subtitles, and an awakening monolith.
 - 🏰 **Procedural Dungeon Generator**: Demonstrates Cellular Automata cave generation and PRNG terrain logic.
 
 ---
