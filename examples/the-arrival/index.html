@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>THE ARRIVAL // Kairo Engine Cinematic</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+    :root {
+      --cyan: #7dd3fc;
+      --amber: #ffcf6b;
+      --violet: #a78bfa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #04060d;
+      color: #f1f5f9;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    canvas { display: block; width: 100vw; height: 100vh; }
+
+    /* Cinematic letterbox bars */
+    .cinema-bar {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 13%;
+      background: #000;
+      z-index: 100;
+      transition: transform 1.4s cubic-bezier(0.77, 0, 0.18, 1);
+    }
+    .cinema-bar.top    { top: 0;    transform: translateY(-101%); }
+    .cinema-bar.bottom { bottom: 0; transform: translateY(101%); }
+    #stage.movie .cinema-bar { transform: translateY(0); }
+
+    /* Big cinematic title card */
+    #title-card {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 2.4s ease;
+    }
+    #title-card.show { opacity: 1; }
+
+    #title-sub {
+      letter-spacing: 0.9em;
+      text-indent: 0.9em;
+      font-size: 14px;
+      font-weight: 400;
+      text-transform: uppercase;
+      color: rgba(125, 211, 252, 0.8);
+      margin-bottom: 18px;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 1.6s ease 0.4s, transform 1.6s ease 0.4s;
+    }
+    #title-card.show #title-sub { opacity: 1; transform: none; }
+
+    #big-title {
+      font-size: clamp(56px, 12vw, 150px);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      line-height: 0.95;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 45%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-align: center;
+      opacity: 0;
+      transform: scale(1.06);
+      filter: drop-shadow(0 0 30px rgba(125, 211, 252, 0.35));
+      transition: opacity 1.5s ease 0.5s, transform 2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #title-card.show #big-title { opacity: 1; transform: scale(1); }
+
+    /* Intro hint */
+    #hint {
+      position: absolute;
+      bottom: 8%;
+      left: 0;
+      right: 0;
+      text-align: center;
+      z-index: 80;
+      font-size: 13px;
+      letter-spacing: 0.35em;
+      text-indent: 0.35em;
+      text-transform: uppercase;
+      color: rgba(226, 232, 240, 0.55);
+      animation: breath 3s ease-in-out infinite;
+      transition: opacity 0.8s ease;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    @keyframes breath { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+    /* Replay overlay */
+    #end-card {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.5s ease;
+      z-index: 90;
+      background: rgba(4, 6, 13, 0.4);
+    }
+    #end-card.show { opacity: 1; pointer-events: auto; }
+    #end-card button {
+      background: transparent;
+      border: 1px solid rgba(125, 211, 252, 0.5);
+      color: #e0f2fe;
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 0.4em;
+      text-indent: 0.4em;
+      text-transform: uppercase;
+      padding: 16px 40px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    #end-card button:hover {
+      background: rgba(125, 211, 252, 0.15);
+      box-shadow: 0 0 30px rgba(125, 211, 252, 0.3);
+    }
+
+    #skip-note {
+      position: absolute;
+      top: 15%;
+      left: 0; right: 0;
+      text-align: center;
+      z-index: 90;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.5);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game-canvas"></canvas>
+
+    <div class="cinema-bar top"></div>
+    <div class="cinema-bar bottom"></div>
+
+    <div id="title-card">
+      <div id="title-sub">A Kairo Engine Original</div>
+      <h1 id="big-title">THE ARRIVAL</h1>
+    </div>
+
+    <div id="hint">Begin the transmission ▸</div>
+    <div id="skip-note">ESC to skip</div>
+
+    <div id="end-card">
+      <button id="replay-btn">Replay ▸</button>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
