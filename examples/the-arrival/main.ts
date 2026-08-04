@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KairoApp } from '@kairo/core';
 
 // ─────────────────────────────────────────────────────────────
 // THE ARRIVAL — a short cinematic rendered with the Kairo engine
 // Uses: KairoApp primitives, RenderPipeline post-processing,
+//       real glTF models (see public/models/CREDITS.md),
 //       3D canvas text, the Cutscene manager, and a DOM title card.
 // ─────────────────────────────────────────────────────────────
 
@@ -89,31 +91,6 @@ function makeGroundTexture(): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
-}
-
-function makeMoonTexture(): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = c.height = 256;
-  const ctx = c.getContext('2d')!;
-  const g = ctx.createRadialGradient(128, 128, 20, 128, 128, 128);
-  g.addColorStop(0, '#ff6a3d');
-  g.addColorStop(0.6, '#e23a1e');
-  g.addColorStop(1, '#7a1208');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 256, 256);
-  // Craters.
-  for (let i = 0; i < 44; i++) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 256;
-    const r = 3 + Math.random() * 11;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(60,8,4,0.5)';
-    ctx.fill();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
@@ -323,295 +300,6 @@ glowPoolInner.rotation.x = -Math.PI / 2;
 glowPoolInner.position.y = 0.04;
 app.scene.add(glowPoolInner);
 
-// ── Red moon + atmospheric halo ──────────────────────────────
-const moon = new THREE.Mesh(
-  new THREE.SphereGeometry(4.0, 40, 40),
-  new THREE.MeshBasicMaterial({ map: makeMoonTexture(), fog: false })
-);
-moon.position.set(-48, 26, -65);
-app.scene.add(moon);
-
-const moonHalo = new THREE.Mesh(
-  new THREE.SphereGeometry(6.2, 40, 40),
-  new THREE.MeshBasicMaterial({
-    color: 0xff5a28,
-    transparent: true,
-    opacity: 0.12,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    fog: false
-  })
-);
-moonHalo.position.copy(moon.position);
-app.scene.add(moonHalo);
-
-// Outer atmospheric rim.
-const moonRim = new THREE.Mesh(
-  new THREE.SphereGeometry(8.5, 32, 32),
-  new THREE.MeshBasicMaterial({
-    color: 0x991a0a,
-    transparent: true,
-    opacity: 0.06,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    fog: false
-  })
-);
-moonRim.position.copy(moon.position);
-app.scene.add(moonRim);
-
-// ── The Monolith (richer detail) ─────────────────────────────
-const monolithGroup = new THREE.Group();
-app.scene.add(monolithGroup);
-
-// Stone body — darker, more imposing.
-const obeliskMat = new THREE.MeshStandardMaterial({
-  color: 0x12192a,
-  roughness: 0.30,
-  metalness: 0.65,
-  emissive: 0xffd166,
-  emissiveIntensity: 0.18
-});
-const obelisk = new THREE.Mesh(new THREE.BoxGeometry(2.5, 9.0, 2.7), obeliskMat);
-obelisk.position.y = 4.5;
-obelisk.castShadow = true;
-obelisk.receiveShadow = true;
-monolithGroup.add(obelisk);
-
-// Bright energy core.
-const coreMat = new THREE.MeshBasicMaterial({
-  color: 0xffe08a,
-  transparent: true,
-  opacity: 0.7,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
-});
-const core = new THREE.Mesh(new THREE.BoxGeometry(1.4, 8.2, 1.6), coreMat);
-core.position.y = 4.5;
-monolithGroup.add(core);
-
-// Glowing edges.
-const edgesMat = new THREE.LineBasicMaterial({
-  color: 0xffd166,
-  transparent: true,
-  opacity: 0.85,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
-});
-const edges = new THREE.LineSegments(
-  new THREE.EdgesGeometry(new THREE.BoxGeometry(2.5, 9.0, 2.7)),
-  edgesMat
-);
-edges.position.y = 4.5;
-edges.scale.set(1.015, 1.015, 1.015);
-monolithGroup.add(edges);
-
-// Rune engravings — glowing lines on the monolith faces.
-function createRuneLines(faceOffset: THREE.Vector3, faceRotation: THREE.Euler): void {
-  const runeCount = 5 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < runeCount; i++) {
-    const pts: THREE.Vector3[] = [];
-    const segments = 3 + Math.floor(Math.random() * 3);
-    let x = (Math.random() - 0.5) * 1.4;
-    let y = (Math.random() - 0.5) * 6;
-    for (let s = 0; s <= segments; s++) {
-      pts.push(new THREE.Vector3(x, y, 0));
-      x += (Math.random() - 0.5) * 0.6;
-      y += (Math.random() - 0.5) * 1.2;
-    }
-    const runGeo = new THREE.BufferGeometry().setFromPoints(pts);
-    const runeMat = new THREE.LineBasicMaterial({
-      color: 0xffc46a,
-      transparent: true,
-      opacity: 0.35,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-    const line = new THREE.Line(runGeo, runeMat);
-    line.position.copy(faceOffset);
-    line.rotation.copy(faceRotation);
-    line.position.y += 4.5;
-    monolithGroup.add(line);
-  }
-}
-createRuneLines(new THREE.Vector3(0, 0, 1.36), new THREE.Euler(0, 0, 0));
-createRuneLines(new THREE.Vector3(0, 0, -1.36), new THREE.Euler(0, Math.PI, 0));
-createRuneLines(new THREE.Vector3(1.26, 0, 0), new THREE.Euler(0, Math.PI / 2, 0));
-createRuneLines(new THREE.Vector3(-1.26, 0, 0), new THREE.Euler(0, -Math.PI / 2, 0));
-
-// Primary energy ring.
-const ringMat = new THREE.MeshBasicMaterial({
-  color: 0x7dd3fc,
-  side: THREE.DoubleSide,
-  transparent: true,
-  opacity: 0.5,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
-});
-const ring = new THREE.Mesh(new THREE.RingGeometry(2.8, 3.4, 72), ringMat);
-ring.rotation.x = Math.PI / 2.2;
-ring.position.y = 5.5;
-monolithGroup.add(ring);
-
-// Secondary counter-rotating ring.
-const ring2Mat = new THREE.MeshBasicMaterial({
-  color: 0xa78bfa,
-  side: THREE.DoubleSide,
-  transparent: true,
-  opacity: 0.3,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
-});
-const ring2 = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.0, 72), ring2Mat);
-ring2.rotation.x = Math.PI / 2.6;
-ring2.position.y = 4.2;
-monolithGroup.add(ring2);
-
-// Pulsing point light at the heart of the monolith.
-const heartLight = new THREE.PointLight(0xffc46a, 5, 38, 2);
-heartLight.position.set(0, 4.5, 0);
-monolithGroup.add(heartLight);
-
-// Cool blue fill from below.
-const fillLight = new THREE.PointLight(0x38bdf8, 2.5, 28, 2);
-fillLight.position.set(0, 0.5, 3);
-monolithGroup.add(fillLight);
-
-// Volumetric pillar that appears once the monolith awakens.
-const pillarMat = new THREE.MeshBasicMaterial({
-  color: 0x7dd3fc,
-  transparent: true,
-  opacity: 0,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  side: THREE.DoubleSide
-});
-const pillar = new THREE.Mesh(
-  new THREE.CylinderGeometry(1.2, 2.8, 32, 28, 1, true),
-  pillarMat
-);
-pillar.position.y = 20;
-monolithGroup.add(pillar);
-
-// Stone platform (stepped).
-app.createBox({
-  size: [10, 0.5, 10],
-  position: [0, -0.25, 0],
-  color: 0x0a1526,
-  roughness: 0.5,
-  metalness: 0.4,
-  physics: 'static'
-});
-app.createBox({
-  size: [7, 0.3, 7],
-  position: [0, 0.15, 0],
-  color: 0x0d1a30,
-  roughness: 0.45,
-  metalness: 0.45,
-  physics: 'static'
-});
-
-// ── Floating debris rocks ────────────────────────────────────
-const debrisRocks: THREE.Mesh[] = [];
-for (let i = 0; i < 8; i++) {
-  const s = 0.15 + Math.random() * 0.35;
-  const rock = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(s, 0),
-    new THREE.MeshStandardMaterial({
-      color: 0x1a2236,
-      roughness: 0.8,
-      metalness: 0.3
-    })
-  );
-  const angle = (i / 8) * Math.PI * 2;
-  const rad = 4.5 + Math.random() * 3;
-  rock.position.set(Math.cos(angle) * rad, 2 + Math.random() * 6, Math.sin(angle) * rad);
-  rock.rotation.set(Math.random(), Math.random(), Math.random());
-  app.scene.add(rock);
-  debrisRocks.push(rock);
-}
-
-// ── The Wanderer (enhanced with staff) ───────────────────────
-const wanderer = new THREE.Group();
-app.scene.add(wanderer);
-
-// Robe.
-const robe = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.26, 0.58, 1.2, 10),
-  new THREE.MeshStandardMaterial({ color: 0x0e1528, roughness: 0.92, metalness: 0.08 })
-);
-robe.position.y = 0.6;
-wanderer.add(robe);
-
-// Hood.
-const hood = new THREE.Mesh(
-  new THREE.SphereGeometry(0.22, 12, 12, 0, Math.PI * 2, 0, Math.PI / 1.6),
-  new THREE.MeshStandardMaterial({ color: 0x0b1220, roughness: 0.9, metalness: 0.1 })
-);
-hood.position.y = 1.32;
-wanderer.add(hood);
-
-// Head (glowing eyes).
-const head = new THREE.Mesh(
-  new THREE.SphereGeometry(0.15, 16, 16),
-  new THREE.MeshStandardMaterial({
-    color: 0x080e1a,
-    emissive: 0x22d3ee,
-    emissiveIntensity: 1.8,
-    roughness: 0.15,
-    metalness: 0.1
-  })
-);
-head.position.y = 1.30;
-wanderer.add(head);
-
-// Staff.
-const staff = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.025, 0.03, 1.6, 6),
-  new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.7, metalness: 0.3 })
-);
-staff.position.set(0.35, 0.8, 0);
-staff.rotation.z = -0.15;
-wanderer.add(staff);
-
-// Staff glow tip.
-const staffTip = new THREE.Mesh(
-  new THREE.SphereGeometry(0.06, 8, 8),
-  new THREE.MeshBasicMaterial({
-    color: 0x22d3ee,
-    transparent: true,
-    opacity: 0.9,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  })
-);
-staffTip.position.set(0.37, 1.58, 0);
-wanderer.add(staffTip);
-
-const staffLight = new THREE.PointLight(0x22d3ee, 1.2, 8, 2);
-staffLight.position.set(0.37, 1.58, 0);
-wanderer.add(staffLight);
-
-wanderer.position.set(3.5, 0, -5.0);
-wanderer.rotation.y = -0.35;
-
-// Orbiting light orbs around the monolith.
-const orbMats = [0x22d3ee, 0xa78bfa, 0xffc46a].map(c =>
-  new THREE.MeshBasicMaterial({
-    color: c, transparent: true, opacity: 0.85,
-    blending: THREE.AdditiveBlending, depthWrite: false
-  })
-);
-const orbs: THREE.Mesh[] = [];
-for (let i = 0; i < 3; i++) {
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), orbMats[i]);
-  orbs.push(orb);
-  monolithGroup.add(orb);
-  // Point light per orb.
-  const orbLight = new THREE.PointLight(orbMats[i].color.getHex(), 1.5, 12, 2);
-  orb.add(orbLight);
-}
-
 // ── Drifting energy motes ────────────────────────────────────
 const MOTE_COUNT = 180;
 const moteGeo = new THREE.BufferGeometry();
@@ -768,9 +456,261 @@ function spawnShootingStar(): void {
   shootingStars.push({ group, head, trail, trailGeo, velocity: dir, life: 0, maxLife: 1.0 + Math.random() * 0.6 });
 }
 
+// ── Real glTF models (loaded async) ──────────────────────────
+// References are filled once the models finish loading; the update
+// loop and the movie only run after `ready` becomes true.
+let ready = false;
+let monolithGroup: THREE.Group | null = null;
+let obeliskMat: THREE.MeshStandardMaterial | null = null;
+let coreMat: THREE.MeshBasicMaterial | null = null;
+let ring: THREE.Mesh | null = null;
+let ring2: THREE.Mesh | null = null;
+let heartLight: THREE.PointLight | null = null;
+let fillLight: THREE.PointLight | null = null;
+let pillarMat: THREE.MeshBasicMaterial | null = null;
+let orbs: THREE.Mesh[] = [];
+let wanderer: THREE.Group | null = null;
+let wandererLight: THREE.PointLight | null = null;
+let eyeGlowMat: THREE.MeshBasicMaterial | null = null;
+let debrisRocks: THREE.Object3D[] = [];
+
+function loadModel(url: string): Promise<THREE.Group> {
+  return new Promise((resolve, reject) => {
+    new GLTFLoader().load(url, (gltf) => resolve(gltf.scene), undefined, (err) => reject(err));
+  });
+}
+
+// Scale a model so its largest dimension equals `targetSize`, then align it.
+function fitModel(model: THREE.Object3D, targetSize: number, align: 'bottom' | 'center'): THREE.Object3D {
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const dominant = Math.max(size.x, Math.max(size.y, size.z));
+  if (dominant > 0) {
+    model.scale.multiplyScalar(targetSize / dominant);
+  }
+  const b2 = new THREE.Box3().setFromObject(model);
+  const offsetY = align === 'bottom' ? -b2.min.y : -(b2.min.y + b2.max.y) / 2;
+  model.position.y += offsetY;
+  model.traverse((c) => {
+    const mesh = c as THREE.Mesh;
+    if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
+  });
+  return model;
+}
+
+async function buildSceneModels(): Promise<void> {
+  const base = (import.meta as any).env.BASE_URL + 'models/';
+  const [moonModel, monumentModel, wandererModel, rockModel] = await Promise.all([
+    loadModel(base + 'moon.glb'),
+    loadModel(base + 'monument.glb'),
+    loadModel(base + 'hooded-adventurer.glb'),
+    loadModel(base + 'rock.glb')
+  ]);
+
+  // ── Moon (real textured model + atmospheric halo) ──────────
+  const moonGroup = new THREE.Group();
+  fitModel(moonModel, 8, 'center');
+  moonModel.traverse((c) => {
+    const mesh = c as THREE.Mesh;
+    if (mesh.isMesh) {
+      const src = mesh.material as THREE.MeshStandardMaterial;
+      mesh.material = new THREE.MeshBasicMaterial({ map: src.map, fog: false });
+    }
+  });
+  moonGroup.add(moonModel);
+  moonGroup.position.set(-48, 26, -65);
+  app.scene.add(moonGroup);
+
+  const moonHalo = new THREE.Mesh(
+    new THREE.SphereGeometry(6.2, 40, 40),
+    new THREE.MeshBasicMaterial({
+      color: 0xff5a28,
+      transparent: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    })
+  );
+  moonGroup.add(moonHalo);
+
+  const moonRim = new THREE.Mesh(
+    new THREE.SphereGeometry(8.5, 32, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0x991a0a,
+      transparent: true,
+      opacity: 0.06,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    })
+  );
+  moonGroup.add(moonRim);
+
+  // ── The Monolith (real monument model, tinted dark + amber) ─
+  const mono = new THREE.Group();
+  app.scene.add(mono);
+  monolithGroup = mono;
+
+  fitModel(monumentModel, 9, 'bottom');
+  monumentModel.traverse((c) => {
+    const mesh = c as THREE.Mesh;
+    if (mesh.isMesh) {
+      const src = mesh.material as THREE.MeshStandardMaterial;
+      const transparent = src.transparent;
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x141b2c,
+        roughness: 0.35,
+        metalness: 0.6,
+        emissive: 0xffd166,
+        emissiveIntensity: 0.12,
+        transparent,
+        opacity: transparent ? 0.4 : 1
+      });
+      mesh.material = mat;
+      if (!obeliskMat) obeliskMat = mat;
+    }
+  });
+  mono.add(monumentModel);
+
+  // Bright energy core.
+  coreMat = new THREE.MeshBasicMaterial({
+    color: 0xffe08a,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const core = new THREE.Mesh(new THREE.BoxGeometry(1.4, 8.2, 1.6), coreMat);
+  core.position.y = 4.5;
+  mono.add(core);
+
+  // Primary energy ring.
+  ring = new THREE.Mesh(new THREE.RingGeometry(2.8, 3.4, 72), new THREE.MeshBasicMaterial({
+    color: 0x7dd3fc,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.5,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }));
+  ring.rotation.x = Math.PI / 2.2;
+  ring.position.y = 5.5;
+  mono.add(ring);
+
+  // Secondary counter-rotating ring.
+  ring2 = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.0, 72), new THREE.MeshBasicMaterial({
+    color: 0xa78bfa,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.3,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }));
+  ring2.rotation.x = Math.PI / 2.6;
+  ring2.position.y = 4.2;
+  mono.add(ring2);
+
+  // Pulsing point light at the heart of the monolith.
+  heartLight = new THREE.PointLight(0xffc46a, 5, 38, 2);
+  heartLight.position.set(0, 4.5, 0);
+  mono.add(heartLight);
+
+  // Cool blue fill from below.
+  fillLight = new THREE.PointLight(0x38bdf8, 2.5, 28, 2);
+  fillLight.position.set(0, 0.5, 3);
+  mono.add(fillLight);
+
+  // Volumetric pillar that appears once the monolith awakens.
+  pillarMat = new THREE.MeshBasicMaterial({
+    color: 0x7dd3fc,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2.8, 32, 28, 1, true), pillarMat);
+  pillar.position.y = 20;
+  mono.add(pillar);
+
+  // Orbiting light orbs around the monolith.
+  const orbMats = [0x22d3ee, 0xa78bfa, 0xffc46a].map(c =>
+    new THREE.MeshBasicMaterial({
+      color: c, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  for (let i = 0; i < 3; i++) {
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), orbMats[i]);
+    orbs.push(orb);
+    mono.add(orb);
+    const orbLight = new THREE.PointLight(orbMats[i].color.getHex(), 1.5, 12, 2);
+    orb.add(orbLight);
+  }
+
+  // Stone platform (stepped).
+  app.createBox({
+    size: [10, 0.5, 10],
+    position: [0, -0.25, 0],
+    color: 0x0a1526,
+    roughness: 0.5,
+    metalness: 0.4,
+    physics: 'static'
+  });
+  app.createBox({
+    size: [7, 0.3, 7],
+    position: [0, 0.15, 0],
+    color: 0x0d1a30,
+    roughness: 0.45,
+    metalness: 0.45,
+    physics: 'static'
+  });
+
+  // ── The Wanderer (real hooded adventurer model) ────────────
+  const w = new THREE.Group();
+  app.scene.add(w);
+  wanderer = w;
+  fitModel(wandererModel, 1.7, 'bottom');
+  w.add(wandererModel);
+  w.position.set(3.5, 0, -5.0);
+  w.rotation.y = -0.35;
+
+  // Cyan rim light + glowing eyes under the hood.
+  wandererLight = new THREE.PointLight(0x22d3ee, 1.2, 8, 2);
+  wandererLight.position.set(0, 1.5, 0);
+  w.add(wandererLight);
+
+  eyeGlowMat = new THREE.MeshBasicMaterial({
+    color: 0x22d3ee,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), eyeGlowMat);
+  eyeGlow.position.set(0, 1.42, 0.15);
+  w.add(eyeGlow);
+
+  // ── Floating debris rocks (real rock model, varied) ─────────
+  for (let i = 0; i < 8; i++) {
+    const rock = rockModel.clone(true);
+    fitModel(rock, 0.4 + Math.random() * 0.9, 'center');
+    const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.4;
+    const rad = 4.5 + Math.random() * 3;
+    rock.position.set(Math.cos(angle) * rad, 1.5 + Math.random() * 6, Math.sin(angle) * rad);
+    rock.rotation.set(Math.random(), Math.random(), Math.random());
+    app.scene.add(rock);
+    debrisRocks.push(rock);
+  }
+
+  ready = true;
+}
+
 // ── Ambient animation loop ───────────────────────────────────
 let lit = false;
 app.onUpdate((dt) => {
+  if (!ready || !monolithGroup || !wanderer) return;
   const t = performance.now() * 0.001;
 
   // Bloom swells when the monolith awakens.
@@ -779,25 +719,24 @@ app.onUpdate((dt) => {
   // Monolith heartbeat.
   const pulse = 1.5 + Math.sin(t * 2.6) * 0.5;
   const targetIntensity = lit ? pulse : 0.18 + Math.sin(t * 0.7) * 0.06;
-  obeliskMat.emissiveIntensity += (targetIntensity - obeliskMat.emissiveIntensity) * Math.min(dt * 3, 1);
+  obeliskMat!.emissiveIntensity += (targetIntensity - obeliskMat!.emissiveIntensity) * Math.min(dt * 3, 1);
 
-  heartLight.intensity = lit ? 10 + Math.sin(t * 2.6) * 3 : 3.5 + Math.sin(t * 0.7) * 0.8;
-  fillLight.intensity = lit ? 4 : 2;
-  coreMat.opacity = lit ? 0.95 : 0.5;
-  edgesMat.opacity = lit ? 1.0 : 0.7;
+  heartLight!.intensity = lit ? 10 + Math.sin(t * 2.6) * 3 : 3.5 + Math.sin(t * 0.7) * 0.8;
+  fillLight!.intensity = lit ? 4 : 2;
+  coreMat!.opacity = lit ? 0.95 : 0.5;
 
   // Pool glow intensifies when lit.
   (glowPool.material as THREE.MeshBasicMaterial).opacity = lit ? 0.18 : 0.08;
   (glowPoolInner.material as THREE.MeshBasicMaterial).opacity = lit ? 0.25 : 0.12;
 
   // Pillar fades in when awake.
-  pillarMat.opacity += ((lit ? 0.2 : 0) - pillarMat.opacity) * Math.min(dt * 1.4, 1);
+  pillarMat!.opacity += ((lit ? 0.2 : 0) - pillarMat!.opacity) * Math.min(dt * 1.4, 1);
 
   // Ring spin.
-  ring.rotation.y += dt * 0.6;
-  ring.rotation.z = Math.sin(t * 0.35) * 0.12;
-  ring2.rotation.y -= dt * 0.35;
-  ring2.rotation.z = Math.cos(t * 0.28) * 0.15;
+  ring!.rotation.y += dt * 0.6;
+  ring!.rotation.z = Math.sin(t * 0.35) * 0.12;
+  ring2!.rotation.y -= dt * 0.35;
+  ring2!.rotation.z = Math.cos(t * 0.28) * 0.15;
 
   // Orbs orbit the monolith.
   orbs.forEach((orb, i) => {
@@ -835,9 +774,9 @@ app.onUpdate((dt) => {
   wanderer.position.y = Math.sin(t * 1.0) * 0.015;
   wanderer.rotation.y = -0.35 + Math.sin(t * 0.35) * 0.1;
 
-  // Staff tip flicker.
-  (staffTip.material as THREE.MeshBasicMaterial).opacity = 0.7 + Math.sin(t * 4.5) * 0.3;
-  staffLight.intensity = 0.8 + Math.sin(t * 4.5) * 0.4;
+  // Wanderer light + eye glow flicker.
+  wandererLight!.intensity = 0.8 + Math.sin(t * 4.5) * 0.4;
+  eyeGlowMat!.opacity = 0.7 + Math.sin(t * 4.5) * 0.3;
 
   // Motes drift upward.
   const pos = moteGeo.getAttribute('position') as THREE.BufferAttribute;
@@ -999,11 +938,11 @@ async function playMovie(): Promise<void> {
 }
 
 function startOrReplay(): void {
-  if (app.cutscene.isPlaying) return;
+  if (!ready || app.cutscene.isPlaying) return;
   endCard.classList.remove('show');
   lit = false;
-  obeliskMat.emissiveIntensity = 0.18;
-  pillarMat.opacity = 0;
+  if (obeliskMat) obeliskMat.emissiveIntensity = 0.18;
+  if (pillarMat) pillarMat.opacity = 0;
   playMovie();
 }
 
@@ -1022,5 +961,13 @@ window.addEventListener('keydown', (e) => {
 // Run the engine.
 app.start();
 
-// The film starts itself after a short beat — no click required.
-setTimeout(() => startOrReplay(), 750);
+// Load the real models, then start the film once everything is ready.
+buildSceneModels()
+  .then(() => setTimeout(() => startOrReplay(), 750))
+  .catch((err) => {
+    console.error('Failed to load The Arrival models:', err);
+    // Fall back to running the movie with the environment only
+    // so the page is never stuck on black.
+    ready = true;
+    setTimeout(() => startOrReplay(), 750);
+  });
