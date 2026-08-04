@@ -13,17 +13,17 @@ const app = new KairoApp({
   canvas: 'game-canvas',
   background: 0x020510,
   fogColor: 0x020510,
-  fogNear: 22,
-  fogFar: 110,
+  fogNear: 30,
+  fogFar: 130,
   shadows: true
 });
 
-// Deep-space lighting rig: cool ambient fill + warm key from the monolith side.
+// Deep-space lighting: enough to see the monolith without washing out the dark ground.
 app.setLighting({
-  ambient: 0.15,
-  ambientColor: 0x6b7db8,
+  ambient: 0.28,
+  ambientColor: 0x5a6fa8,
   sunPosition: [-14, 24, -10],
-  sunIntensity: 0.35,
+  sunIntensity: 0.55,
   sunColor: 0x8ea6ff
 });
 
@@ -254,9 +254,10 @@ const ground = new THREE.Mesh(
   new THREE.CircleGeometry(85, 64),
   new THREE.MeshStandardMaterial({
     map: groundTex,
-    color: 0x9fb4d8,
-    roughness: 0.95,
-    metalness: 0.05
+    // Dark near-black so the ground doesn't glow cyan under ambient light.
+    color: 0x050a14,
+    roughness: 0.98,
+    metalness: 0.02
   })
 );
 ground.rotation.x = -Math.PI / 2;
@@ -271,13 +272,13 @@ const grid = new THREE.GridHelper(100, 50, 0x1a3a5c, 0x1a3a5c);
 grid.position.y = 0.02;
 app.scene.add(grid);
 
-// Under-glow pool beneath the monolith (layered for richer glow).
+// Under-glow pool beneath the monolith — kept tight so it doesn't flood the frame.
 const glowPool = new THREE.Mesh(
-  new THREE.CircleGeometry(8, 48),
+  new THREE.CircleGeometry(5, 48),
   new THREE.MeshBasicMaterial({
     color: 0x38bdf8,
     transparent: true,
-    opacity: 0.08,
+    opacity: 0.07,
     blending: THREE.AdditiveBlending,
     depthWrite: false
   })
@@ -287,11 +288,11 @@ glowPool.position.y = 0.03;
 app.scene.add(glowPool);
 
 const glowPoolInner = new THREE.Mesh(
-  new THREE.CircleGeometry(4, 48),
+  new THREE.CircleGeometry(2.5, 48),
   new THREE.MeshBasicMaterial({
     color: 0x7dd3fc,
     transparent: true,
-    opacity: 0.12,
+    opacity: 0.10,
     blending: THREE.AdditiveBlending,
     depthWrite: false
   })
@@ -563,11 +564,12 @@ async function buildSceneModels(): Promise<void> {
       const src = mesh.material as THREE.MeshStandardMaterial;
       const transparent = src.transparent;
       const mat = new THREE.MeshStandardMaterial({
-        color: 0x141b2c,
-        roughness: 0.35,
-        metalness: 0.6,
+        color: 0x101520,
+        roughness: 0.30,
+        metalness: 0.70,
         emissive: 0xffd166,
-        emissiveIntensity: 0.12,
+        // Higher baseline so the monolith glows noticeably even before awakening.
+        emissiveIntensity: 0.45,
         transparent,
         opacity: transparent ? 0.4 : 1
       });
@@ -615,13 +617,13 @@ async function buildSceneModels(): Promise<void> {
   ring2.position.y = 4.2;
   mono.add(ring2);
 
-  // Pulsing point light at the heart of the monolith.
-  heartLight = new THREE.PointLight(0xffc46a, 5, 38, 2);
+  // Pulsing point light at the heart of the monolith — strong enough to cast colour.
+  heartLight = new THREE.PointLight(0xffc46a, 8, 42, 2);
   heartLight.position.set(0, 4.5, 0);
   mono.add(heartLight);
 
   // Cool blue fill from below.
-  fillLight = new THREE.PointLight(0x38bdf8, 2.5, 28, 2);
+  fillLight = new THREE.PointLight(0x38bdf8, 4, 32, 2);
   fillLight.position.set(0, 0.5, 3);
   mono.add(fillLight);
 
@@ -720,18 +722,18 @@ app.onUpdate((dt) => {
   // Bloom swells when the monolith awakens.
   app.pipeline.postProcessing.toggleBloom(true, lit ? 1.35 : 0.9);
 
-  // Monolith heartbeat.
-  const pulse = 1.5 + Math.sin(t * 2.6) * 0.5;
-  const targetIntensity = lit ? pulse : 0.18 + Math.sin(t * 0.7) * 0.06;
+  // Monolith heartbeat — resting emissive matches the material baseline of 0.45.
+  const pulse = 1.6 + Math.sin(t * 2.6) * 0.5;
+  const targetIntensity = lit ? pulse : 0.45 + Math.sin(t * 0.7) * 0.08;
   obeliskMat!.emissiveIntensity += (targetIntensity - obeliskMat!.emissiveIntensity) * Math.min(dt * 3, 1);
 
-  heartLight!.intensity = lit ? 10 + Math.sin(t * 2.6) * 3 : 3.5 + Math.sin(t * 0.7) * 0.8;
-  fillLight!.intensity = lit ? 4 : 2;
-  coreMat!.opacity = lit ? 0.95 : 0.5;
+  heartLight!.intensity = lit ? 14 + Math.sin(t * 2.6) * 4 : 8 + Math.sin(t * 0.7) * 1.5;
+  fillLight!.intensity = lit ? 6 : 4;
+  coreMat!.opacity = lit ? 0.95 : 0.65;
 
   // Pool glow intensifies when lit.
-  (glowPool.material as THREE.MeshBasicMaterial).opacity = lit ? 0.18 : 0.08;
-  (glowPoolInner.material as THREE.MeshBasicMaterial).opacity = lit ? 0.25 : 0.12;
+  (glowPool.material as THREE.MeshBasicMaterial).opacity = lit ? 0.18 : 0.07;
+  (glowPoolInner.material as THREE.MeshBasicMaterial).opacity = lit ? 0.28 : 0.10;
 
   // Pillar fades in when awake.
   pillarMat!.opacity += ((lit ? 0.2 : 0) - pillarMat!.opacity) * Math.min(dt * 1.4, 1);
