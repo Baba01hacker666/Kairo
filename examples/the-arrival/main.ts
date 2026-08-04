@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KairoApp } from '@kairo/core';
 import { makeRadialTexture, setupEnvironment } from './scene/Environment';
+import { Monolith } from './scene/Monolith';
+import { Character } from './scene/Character';
 
 // ─────────────────────────────────────────────────────────────
 // THE ARRIVAL — a short cinematic rendered with the Kairo engine
@@ -331,11 +333,13 @@ function spawnShootingStar(): void {
   shootingStars.push({ group, head, trail, trailGeo, velocity: dir, life: 0, maxLife: 1.0 + Math.random() * 0.6 });
 }
 
-// ── Real glTF models (loaded async) ──────────────────────────
-// References are filled once the models finish loading; the update
-// loop and the movie only run after `ready` becomes true.
+let monolithObj: Monolith | null = null;
+let characterObj: Character | null = null;
 let ready = false;
 let monolithGroup: THREE.Group | null = null;
+let debrisRocks: THREE.Object3D[] = [];
+
+// Module-level refs filled by buildSceneModels()
 let obeliskMat: THREE.MeshStandardMaterial | null = null;
 let coreMat: THREE.MeshBasicMaterial | null = null;
 let ring: THREE.Mesh | null = null;
@@ -347,7 +351,6 @@ let orbs: THREE.Mesh[] = [];
 let wanderer: THREE.Group | null = null;
 let wandererLight: THREE.PointLight | null = null;
 let eyeGlowMat: THREE.MeshBasicMaterial | null = null;
-let debrisRocks: THREE.Object3D[] = [];
 
 function loadModel(url: string): Promise<THREE.Group> {
   return new Promise((resolve, reject) => {
@@ -355,21 +358,15 @@ function loadModel(url: string): Promise<THREE.Group> {
   });
 }
 
-// Scale a model so its largest dimension equals `targetSize`, then align it.
 function fitModel(model: THREE.Object3D, targetSize: number, align: 'bottom' | 'center'): THREE.Object3D {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const dominant = Math.max(size.x, Math.max(size.y, size.z));
-  if (dominant > 0) {
-    model.scale.multiplyScalar(targetSize / dominant);
-  }
+  if (dominant > 0) model.scale.multiplyScalar(targetSize / dominant);
   const b2 = new THREE.Box3().setFromObject(model);
   const offsetY = align === 'bottom' ? -b2.min.y : -(b2.min.y + b2.max.y) / 2;
   model.position.y += offsetY;
-  model.traverse((c) => {
-    const mesh = c as THREE.Mesh;
-    if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
-  });
+  model.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
   return model;
 }
 
