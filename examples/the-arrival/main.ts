@@ -199,26 +199,8 @@ for (let i = 0; i < 16; i++) {
   nebula.add(s);
 }
 
-// ── Distant mountain silhouettes ─────────────────────────────
-// Use simple low-poly cone rings — NO extruded 2D shapes which create
-// huge dark triangular planes that slash across the camera view.
-function createMountains(): void {
-  const peakCount = 32;
-  for (let i = 0; i < peakCount; i++) {
-    const a = (i / peakCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
-    const rad = 65 + Math.random() * 12;
-    const h = 4 + Math.random() * 9;
-    const w = 3 + Math.random() * 4;
-    const peak = new THREE.Mesh(
-      new THREE.ConeGeometry(w, h, 5),
-      new THREE.MeshBasicMaterial({ color: 0x060b18, fog: false })
-    );
-    peak.position.set(Math.cos(a) * rad, h * 0.48, Math.sin(a) * rad);
-    peak.rotation.y = Math.random() * Math.PI;
-    app.scene.add(peak);
-  }
-}
-createMountains();
+// Mountains removed — cone geometry at any angle creates dark/coloured
+// triangular artefacts that cut across the camera view.
 
 // ── Ground ───────────────────────────────────────────────────
 const groundTex = makeGroundTexture();
@@ -485,48 +467,37 @@ async function buildSceneModels(): Promise<void> {
     loadModel(base + 'rock.glb')
   ]);
 
-  // ── Moon: tint red-orange instead of using raw map (which renders purple) ──
+  // ── Moon: GLB texture renders purple in WebGL headless — use a glowing
+  // emissive sphere instead which always looks correct.
   const moonGroup = new THREE.Group();
-  fitModel(moonModel, 8, 'center');
-  moonModel.traverse((c) => {
-    const mesh = c as THREE.Mesh;
-    if (mesh.isMesh) {
-      // Override material with a warm red-orange so it always looks like a blood moon.
-      mesh.material = new THREE.MeshBasicMaterial({
-        color: 0xff4a2e,
-        fog: false
-      });
-    }
-  });
-  moonGroup.add(moonModel);
+  const moonMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(4.5, 32, 32),
+    new THREE.MeshStandardMaterial({
+      color: 0xcc3010,
+      emissive: 0xff4a2e,
+      emissiveIntensity: 0.6,
+      roughness: 0.8,
+      metalness: 0.1,
+      fog: false
+    })
+  );
+  moonGroup.add(moonMesh);
+
+  const moonHaloMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(5.5, 32, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xff3300,
+      transparent: true,
+      opacity: 0.10,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    })
+  );
+  moonGroup.add(moonHaloMesh);
   moonGroup.position.set(-48, 26, -65);
   app.scene.add(moonGroup);
 
-  const moonHalo = new THREE.Mesh(
-    new THREE.SphereGeometry(6.2, 40, 40),
-    new THREE.MeshBasicMaterial({
-      color: 0xff5a28,
-      transparent: true,
-      opacity: 0.12,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      fog: false
-    })
-  );
-  moonGroup.add(moonHalo);
-
-  const moonRim = new THREE.Mesh(
-    new THREE.SphereGeometry(8.5, 32, 32),
-    new THREE.MeshBasicMaterial({
-      color: 0x991a0a,
-      transparent: true,
-      opacity: 0.06,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      fog: false
-    })
-  );
-  moonGroup.add(moonRim);
 
   // ── The Monolith (real monument model, tinted dark + amber) ─
   const mono = new THREE.Group();
@@ -544,8 +515,8 @@ async function buildSceneModels(): Promise<void> {
         roughness: 0.30,
         metalness: 0.70,
         emissive: 0xffd166,
-        // 0.25 — visible amber glow but not washed out.
-        emissiveIntensity: 0.25,
+        // 0.15 — subtle amber warmth, not washed out.
+        emissiveIntensity: 0.15,
         transparent,
         opacity: transparent ? 0.4 : 1
       });
@@ -700,11 +671,11 @@ app.onUpdate((dt) => {
 
   // Monolith heartbeat — resting emissive matches the material baseline of 0.25.
   const pulse = 1.6 + Math.sin(t * 2.6) * 0.5;
-  const targetIntensity = lit ? pulse : 0.25 + Math.sin(t * 0.7) * 0.06;
+  const targetIntensity = lit ? pulse : 0.15 + Math.sin(t * 0.7) * 0.04;
   obeliskMat!.emissiveIntensity += (targetIntensity - obeliskMat!.emissiveIntensity) * Math.min(dt * 3, 1);
 
-  heartLight!.intensity = lit ? 14 + Math.sin(t * 2.6) * 4 : 6 + Math.sin(t * 0.7) * 1.2;
-  fillLight!.intensity = lit ? 6 : 3;
+  heartLight!.intensity = lit ? 12 + Math.sin(t * 2.6) * 3 : 4 + Math.sin(t * 0.7) * 0.8;
+  fillLight!.intensity = lit ? 5 : 2.5;
   coreMat!.opacity = lit ? 0.95 : 0.55;
 
   // Pool glow intensifies when lit.

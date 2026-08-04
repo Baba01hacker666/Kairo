@@ -13,7 +13,7 @@ const VIEWS = [
   { name: 'high-quality-render', url: `${BASE}/examples/high-quality-render/index.html` },
   { name: 'fox-game', url: `${BASE}/examples/fox-game/index.html` },
   { name: 'go-fox', url: `${BASE}/examples/go-fox/index.html` },
-  { name: 'the-arrival', url: `${BASE}/examples/the-arrival/index.html`, wait: 8000 }
+  { name: 'the-arrival', url: `${BASE}/examples/the-arrival/index.html`, wait: 18000 }
 ];
 
 (async () => {
