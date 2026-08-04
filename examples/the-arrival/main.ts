@@ -499,7 +499,11 @@ function fitModel(model: THREE.Object3D, targetSize: number, align: 'bottom' | '
 }
 
 async function buildSceneModels(): Promise<void> {
-  const base = (import.meta as any).env.BASE_URL + 'models/';
+  // With vite base:'./`, BASE_URL is relative to each page. Since this example
+  // lives at examples/the-arrival/, we need ../../models/ to reach the root /models/ dir.
+  // In dev BASE_URL is '/' so we handle both cases.
+  const baseUrl = (import.meta as any).env.BASE_URL as string;
+  const base = baseUrl === '/' || baseUrl === '' ? '/models/' : '../../models/';
   const [moonModel, monumentModel, wandererModel, rockModel] = await Promise.all([
     loadModel(base + 'moon.glb'),
     loadModel(base + 'monument.glb'),
