@@ -213,7 +213,7 @@ const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(800, 800),
   new THREE.MeshStandardMaterial({
     map: groundTex,
-    color: 0x0a1020,
+    color: 0x010204, // Very dark so the shadow doesn't create stark wedges
     roughness: 0.98,
     metalness: 0.02
   })
@@ -500,21 +500,35 @@ async function buildSceneModels(): Promise<void> {
   app.scene.add(mono);
   monolithGroup = mono;
 
-  // Sleek, classic black obelisk.
-  const monolithGeo = new THREE.BoxGeometry(3, 14, 1.2);
+  // Sleek, classic black obelisk (hollow frame so the core is visible)
   obeliskMat = new THREE.MeshStandardMaterial({
-    color: 0x020508,
-    roughness: 0.15,
-    metalness: 0.85,
-    emissive: 0x000000, // Black monolith. It will be lit by the heart light and environment.
+    color: 0x020305,
+    roughness: 0.2,
+    metalness: 0.8,
+    emissive: 0x000000,
   });
-  const monolithMesh = new THREE.Mesh(monolithGeo, obeliskMat);
-  monolithMesh.position.y = 7; // Half height so it sits on the ground
-  monolithMesh.castShadow = true;
-  monolithMesh.receiveShadow = true;
-  mono.add(monolithMesh);
+  
+  const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, 14, 1.2), obeliskMat);
+  leftPillar.position.set(-1.1, 7, 0);
+  leftPillar.castShadow = true; leftPillar.receiveShadow = true;
+  mono.add(leftPillar);
 
-  // Bright energy core.
+  const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, 14, 1.2), obeliskMat);
+  rightPillar.position.set(1.1, 7, 0);
+  rightPillar.castShadow = true; rightPillar.receiveShadow = true;
+  mono.add(rightPillar);
+
+  const topBridge = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.8, 1.2), obeliskMat);
+  topBridge.position.set(0, 12.6, 0); // 14 - 1.4
+  topBridge.castShadow = true; topBridge.receiveShadow = true;
+  mono.add(topBridge);
+
+  const bottomBridge = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.0, 1.2), obeliskMat);
+  bottomBridge.position.set(0, 1.5, 0);
+  bottomBridge.castShadow = true; bottomBridge.receiveShadow = true;
+  mono.add(bottomBridge);
+
+  // Bright energy core (now fits perfectly inside the hollow frame)
   coreMat = new THREE.MeshBasicMaterial({
     color: 0xffe08a,
     transparent: true,
@@ -522,8 +536,8 @@ async function buildSceneModels(): Promise<void> {
     blending: THREE.AdditiveBlending,
     depthWrite: false
   });
-  const core = new THREE.Mesh(new THREE.BoxGeometry(1.4, 8.2, 1.6), coreMat);
-  core.position.y = 4.5;
+  const core = new THREE.Mesh(new THREE.BoxGeometry(1.2, 8.0, 1.0), coreMat);
+  core.position.y = 7;
   mono.add(core);
 
   // Primary energy ring.
