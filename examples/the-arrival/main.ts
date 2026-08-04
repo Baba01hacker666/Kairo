@@ -25,15 +25,109 @@ app.setLighting({
   sunColor: 0x8ea6ff
 });
 
-// Cinematic post-processing: bloom + subtle film grain.
-app.pipeline.postProcessing.toggleBloom(true, 0.75);
-app.pipeline.postProcessing.toggleFilmGrain(true);
+// Cinematic post-processing: bloom only — no film grain, so the
+// scene stays crisp and fills the whole screen.
+app.pipeline.postProcessing.toggleBloom(true, 0.9);
 
 // Tone-mapping for richer HDR look.
 app.pipeline.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-app.pipeline.renderer.toneMappingExposure = 1.15;
+app.pipeline.renderer.toneMappingExposure = 1.2;
 
-// ── Starfield (denser, with color variety) ───────────────────
+// ── Canvas texture helpers ───────────────────────────────────
+function makeRadialTexture(inner: string, outer: string, size = 256): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, inner);
+  g.addColorStop(1, outer);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeSkyTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 2;
+  c.height = 512;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0.0, '#01030c');
+  g.addColorStop(0.45, '#040a1c');
+  g.addColorStop(0.7, '#0a1230');
+  g.addColorStop(0.85, '#12204a');
+  g.addColorStop(1.0, '#1a2c5e');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 2, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeGroundTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#070e1e';
+  ctx.fillRect(0, 0, 512, 512);
+  // Subtle rocky noise.
+  for (let i = 0; i < 4200; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const v = 6 + Math.random() * 12;
+    ctx.fillStyle = `rgba(${v},${v + 4},${v + 18},${0.3 + Math.random() * 0.4})`;
+    ctx.fillRect(x, y, 1.5, 1.5);
+  }
+  // Faint cool glow toward the center (under the monolith).
+  const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+  g.addColorStop(0, 'rgba(20,40,80,0.28)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function makeMoonTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(128, 128, 20, 128, 128, 128);
+  g.addColorStop(0, '#ff6a3d');
+  g.addColorStop(0.6, '#e23a1e');
+  g.addColorStop(1, '#7a1208');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+  // Craters.
+  for (let i = 0; i < 44; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    const r = 3 + Math.random() * 11;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(60,8,4,0.5)';
+    ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// ── Sky dome (atmospheric gradient) ──────────────────────────
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(190, 32, 24),
+  new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false })
+);
+app.scene.add(sky);
+
+// ── Starfield (dense, with glow sprites) ─────────────────────
+const starGroup = new THREE.Group();
+app.scene.add(starGroup);
+
 function createStarfield(count: number, radius: number): THREE.Points {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
@@ -41,24 +135,21 @@ function createStarfield(count: number, radius: number): THREE.Points {
 
   for (let i = 0; i < count; i++) {
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(Math.random() * 0.88 + 0.08);
-    const r = radius * (0.75 + Math.random() * 0.25);
+    const phi = Math.acos(Math.random() * 0.9 + 0.06);
+    const r = radius * (0.8 + Math.random() * 0.2);
     positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = Math.abs(r * Math.cos(phi)) + 1.5;
+    positions[i * 3 + 1] = Math.abs(r * Math.cos(phi)) + 2;
     positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
 
-    // Slight color variation: white → blue → faint amber
     const temp = Math.random();
-    if (temp < 0.7) {
-      colors[i * 3] = 0.9 + Math.random() * 0.1;
-      colors[i * 3 + 1] = 0.9 + Math.random() * 0.1;
-      colors[i * 3 + 2] = 1.0;
-    } else if (temp < 0.9) {
+    if (temp < 0.6) {
+      colors[i * 3] = 0.95; colors[i * 3 + 1] = 0.95; colors[i * 3 + 2] = 1.0;
+    } else if (temp < 0.85) {
       colors[i * 3] = 0.6; colors[i * 3 + 1] = 0.75; colors[i * 3 + 2] = 1.0;
     } else {
       colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.85; colors[i * 3 + 2] = 0.6;
     }
-    sizes[i] = 0.4 + Math.random() * 1.8;
+    sizes[i] = 0.4 + Math.random() * 1.6;
   }
 
   const geo = new THREE.BufferGeometry();
@@ -68,57 +159,68 @@ function createStarfield(count: number, radius: number): THREE.Points {
 
   const mat = new THREE.PointsMaterial({
     vertexColors: true,
-    size: 0.38,
+    size: 0.4,
     sizeAttenuation: true,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.95,
     blending: THREE.AdditiveBlending,
-    depthWrite: false
+    depthWrite: false,
+    fog: false
   });
   const points = new THREE.Points(geo, mat);
-  app.scene.add(points);
+  starGroup.add(points);
   return points;
 }
-const starfield = createStarfield(3200, 160);
+const starfield = createStarfield(4200, 170);
 
-// ── Nebula clouds (layered transparent sprites) ──────────────
-function createNebula(): THREE.Group {
-  const group = new THREE.Group();
-  const nebColors = [0x1a0e3e, 0x0e2a4d, 0x2d1052, 0x0a1e38];
-
-  for (let i = 0; i < 14; i++) {
-    const geo = new THREE.PlaneGeometry(
-      30 + Math.random() * 50,
-      20 + Math.random() * 35
-    );
-    const mat = new THREE.MeshBasicMaterial({
-      color: nebColors[i % nebColors.length],
-      transparent: true,
-      opacity: 0.06 + Math.random() * 0.06,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    });
-    const plane = new THREE.Mesh(geo, mat);
-
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 55 + Math.random() * 60;
-    plane.position.set(
-      Math.cos(angle) * dist,
-      15 + Math.random() * 40,
-      Math.sin(angle) * dist
-    );
-    plane.rotation.set(
-      Math.random() * 0.4 - 0.2,
-      Math.random() * Math.PI * 2,
-      Math.random() * 0.3
-    );
-    group.add(plane);
-  }
-  app.scene.add(group);
-  return group;
+// Bright glow stars (soft sprite layer).
+const glowTex = makeRadialTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)', 128);
+const glowStars: THREE.Sprite[] = [];
+for (let i = 0; i < 60; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(Math.random() * 0.9 + 0.06);
+  const r = 165 + Math.random() * 10;
+  const mat = new THREE.SpriteMaterial({
+    map: glowTex,
+    color: new THREE.Color().setHSL(0.58 + Math.random() * 0.12, 0.6, 0.9),
+    transparent: true,
+    opacity: 0.5 + Math.random() * 0.4,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false
+  });
+  const s = new THREE.Sprite(mat);
+  s.position.set(
+    r * Math.sin(phi) * Math.cos(theta),
+    Math.abs(r * Math.cos(phi)) + 2,
+    r * Math.sin(phi) * Math.sin(theta)
+  );
+  s.scale.setScalar(1.5 + Math.random() * 2.5);
+  starGroup.add(s);
+  glowStars.push(s);
 }
-const nebula = createNebula();
+
+// ── Nebula clouds (soft radial-gradient sprites) ─────────────
+const nebula = new THREE.Group();
+app.scene.add(nebula);
+const nebColors = ['#2a1a6e', '#123a6e', '#4a1a7a', '#0e2a5e', '#3a1a5e'];
+for (let i = 0; i < 16; i++) {
+  const mat = new THREE.SpriteMaterial({
+    map: makeRadialTexture(nebColors[i % nebColors.length], 'rgba(0,0,0,0)', 256),
+    transparent: true,
+    opacity: 0.16 + Math.random() * 0.14,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false
+  });
+  const s = new THREE.Sprite(mat);
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 60 + Math.random() * 70;
+  s.position.set(Math.cos(angle) * dist, 20 + Math.random() * 50, Math.sin(angle) * dist);
+  const sc = 60 + Math.random() * 90;
+  s.scale.set(sc, sc * 0.7, 1);
+  nebula.add(s);
+}
 
 // ── Distant mountain silhouettes ─────────────────────────────
 function createMountains(): void {
@@ -169,10 +271,13 @@ function createMountains(): void {
 createMountains();
 
 // ── Ground ───────────────────────────────────────────────────
+const groundTex = makeGroundTexture();
+groundTex.repeat.set(4, 4);
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(85, 64),
   new THREE.MeshStandardMaterial({
-    color: 0x070e1e,
+    map: groundTex,
+    color: 0x9fb4d8,
     roughness: 0.95,
     metalness: 0.05
   })
@@ -221,7 +326,7 @@ app.scene.add(glowPoolInner);
 // ── Red moon + atmospheric halo ──────────────────────────────
 const moon = new THREE.Mesh(
   new THREE.SphereGeometry(4.0, 40, 40),
-  new THREE.MeshBasicMaterial({ color: 0xff4a2e })
+  new THREE.MeshBasicMaterial({ map: makeMoonTexture(), fog: false })
 );
 moon.position.set(-48, 26, -65);
 app.scene.add(moon);
@@ -233,7 +338,8 @@ const moonHalo = new THREE.Mesh(
     transparent: true,
     opacity: 0.12,
     blending: THREE.AdditiveBlending,
-    depthWrite: false
+    depthWrite: false,
+    fog: false
   })
 );
 moonHalo.position.copy(moon.position);
@@ -247,7 +353,8 @@ const moonRim = new THREE.Mesh(
     transparent: true,
     opacity: 0.06,
     blending: THREE.AdditiveBlending,
-    depthWrite: false
+    depthWrite: false,
+    fog: false
   })
 );
 moonRim.position.copy(moon.position);
@@ -506,15 +613,15 @@ for (let i = 0; i < 3; i++) {
 }
 
 // ── Drifting energy motes ────────────────────────────────────
-const MOTE_COUNT = 140;
+const MOTE_COUNT = 180;
 const moteGeo = new THREE.BufferGeometry();
 const motePos = new Float32Array(MOTE_COUNT * 3);
 const moteSpeeds = new Float32Array(MOTE_COUNT);
 const moteSeeds = new Float32Array(MOTE_COUNT);
 for (let i = 0; i < MOTE_COUNT; i++) {
-  motePos[i * 3] = (Math.random() - 0.5) * 28;
+  motePos[i * 3] = (Math.random() - 0.5) * 30;
   motePos[i * 3 + 1] = Math.random() * 18;
-  motePos[i * 3 + 2] = (Math.random() - 0.5) * 28;
+  motePos[i * 3 + 2] = (Math.random() - 0.5) * 30;
   moteSpeeds[i] = 0.12 + Math.random() * 0.3;
   moteSeeds[i] = Math.random() * Math.PI * 2;
 }
@@ -531,6 +638,31 @@ const motes = new THREE.Points(
   })
 );
 app.scene.add(motes);
+
+// ── Floating dust motes (fine atmospheric particles) ─────────
+const DUST_COUNT = 220;
+const dustGeo = new THREE.BufferGeometry();
+const dustPos = new Float32Array(DUST_COUNT * 3);
+const dustSeed = new Float32Array(DUST_COUNT);
+for (let i = 0; i < DUST_COUNT; i++) {
+  dustPos[i * 3] = (Math.random() - 0.5) * 34;
+  dustPos[i * 3 + 1] = Math.random() * 16;
+  dustPos[i * 3 + 2] = (Math.random() - 0.5) * 34;
+  dustSeed[i] = Math.random() * Math.PI * 2;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(
+  dustGeo,
+  new THREE.PointsMaterial({
+    color: 0x9fd8ff,
+    size: 0.05,
+    transparent: true,
+    opacity: 0.35,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  })
+);
+app.scene.add(dust);
 
 // ── Floating 3D label (world-space text via createText3D) ───
 const sectorLabel = app.createText3D({
@@ -577,46 +709,72 @@ app.scene.add(shock2);
 let shock2Active = false;
 let shock2Radius = 0;
 
-// ── Shooting stars ───────────────────────────────────────────
+// ── Shooting stars (with trails) ─────────────────────────────
 interface ShootingStar {
-  mesh: THREE.Mesh;
+  group: THREE.Group;
+  head: THREE.Mesh;
+  trail: THREE.Line;
+  trailGeo: THREE.BufferGeometry;
   velocity: THREE.Vector3;
   life: number;
   maxLife: number;
 }
 const shootingStars: ShootingStar[] = [];
-let nextShootingStarTime = 3 + Math.random() * 5;
+let nextShootingStarTime = 2 + Math.random() * 4;
 
 function spawnShootingStar(): void {
-  const geo = new THREE.SphereGeometry(0.08, 6, 6);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.9,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  });
-  const mesh = new THREE.Mesh(geo, mat);
+  const group = new THREE.Group();
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 6, 6),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    })
+  );
+  group.add(head);
+
+  const trailGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()
+  ]);
+  const trail = new THREE.Line(
+    trailGeo,
+    new THREE.LineBasicMaterial({
+      color: 0x9fd8ff,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    })
+  );
+  group.add(trail);
 
   const angle = Math.random() * Math.PI * 2;
   const height = 30 + Math.random() * 25;
-  const dist = 40 + Math.random() * 40;
-  mesh.position.set(Math.cos(angle) * dist, height, Math.sin(angle) * dist);
+  const dist = 45 + Math.random() * 45;
+  group.position.set(Math.cos(angle) * dist, height, Math.sin(angle) * dist);
 
   const dir = new THREE.Vector3(
     (Math.random() - 0.5) * 2,
     -0.5 - Math.random() * 0.5,
     (Math.random() - 0.5) * 2
-  ).normalize().multiplyScalar(25 + Math.random() * 15);
+  ).normalize().multiplyScalar(30 + Math.random() * 18);
 
-  app.scene.add(mesh);
-  shootingStars.push({ mesh, velocity: dir, life: 0, maxLife: 1.2 + Math.random() * 0.8 });
+  app.scene.add(group);
+  shootingStars.push({ group, head, trail, trailGeo, velocity: dir, life: 0, maxLife: 1.0 + Math.random() * 0.6 });
 }
 
 // ── Ambient animation loop ───────────────────────────────────
 let lit = false;
 app.onUpdate((dt) => {
   const t = performance.now() * 0.001;
+
+  // Bloom swells when the monolith awakens.
+  app.pipeline.postProcessing.toggleBloom(true, lit ? 1.35 : 0.9);
 
   // Monolith heartbeat.
   const pulse = 1.5 + Math.sin(t * 2.6) * 0.5;
@@ -690,14 +848,27 @@ app.onUpdate((dt) => {
     arr[i * 3 + 2] += Math.cos(t * 0.5 + moteSeeds[i]) * 0.06 * dt;
     if (arr[i * 3 + 1] > 20) {
       arr[i * 3 + 1] = 0;
-      arr[i * 3] = (Math.random() - 0.5) * 28;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 28;
+      arr[i * 3] = (Math.random() - 0.5) * 30;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 30;
     }
   }
   pos.needsUpdate = true;
 
+  // Dust drifts lazily.
+  const dpos = dustGeo.getAttribute('position') as THREE.BufferAttribute;
+  const darr = dpos.array as Float32Array;
+  for (let i = 0; i < DUST_COUNT; i++) {
+    darr[i * 3] += Math.sin(t * 0.4 + dustSeed[i]) * 0.05 * dt;
+    darr[i * 3 + 1] += Math.sin(t * 0.6 + dustSeed[i] * 1.7) * 0.03 * dt;
+    darr[i * 3 + 2] += Math.cos(t * 0.35 + dustSeed[i]) * 0.05 * dt;
+  }
+  dpos.needsUpdate = true;
+
   // Twinkle the starfield.
-  (starfield.material as THREE.PointsMaterial).opacity = 0.75 + Math.sin(t * 0.5) * 0.12;
+  (starfield.material as THREE.PointsMaterial).opacity = 0.8 + Math.sin(t * 0.5) * 0.12;
+
+  // Slow parallax drift of the whole starfield.
+  starGroup.rotation.y += dt * 0.004;
 
   // Nebula slow drift.
   nebula.rotation.y += dt * 0.003;
@@ -711,11 +882,20 @@ app.onUpdate((dt) => {
   for (let i = shootingStars.length - 1; i >= 0; i--) {
     const ss = shootingStars[i];
     ss.life += dt;
-    ss.mesh.position.add(ss.velocity.clone().multiplyScalar(dt));
-    (ss.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - ss.life / ss.maxLife);
+    ss.group.position.add(ss.velocity.clone().multiplyScalar(dt));
+    const fade = Math.max(0, 1 - ss.life / ss.maxLife);
+    (ss.head.material as THREE.MeshBasicMaterial).opacity = fade;
+    (ss.trail.material as THREE.LineBasicMaterial).opacity = fade * 0.7;
+    const v = ss.velocity.clone().normalize();
+    const p = ss.group.position;
+    ss.trailGeo.setFromPoints([
+      p.clone(),
+      p.clone().add(v.clone().multiplyScalar(-1.2)),
+      p.clone().add(v.clone().multiplyScalar(-2.6))
+    ]);
     if (ss.life >= ss.maxLife) {
-      app.scene.remove(ss.mesh);
-      ss.mesh.geometry.dispose();
+      app.scene.remove(ss.group);
+      ss.trailGeo.dispose();
       shootingStars.splice(i, 1);
     }
   }
@@ -734,7 +914,6 @@ app.ui.fade(1.0, '#000000', 0);
 
 async function playMovie(): Promise<void> {
   started = true;
-  stage.classList.add('movie');   // slide in letterbox bars
 
   const moviePromise = app.cutscene.play(async (ctx) => {
     // Opening: fade in from black.
@@ -813,10 +992,8 @@ async function playMovie(): Promise<void> {
   try {
     await moviePromise;
     endCard.classList.add('show');
-    setTimeout(() => stage.classList.remove('movie'), 1200);
   } catch {
     // Cutscene was skipped via ESC.
-    stage.classList.remove('movie');
     endCard.classList.add('show');
   }
 }
