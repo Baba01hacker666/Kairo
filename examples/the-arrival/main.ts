@@ -18,12 +18,12 @@ const app = new KairoApp({
   shadows: true
 });
 
-// Lighting: gentle enough to see the monument without washing it out.
+// Lighting: increased ambient so the scene is not pitch black.
 app.setLighting({
-  ambient: 0.18,
+  ambient: 0.35,
   ambientColor: 0x4a5a88,
   sunPosition: [-14, 24, -10],
-  sunIntensity: 0.40,
+  sunIntensity: 0.60,
   sunColor: 0x8ea6ff
 });
 
@@ -100,8 +100,9 @@ const sky = new THREE.Mesh(
 );
 app.scene.add(sky);
 
-// Fix Kairo engine default camera far plane which was clipping the ground
+// Fix Kairo engine default camera settings
 (app.camera as THREE.PerspectiveCamera).far = 2500;
+(app.camera as THREE.PerspectiveCamera).fov = 70; // Widen the FOV so it doesn't feel zoomed in
 (app.camera as THREE.PerspectiveCamera).updateProjectionMatrix();
 
 // ── Starfield (dense, with glow sprites) ─────────────────────
@@ -502,10 +503,10 @@ async function buildSceneModels(): Promise<void> {
 
   // Sleek, classic black obelisk (hollow frame so the core is visible)
   obeliskMat = new THREE.MeshStandardMaterial({
-    color: 0x020305,
+    color: 0x050a12, // Slightly lighter base color so it doesn't vanish in the dark
     roughness: 0.2,
     metalness: 0.8,
-    emissive: 0x000000,
+    emissive: 0x101a2a, // Very faint emissive rim so the silhouette is always readable
   });
   
   const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, 14, 1.2), obeliskMat);
