@@ -95,10 +95,14 @@ function makeGroundTexture(): THREE.CanvasTexture {
 
 // ── Sky dome (atmospheric gradient) ──────────────────────────
 const sky = new THREE.Mesh(
-  new THREE.SphereGeometry(190, 32, 24),
+  new THREE.SphereGeometry(1900, 32, 24),
   new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false })
 );
 app.scene.add(sky);
+
+// Fix Kairo engine default camera far plane which was clipping the ground
+app.camera.far = 2500;
+app.camera.updateProjectionMatrix();
 
 // ── Starfield (dense, with glow sprites) ─────────────────────
 const starGroup = new THREE.Group();
@@ -147,7 +151,7 @@ function createStarfield(count: number, radius: number): THREE.Points {
   starGroup.add(points);
   return points;
 }
-const starfield = createStarfield(4200, 170);
+const starfield = createStarfield(4200, 1500);
 
 // Bright glow stars (soft sprite layer).
 const glowTex = makeRadialTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)', 128);
@@ -155,7 +159,7 @@ const glowStars: THREE.Sprite[] = [];
 for (let i = 0; i < 60; i++) {
   const theta = Math.random() * Math.PI * 2;
   const phi = Math.acos(Math.random() * 0.9 + 0.06);
-  const r = 165 + Math.random() * 10;
+  const r = 1450 + Math.random() * 50;
   const mat = new THREE.SpriteMaterial({
     map: glowTex,
     color: new THREE.Color().setHSL(0.58 + Math.random() * 0.12, 0.6, 0.9),
@@ -190,9 +194,9 @@ for (let i = 0; i < 16; i++) {
     fog: false
   });
   const s = new THREE.Sprite(mat);
-  const angle = Math.random() * Math.PI * 2;
-  const dist = 60 + Math.random() * 70;
-  s.position.set(Math.cos(angle) * dist, 20 + Math.random() * 50, Math.sin(angle) * dist);
+  const a = Math.random() * Math.PI * 2;
+  const dist = 1800;
+  s.position.set(Math.cos(a) * dist, Math.random() * 150 + 20, Math.sin(a) * dist);
   const sc = 60 + Math.random() * 90;
   s.scale.set(sc, sc * 0.7, 1);
   nebula.add(s);
