@@ -22,8 +22,10 @@ jobs:
     - name: Install Dependencies
       run: npm ci || npm install
       
-    - name: Install Playwright Chromium
-      run: npx playwright install chromium --with-deps
+    - name: Install Playwright Chromium & System Dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y libasound2t64 libgbm1 libnspr4 libnss3 || true
+        npx playwright install chromium
       
     - name: Build Project
       run: npm run build
