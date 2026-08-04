@@ -42,6 +42,8 @@ export class Query {
   public all: ComponentType[];
   public any: ComponentType[];
   public none: ComponentType[];
+  /** @internal */
+  public _key?: string;
 
   constructor(
     all: ComponentType[] = [],
@@ -92,11 +94,34 @@ export class World {
     return id;
   }
 
+  private buildQueryKeyPart(comps: ComponentType[] | undefined): string {
+    if (!comps || comps.length === 0) return '';
+    if (comps.length === 1) return this.getComponentTypeId(comps[0]).toString();
+    if (comps.length === 2) {
+      const id0 = this.getComponentTypeId(comps[0]);
+      const id1 = this.getComponentTypeId(comps[1]);
+      return id0 < id1 ? `${id0},${id1}` : `${id1},${id0}`;
+    }
+
+    // For > 2 components, fall back to array allocation but avoid .map()
+    const ids: number[] = [];
+    for (let i = 0; i < comps.length; i++) {
+      ids.push(this.getComponentTypeId(comps[i]));
+    }
+    ids.sort((a, b) => a - b);
+    return ids.join(',');
+  }
+
   private getQueryCacheKey(queryDesc: Query): string {
-    const allKey = queryDesc.all ? queryDesc.all.map(c => this.getComponentTypeId(c)).sort((a,b)=>a-b).join(',') : '';
-    const anyKey = queryDesc.any ? queryDesc.any.map(c => this.getComponentTypeId(c)).sort((a,b)=>a-b).join(',') : '';
-    const noneKey = queryDesc.none ? queryDesc.none.map(c => this.getComponentTypeId(c)).sort((a,b)=>a-b).join(',') : '';
-    return `${allKey}|${anyKey}|${noneKey}`;
+    if (queryDesc._key !== undefined) return queryDesc._key;
+
+    const allKey = this.buildQueryKeyPart(queryDesc.all);
+    const anyKey = this.buildQueryKeyPart(queryDesc.any);
+    const noneKey = this.buildQueryKeyPart(queryDesc.none);
+
+    const key = `${allKey}|${anyKey}|${noneKey}`;
+    queryDesc._key = key;
+    return key;
   }
 
   private invalidateQueryCache(): void {
