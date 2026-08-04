@@ -18,18 +18,17 @@ const app = new KairoApp({
   shadows: true
 });
 
-// Deep-space lighting: enough to see the monolith without washing out the dark ground.
+// Lighting: gentle enough to see the monument without washing it out.
 app.setLighting({
-  ambient: 0.28,
-  ambientColor: 0x5a6fa8,
+  ambient: 0.18,
+  ambientColor: 0x4a5a88,
   sunPosition: [-14, 24, -10],
-  sunIntensity: 0.55,
+  sunIntensity: 0.40,
   sunColor: 0x8ea6ff
 });
 
-// Cinematic post-processing: bloom only — no film grain, so the
-// scene stays crisp and fills the whole screen.
-app.pipeline.postProcessing.toggleBloom(true, 0.9);
+// Bloom at 0.55 — present but not overblowing the core energy.
+app.pipeline.postProcessing.toggleBloom(true, 0.55);
 
 // Tone-mapping for richer HDR look.
 app.pipeline.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -219,13 +218,8 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 app.scene.add(ground);
 
-// Holographic grid.
-const grid = new THREE.GridHelper(100, 50, 0x1a3a5c, 0x1a3a5c);
-(grid.material as THREE.LineBasicMaterial).transparent = true;
-(grid.material as THREE.LineBasicMaterial).opacity = 0.08;
-(grid.material as THREE.LineBasicMaterial).blending = THREE.AdditiveBlending;
-grid.position.y = 0.02;
-app.scene.add(grid);
+// Grid removed — at low camera angles (y < 2) the 100-unit grid lines
+// converge to the horizon and appear as large blue triangle wedges.
 
 // Under-glow pool beneath the monolith — kept tight so it doesn't flood the frame.
 const glowPool = new THREE.Mesh(
@@ -667,7 +661,7 @@ app.onUpdate((dt) => {
   const t = performance.now() * 0.001;
 
   // Bloom swells when the monolith awakens.
-  app.pipeline.postProcessing.toggleBloom(true, lit ? 1.35 : 0.9);
+  app.pipeline.postProcessing.toggleBloom(true, lit ? 1.0 : 0.55);
 
   // Monolith heartbeat — resting emissive matches the material baseline of 0.25.
   const pulse = 1.6 + Math.sin(t * 2.6) * 0.5;
