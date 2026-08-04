@@ -10,22 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Use Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '22.x'
         
     - name: Install Dependencies
       run: npm ci || npm install
       
-    - name: Install Puppeteer and Chrome
-      run: |
-        npm install puppeteer
-        npx puppeteer browsers install chrome
+    - name: Install Playwright Chromium
+      run: npx playwright install chromium --with-deps
       
     - name: Build Project
       run: npm run build
@@ -37,9 +35,17 @@ jobs:
         
     - name: Take Screenshots
       run: node scripts/take_screenshots.js
-      
-    - name: Upload Screenshots
+
+    - name: Upload Screenshots as Artifact
       uses: actions/upload-artifact@v4
       with:
         name: screenshots
         path: screenshots/
+
+    - name: Commit Screenshots to Repo
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add screenshots/
+        git diff --cached --quiet || git commit -m "docs: update automated screenshots [skip ci]"
+        git push

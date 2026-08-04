@@ -12,7 +12,8 @@ const VIEWS = [
   { name: 'cherry-blossoms', url: `${BASE}/examples/cherry-blossoms/index.html` },
   { name: 'high-quality-render', url: `${BASE}/examples/high-quality-render/index.html` },
   { name: 'fox-game', url: `${BASE}/examples/fox-game/index.html` },
-  { name: 'go-fox', url: `${BASE}/examples/go-fox/index.html` }
+  { name: 'go-fox', url: `${BASE}/examples/go-fox/index.html` },
+  { name: 'the-arrival', url: `${BASE}/examples/the-arrival/index.html`, wait: 8000 }
 ];
 
 (async () => {
@@ -60,8 +61,8 @@ const VIEWS = [
     console.log(`Taking screenshot for ${view.name} at ${view.url}...`);
     try {
       await page.goto(view.url, { waitUntil: 'networkidle', timeout: 10000 }).catch(e => console.error("Navigation timeout, proceeding anyway...", e.message));
-      // Wait 3 seconds for WebGL/WASM canvases to fully render
-      await new Promise(r => setTimeout(r, 3000));
+      // Wait for WebGL/WASM canvases to fully render (per-view configurable)
+      await new Promise(r => setTimeout(r, view.wait || 3000));
       
       const screenshotPath = path.join('screenshots', `${view.name}.png`);
       await page.screenshot({ path: screenshotPath });

@@ -6,11 +6,13 @@
   <title>THE ARRIVAL // Kairo Engine Cinematic</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
     :root {
       --cyan: #7dd3fc;
       --amber: #ffcf6b;
       --violet: #a78bfa;
+      --deep: #020510;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,7 +21,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #04060d;
+      background: var(--deep);
       color: #f1f5f9;
       font-family: 'Inter', system-ui, sans-serif;
     }
@@ -31,14 +33,44 @@
       position: absolute;
       left: 0;
       width: 100%;
-      height: 11%;
+      height: 10%;
       background: #000;
       z-index: 100;
-      transition: transform 1.4s cubic-bezier(0.77, 0, 0.18, 1);
+      transition: transform 1.6s cubic-bezier(0.77, 0, 0.18, 1);
     }
     .cinema-bar.top    { top: 0;    transform: translateY(-101%); }
     .cinema-bar.bottom { bottom: 0; transform: translateY(101%); }
     #stage.movie .cinema-bar { transform: translateY(0); }
+
+    /* Subtle scanline overlay for film feel */
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      z-index: 55;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+      opacity: 0.4;
+    }
+
+    /* Vignette overlay */
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      background: radial-gradient(
+        ellipse at center,
+        transparent 55%,
+        rgba(2, 5, 16, 0.5) 80%,
+        rgba(2, 5, 16, 0.85) 100%
+      );
+    }
 
     /* Big cinematic title card */
     #title-card {
@@ -51,84 +83,144 @@
       z-index: 60;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 2.4s ease;
+      transition: opacity 2.8s ease;
     }
     #title-card.show { opacity: 1; }
 
     #title-sub {
-      letter-spacing: 0.9em;
-      text-indent: 0.9em;
-      font-size: 14px;
+      letter-spacing: 1em;
+      text-indent: 1em;
+      font-size: 13px;
       font-weight: 400;
       text-transform: uppercase;
-      color: rgba(125, 211, 252, 0.8);
-      margin-bottom: 18px;
+      color: rgba(125, 211, 252, 0.7);
+      margin-bottom: 22px;
       opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 1.6s ease 0.4s, transform 1.6s ease 0.4s;
+      transform: translateY(18px);
+      transition: opacity 1.8s ease 0.5s, transform 1.8s ease 0.5s;
     }
     #title-card.show #title-sub { opacity: 1; transform: none; }
 
     #big-title {
-      font-size: clamp(56px, 12vw, 150px);
+      font-size: clamp(52px, 11vw, 140px);
       font-weight: 800;
-      letter-spacing: 0.04em;
-      line-height: 0.95;
-      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 45%, #7dd3fc 100%);
+      letter-spacing: 0.06em;
+      line-height: 0.9;
+      background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 35%, #7dd3fc 75%, #4f46e5 100%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
       text-align: center;
       opacity: 0;
-      transform: scale(1.06);
-      filter: drop-shadow(0 0 30px rgba(125, 211, 252, 0.35));
-      transition: opacity 1.5s ease 0.5s, transform 2s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(1.08);
+      filter: drop-shadow(0 0 40px rgba(125, 211, 252, 0.4)) drop-shadow(0 0 80px rgba(79, 70, 229, 0.2));
+      transition: opacity 1.8s ease 0.6s, transform 2.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #title-card.show #big-title { opacity: 1; transform: scale(1); }
+
+    #title-tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.5em;
+      text-indent: 0.5em;
+      text-transform: uppercase;
+      color: rgba(167, 139, 250, 0.6);
+      margin-top: 28px;
+      opacity: 0;
+      transform: translateY(-12px);
+      transition: opacity 1.6s ease 1.2s, transform 1.6s ease 1.2s;
+    }
+    #title-card.show #title-tagline { opacity: 1; transform: none; }
 
     /* Replay overlay */
     #end-card {
       position: absolute;
       inset: 0;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 20px;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 1.5s ease;
+      transition: opacity 1.8s ease;
       z-index: 90;
-      background: rgba(4, 6, 13, 0.4);
+      background: radial-gradient(ellipse at center, rgba(4, 6, 13, 0.3) 0%, rgba(2, 5, 16, 0.7) 100%);
     }
     #end-card.show { opacity: 1; pointer-events: auto; }
+
+    #end-card .end-title {
+      font-size: 14px;
+      letter-spacing: 0.6em;
+      text-indent: 0.6em;
+      text-transform: uppercase;
+      color: rgba(125, 211, 252, 0.5);
+      font-weight: 300;
+    }
+
     #end-card button {
       background: transparent;
-      border: 1px solid rgba(125, 211, 252, 0.5);
+      border: 1px solid rgba(125, 211, 252, 0.35);
       color: #e0f2fe;
       font-family: inherit;
-      font-size: 14px;
-      letter-spacing: 0.4em;
-      text-indent: 0.4em;
+      font-size: 13px;
+      letter-spacing: 0.5em;
+      text-indent: 0.5em;
       text-transform: uppercase;
-      padding: 16px 40px;
+      padding: 16px 48px;
       border-radius: 999px;
       cursor: pointer;
-      transition: all 0.25s;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    #end-card button::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(125, 211, 252, 0.08), rgba(167, 139, 250, 0.08));
+      opacity: 0;
+      transition: opacity 0.3s;
     }
     #end-card button:hover {
-      background: rgba(125, 211, 252, 0.15);
-      box-shadow: 0 0 30px rgba(125, 211, 252, 0.3);
+      border-color: rgba(125, 211, 252, 0.6);
+      box-shadow: 0 0 40px rgba(125, 211, 252, 0.2), inset 0 0 20px rgba(125, 211, 252, 0.05);
+      transform: scale(1.03);
     }
+    #end-card button:hover::before { opacity: 1; }
 
     #skip-note {
       position: absolute;
-      top: 15%;
+      top: 14%;
       left: 0; right: 0;
       text-align: center;
       z-index: 90;
-      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.35);
+      pointer-events: none;
+      opacity: 0;
+      animation: fadeInSkip 1.5s ease 3s forwards;
+    }
+    @keyframes fadeInSkip {
+      to { opacity: 1; }
+    }
+
+    /* Powered-by watermark */
+    #watermark {
+      position: absolute;
+      bottom: 12%;
+      left: 0; right: 0;
+      text-align: center;
+      z-index: 95;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: rgba(148, 163, 184, 0.5);
+      color: rgba(100, 116, 139, 0.25);
       pointer-events: none;
     }
   </style>
@@ -140,16 +232,23 @@
     <div class="cinema-bar top"></div>
     <div class="cinema-bar bottom"></div>
 
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+
     <div id="title-card">
       <div id="title-sub">A Kairo Engine Original</div>
       <h1 id="big-title">THE ARRIVAL</h1>
+      <div id="title-tagline">Rendered in real-time</div>
     </div>
 
     <div id="skip-note">ESC to skip</div>
 
     <div id="end-card">
+      <div class="end-title">The Arrival</div>
       <button id="replay-btn">Replay ▸</button>
     </div>
+
+    <div id="watermark">Powered by Kairo Engine</div>
   </div>
 
   <script type="module" src="./main.ts"></script>
