@@ -454,9 +454,7 @@ async function buildSceneModels(): Promise<void> {
   // In dev BASE_URL is '/' so we handle both cases.
   const baseUrl = (import.meta as any).env.BASE_URL as string;
   const base = baseUrl === '/' || baseUrl === '' ? '/models/' : '../../models/';
-  const [moonModel, monumentModel, wandererModel, rockModel] = await Promise.all([
-    loadModel(base + 'moon.glb'),
-    loadModel(base + 'monument.glb'),
+  const [wandererModel, rockModel] = await Promise.all([
     loadModel(base + 'hooded-adventurer.glb'),
     loadModel(base + 'rock.glb')
   ]);
@@ -498,27 +496,20 @@ async function buildSceneModels(): Promise<void> {
   app.scene.add(mono);
   monolithGroup = mono;
 
-  fitModel(monumentModel, 9, 'bottom');
-  monumentModel.traverse((c) => {
-    const mesh = c as THREE.Mesh;
-    if (mesh.isMesh) {
-      const src = mesh.material as THREE.MeshStandardMaterial;
-      const transparent = src.transparent;
-      const mat = new THREE.MeshStandardMaterial({
-        color: 0x101520,
-        roughness: 0.30,
-        metalness: 0.70,
-        emissive: 0xffd166,
-        // 0.15 — subtle amber warmth, not washed out.
-        emissiveIntensity: 0.15,
-        transparent,
-        opacity: transparent ? 0.4 : 1
-      });
-      mesh.material = mat;
-      if (!obeliskMat) obeliskMat = mat;
-    }
+  // Sleek, classic black obelisk.
+  const monolithGeo = new THREE.BoxGeometry(3, 14, 1.2);
+  obeliskMat = new THREE.MeshStandardMaterial({
+    color: 0x020508,
+    roughness: 0.1,
+    metalness: 0.9,
+    emissive: 0xffd166,
+    emissiveIntensity: 0.15,
   });
-  mono.add(monumentModel);
+  const monolithMesh = new THREE.Mesh(monolithGeo, obeliskMat);
+  monolithMesh.position.y = 7; // Half height so it sits on the ground
+  monolithMesh.castShadow = true;
+  monolithMesh.receiveShadow = true;
+  mono.add(monolithMesh);
 
   // Bright energy core.
   coreMat = new THREE.MeshBasicMaterial({
