@@ -200,47 +200,20 @@ for (let i = 0; i < 16; i++) {
 }
 
 // ── Distant mountain silhouettes ─────────────────────────────
+// Use simple low-poly cone rings — NO extruded 2D shapes which create
+// huge dark triangular planes that slash across the camera view.
 function createMountains(): void {
-  const shape = new THREE.Shape();
-  const points: [number, number][] = [];
-  const segs = 60;
-  for (let i = 0; i <= segs; i++) {
-    const a = (i / segs) * Math.PI * 2;
-    const r = 70 + Math.sin(a * 5.7) * 8 + Math.sin(a * 13.3) * 4 + Math.sin(a * 27.1) * 2;
-    points.push([Math.cos(a) * r, Math.sin(a) * r]);
-  }
-  shape.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
-  shape.closePath();
-
-  const extGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.1, bevelEnabled: false });
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0x060b1a,
-    transparent: true,
-    opacity: 0.85
-  });
-  const mesh = new THREE.Mesh(extGeo, mat);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0;
-  mesh.scale.y = 0.18;
-  app.scene.add(mesh);
-
-  // Jagged peaks extruded upward
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2 + Math.random() * 0.15;
-    const rad = 68 + Math.random() * 8;
-    const h = 3 + Math.random() * 7;
+  const peakCount = 32;
+  for (let i = 0; i < peakCount; i++) {
+    const a = (i / peakCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+    const rad = 65 + Math.random() * 12;
+    const h = 4 + Math.random() * 9;
+    const w = 3 + Math.random() * 4;
     const peak = new THREE.Mesh(
-      new THREE.ConeGeometry(2.5 + Math.random() * 3, h, 4),
-      new THREE.MeshStandardMaterial({
-        color: 0x0a0f22,
-        roughness: 0.95,
-        metalness: 0.05,
-        transparent: true,
-        opacity: 0.7
-      })
+      new THREE.ConeGeometry(w, h, 5),
+      new THREE.MeshBasicMaterial({ color: 0x060b18, fog: false })
     );
-    peak.position.set(Math.cos(a) * rad, h * 0.5, Math.sin(a) * rad);
+    peak.position.set(Math.cos(a) * rad, h * 0.48, Math.sin(a) * rad);
     peak.rotation.y = Math.random() * Math.PI;
     app.scene.add(peak);
   }
@@ -254,8 +227,8 @@ const ground = new THREE.Mesh(
   new THREE.CircleGeometry(85, 64),
   new THREE.MeshStandardMaterial({
     map: groundTex,
-    // Dark near-black so the ground doesn't glow cyan under ambient light.
-    color: 0x050a14,
+    // Slightly less black so the stone platform reads against it.
+    color: 0x0a1020,
     roughness: 0.98,
     metalness: 0.02
   })
@@ -512,14 +485,17 @@ async function buildSceneModels(): Promise<void> {
     loadModel(base + 'rock.glb')
   ]);
 
-  // ── Moon (real textured model + atmospheric halo) ──────────
+  // ── Moon: tint red-orange instead of using raw map (which renders purple) ──
   const moonGroup = new THREE.Group();
   fitModel(moonModel, 8, 'center');
   moonModel.traverse((c) => {
     const mesh = c as THREE.Mesh;
     if (mesh.isMesh) {
-      const src = mesh.material as THREE.MeshStandardMaterial;
-      mesh.material = new THREE.MeshBasicMaterial({ map: src.map, fog: false });
+      // Override material with a warm red-orange so it always looks like a blood moon.
+      mesh.material = new THREE.MeshBasicMaterial({
+        color: 0xff4a2e,
+        fog: false
+      });
     }
   });
   moonGroup.add(moonModel);
@@ -568,8 +544,8 @@ async function buildSceneModels(): Promise<void> {
         roughness: 0.30,
         metalness: 0.70,
         emissive: 0xffd166,
-        // Higher baseline so the monolith glows noticeably even before awakening.
-        emissiveIntensity: 0.45,
+        // 0.25 — visible amber glow but not washed out.
+        emissiveIntensity: 0.25,
         transparent,
         opacity: transparent ? 0.4 : 1
       });
@@ -722,14 +698,14 @@ app.onUpdate((dt) => {
   // Bloom swells when the monolith awakens.
   app.pipeline.postProcessing.toggleBloom(true, lit ? 1.35 : 0.9);
 
-  // Monolith heartbeat — resting emissive matches the material baseline of 0.45.
+  // Monolith heartbeat — resting emissive matches the material baseline of 0.25.
   const pulse = 1.6 + Math.sin(t * 2.6) * 0.5;
-  const targetIntensity = lit ? pulse : 0.45 + Math.sin(t * 0.7) * 0.08;
+  const targetIntensity = lit ? pulse : 0.25 + Math.sin(t * 0.7) * 0.06;
   obeliskMat!.emissiveIntensity += (targetIntensity - obeliskMat!.emissiveIntensity) * Math.min(dt * 3, 1);
 
-  heartLight!.intensity = lit ? 14 + Math.sin(t * 2.6) * 4 : 8 + Math.sin(t * 0.7) * 1.5;
-  fillLight!.intensity = lit ? 6 : 4;
-  coreMat!.opacity = lit ? 0.95 : 0.65;
+  heartLight!.intensity = lit ? 14 + Math.sin(t * 2.6) * 4 : 6 + Math.sin(t * 0.7) * 1.2;
+  fillLight!.intensity = lit ? 6 : 3;
+  coreMat!.opacity = lit ? 0.95 : 0.55;
 
   // Pool glow intensifies when lit.
   (glowPool.material as THREE.MeshBasicMaterial).opacity = lit ? 0.18 : 0.07;
