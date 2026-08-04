@@ -205,10 +205,10 @@ for (let i = 0; i < 16; i++) {
 const groundTex = makeGroundTexture();
 groundTex.repeat.set(4, 4);
 const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(85, 64),
+  // Made huge so we never see the edges clipping the sky at low camera angles
+  new THREE.PlaneGeometry(800, 800),
   new THREE.MeshStandardMaterial({
     map: groundTex,
-    // Slightly less black so the stone platform reads against it.
     color: 0x0a1020,
     roughness: 0.98,
     metalness: 0.02
@@ -500,10 +500,9 @@ async function buildSceneModels(): Promise<void> {
   const monolithGeo = new THREE.BoxGeometry(3, 14, 1.2);
   obeliskMat = new THREE.MeshStandardMaterial({
     color: 0x020508,
-    roughness: 0.1,
-    metalness: 0.9,
-    emissive: 0xffd166,
-    emissiveIntensity: 0.15,
+    roughness: 0.15,
+    metalness: 0.85,
+    emissive: 0x000000, // Black monolith. It will be lit by the heart light and environment.
   });
   const monolithMesh = new THREE.Mesh(monolithGeo, obeliskMat);
   monolithMesh.position.y = 7; // Half height so it sits on the ground
@@ -654,14 +653,14 @@ app.onUpdate((dt) => {
   // Bloom swells when the monolith awakens.
   app.pipeline.postProcessing.toggleBloom(true, lit ? 1.0 : 0.55);
 
-  // Monolith heartbeat — resting emissive matches the material baseline of 0.25.
+  // Pulse the heart light and core instead of the entire monolith.
   const pulse = 1.6 + Math.sin(t * 2.6) * 0.5;
-  const targetIntensity = lit ? pulse : 0.15 + Math.sin(t * 0.7) * 0.04;
-  obeliskMat!.emissiveIntensity += (targetIntensity - obeliskMat!.emissiveIntensity) * Math.min(dt * 3, 1);
+  const targetIntensity = lit ? pulse : 0.4 + Math.sin(t * 0.7) * 0.1;
+  // Core opacity pulses
+  coreMat!.opacity += (targetIntensity - coreMat!.opacity) * Math.min(dt * 3, 1);
 
   heartLight!.intensity = lit ? 12 + Math.sin(t * 2.6) * 3 : 4 + Math.sin(t * 0.7) * 0.8;
   fillLight!.intensity = lit ? 5 : 2.5;
-  coreMat!.opacity = lit ? 0.95 : 0.55;
 
   // Pool glow intensifies when lit.
   (glowPool.material as THREE.MeshBasicMaterial).opacity = lit ? 0.18 : 0.07;
