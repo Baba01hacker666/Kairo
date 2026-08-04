@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KairoApp } from '@kairo/core';
+import { DustParticles } from './scene/Particles';
 import { AnimationStateMachine } from '@kairo/animation';
 import { ParticleSystem } from '@kairo/renderer';
 import { MemoryManager } from '@kairo/assets';
@@ -96,10 +97,7 @@ const mirrorRotations: Map<string, number> = new Map();
 const doorStates: Map<string, boolean> = new Map();
 const collectedItems: Set<string> = new Set();
 
-// AI Auto-Player & Automated Video Tester State
-let isAiAutoPlay = false;
-let aiTimer = 0;
-let aiRecordingTimeout: any = null;
+let dustParticles: DustParticles;
 
 // Initialize Kairo App Engine with Mobile Performance Optimizations
 const app = new KairoApp({
@@ -128,6 +126,8 @@ app.cameraController.heightOffset = 1.6;
 
 app.scene.add(levelObjectsGroup);
 app.scene.add(particleSys.mesh);
+
+dustParticles = new DustParticles(app.scene, 100);
 
 // Load 3D Models
 const gltfLoader = new GLTFLoader();
@@ -502,7 +502,6 @@ function loadLevel(levelIndex: number): void {
   moveCount = 0;
   avocadosCollected = 0;
   isLevelCleared = false;
-  aiStepIndex = 0;
 
   crateGridPositions.clear();
   tntGridPositions.clear();
@@ -615,58 +614,6 @@ function performInteract(): void {
   }
 }
 
-// AI Auto-Player & Automated Video Tester
-function toggleAiAutoPlay(): void {
-  isAiAutoPlay = !isAiAutoPlay;
-  const btn = document.getElementById('btn-ai-autoplay');
-
-  if (isAiAutoPlay) {
-    if (btn) {
-      btn.innerText = '🔴 Recording AI...';
-      btn.style.borderColor = '#ef4444';
-      btn.style.background = 'rgba(239, 68, 68, 0.2)';
-    }
-
-    app.ui.showToast('🤖 AI Gameplay Agent Active! Recording 60 FPS video test...', 3500, 'info');
-    app.startRecording(60);
-
-    // Auto stop recording after 12 seconds
-    if (aiRecordingTimeout) clearTimeout(aiRecordingTimeout);
-    aiRecordingTimeout = setTimeout(async () => {
-      if (isAiAutoPlay) {
-        isAiAutoPlay = false;
-        if (btn) {
-          btn.innerText = '🤖 AI Test & Record';
-          btn.style.borderColor = '#10b981';
-          btn.style.background = 'rgba(16, 185, 129, 0.2)';
-        }
-
-        const blob = await app.stopRecording(`fox-ai-gameplay-test-${Date.now()}.webm`);
-        app.ui.createModal(
-          '🎥 AI Test Recording Complete!',
-          `
-            <div style="text-align: center;">
-              <p style="color: #10b981; font-weight: bold; font-size: 18px;">Engine Health: PERFECT 💯</p>
-              <p>Recorded 60 FPS Video: <strong>${blob ? (blob.size / 1024).toFixed(1) + ' KB' : 'Saved'}</strong></p>
-              <p>FPS: <strong>${app.pipeline.metrics.fps} FPS</strong> | Draw Calls: <strong>${app.pipeline.metrics.drawCalls}</strong></p>
-              <p style="font-size: 12px; color: #a1a1aa;">No console errors encountered. Video automatically saved to your downloads!</p>
-            </div>
-          `,
-          [{ text: 'Awesome!', primary: true, onClick: () => {} }]
-        );
-      }
-    }, 12000);
-  } else {
-    if (btn) {
-      btn.innerText = '🤖 AI Test & Record';
-      btn.style.borderColor = '#10b981';
-      btn.style.background = 'rgba(16, 185, 129, 0.2)';
-    }
-    app.stopRecording();
-    app.ui.showToast('AI Auto-Play Stopped.', 1500, 'info');
-  }
-}
-
 let isManualRecording = false;
 function toggleManualRecording(): void {
   const btn = document.getElementById('btn-record');
@@ -696,86 +643,6 @@ function toggleManualRecording(): void {
       btn.style.background = 'rgba(255, 255, 255, 0.1)';
     }
   }
-}
-
-(window as any).runAiTestLevel1Record = toggleAiAutoPlay;
-
-// AOT Pre-Compiled Optimal Move Sequences for Zero-CPU Pathfinding Overhead
-const PRECOMPILED_SOLUTIONS: Record<number, Array<[number, number]>> = {
-  0: [[0, 1], [0, 1], [1, 0], [0, -1], [1, 0], [0, -1], [1, 0], [0, 1], [0, 1], [0, 1]],
-  1: [[1, 0], [1, 0], [0, 1], [0, 1], [1, 0], [0, 1]],
-  2: [[0, 1], [1, 0], [1, 0], [0, 1], [1, 0], [0, 1]]
-};
-
-let aiStepIndex = 0;
-
-function stepAiAgent(): void {
-  if (isLevelCleared) {
-    // Auto proceed to next level when cleared
-    loadLevel(currentLevelIndex + 1);
-    return;
-  }
-
-  // 1. AOT Pre-Compiled Move Execution (O(1) Zero CPU Overhead)
-  const precompiled = PRECOMPILED_SOLUTIONS[currentLevelIndex];
-  if (precompiled && aiStepIndex < precompiled.length) {
-    const move = precompiled[aiStepIndex++];
-    tryMovePlayer(move[0], move[1]);
-    app.cameraController.rotate(0.02, 0.0);
-    return;
-  }
-
-  const [cols, rows] = currentLevel.gridSize;
-
-  // 1. Target uncollected Avocados first, otherwise target Goal Exit
-  let target: [number, number] = [...currentLevel.goalPos];
-
-  for (const elem of currentLevel.elements) {
-    const elemId = elem.id || `elem_${elem.type}`;
-    if (elem.type === 'avocado' && !collectedItems.has(elemId)) {
-      target = [...elem.pos];
-      break;
-    }
-  }
-
-  // 2. BFS Pathfinding Solver
-  const queue: Array<[number, number, Array<[number, number]>]> = [[playerGridPos[0], playerGridPos[1], []]];
-  const visited = new Set<string>();
-  visited.add(`${playerGridPos[0]},${playerGridPos[1]}`);
-
-  let bestNextMove: [number, number] | null = null;
-
-  while (queue.length > 0) {
-    const [x, y, path] = queue.shift()!;
-    if (x === target[0] && y === target[1]) {
-      if (path.length > 0) bestNextMove = path[0];
-      break;
-    }
-
-    const dirs: Array<[number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-    for (const [dx, dy] of dirs) {
-      const nx = x + dx;
-      const ny = y + dy;
-      const key = `${nx},${ny}`;
-
-      if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !visited.has(key)) {
-        visited.add(key);
-        queue.push([nx, ny, [...path, [dx, dy]]]);
-      }
-    }
-  }
-
-  if (bestNextMove) {
-    tryMovePlayer(bestNextMove[0], bestNextMove[1]);
-  } else {
-    // Random exploration step if target blocked
-    const dirs: Array<[number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-    const randomDir = dirs[Math.floor(Math.random() * dirs.length)];
-    tryMovePlayer(randomDir[0], randomDir[1]);
-  }
-
-  // Rotate camera smoothly to follow character
-  app.cameraController.rotate(0.02, 0.0);
 }
 
 // Update Fox position & Camera target
@@ -987,41 +854,20 @@ function checkGoalCondition(): void {
     if (currentLevelIndex === 0) app.save.unlockAchievement('first_level', app.ui);
     if ((app.save.getProgress('totalAvocados', 0) as number) >= 10) app.save.unlockAchievement('collector', app.ui);
 
-    if (!isAiAutoPlay) {
-      app.ui.createModal(
-        `🎉 ${currentLevel.name} Cleared!`,
-        `
-          <div style="text-align: center;">
-            <div style="font-size: 36px; margin-bottom: 12px;">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
-            <p>Moves: <strong>${moveCount}</strong> (Par: ${currentLevel.parMoves})</p>
-            <p>Avocados: <strong>${avocadosCollected} / 3</strong> 🥑</p>
-          </div>
-        `,
-        [
-          { text: 'Retry', onClick: () => loadLevel(currentLevelIndex) },
-          { text: 'Next Level ➡️', primary: true, onClick: () => loadLevel(currentLevelIndex + 1) }
-        ]
-      );
-    } else {
-      // AI Level clearance handling: If Level 1 cleared, stop recording and package video artifact
-      setTimeout(async () => {
-        isAiAutoPlay = false;
-        const blob = await app.stopRecording('fox-level1-qa-gameplay-recording.webm');
-        app.ui.createModal(
-          `🎉 Level 1 Cleared by AI!`,
-          `
-            <div style="text-align: center;">
-              <p style="color: #10b981; font-weight: bold; font-size: 18px;">Level 1 QA Video Recording Complete 💯</p>
-              <div style="font-size: 36px; margin-bottom: 12px;">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
-              <p>Moves: <strong>${moveCount}</strong> | Avocados: <strong>${avocadosCollected} / 3</strong> 🥑</p>
-              <p>Video File: <strong>fox-level1-qa-gameplay-recording.webm</strong> (${blob ? (blob.size / 1024).toFixed(1) + ' KB' : 'Saved'})</p>
-              <p style="font-size: 12px; color: #a1a1aa;">Recording saved to downloads & GitHub Artifacts!</p>
-            </div>
-          `,
-          [{ text: 'Awesome!', primary: true, onClick: () => {} }]
-        );
-      }, 800);
-    }
+    app.ui.createModal(
+      `🎉 ${currentLevel.name} Cleared!`,
+      `
+        <div style="text-align: center;">
+          <div style="font-size: 36px; margin-bottom: 12px;">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
+          <p>Moves: <strong>${moveCount}</strong> (Par: ${currentLevel.parMoves})</p>
+          <p>Avocados: <strong>${avocadosCollected} / 3</strong> 🥑</p>
+        </div>
+      `,
+      [
+        { text: 'Retry', onClick: () => loadLevel(currentLevelIndex) },
+        { text: 'Next Level ➡️', primary: true, onClick: () => loadLevel(currentLevelIndex + 1) }
+      ]
+    );
   }
 }
 
@@ -1039,7 +885,6 @@ function updateHUD(): void {
 }
 
 // UI Button Listeners (Desktop & Touch)
-document.getElementById('btn-ai-autoplay')?.addEventListener('click', toggleAiAutoPlay);
 document.getElementById('btn-record')?.addEventListener('click', toggleManualRecording);
 document.getElementById('btn-undo')?.addEventListener('click', performUndo);
 document.getElementById('btn-restart')?.addEventListener('click', () => loadLevel(currentLevelIndex));
@@ -1050,6 +895,21 @@ document.getElementById('btn-hint')?.addEventListener('click', () => {
 document.getElementById('btn-levels')?.addEventListener('click', showLevelSelectModal);
 document.getElementById('btn-menu')?.addEventListener('click', showSystemGameMenu);
 document.getElementById('btn-settings')?.addEventListener('click', showSettingsModal);
+
+// Speed-dial toggle
+const speedDialToggle = document.getElementById('speed-dial-toggle');
+const speedDialGroup = document.getElementById('speed-dial-group');
+speedDialToggle?.addEventListener('click', () => {
+  speedDialToggle.classList.toggle('open');
+  speedDialGroup?.classList.toggle('open');
+});
+// Close speed-dial when any action is clicked
+speedDialGroup?.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    speedDialToggle?.classList.remove('open');
+    speedDialGroup.classList.remove('open');
+  });
+});
 
 // Mobile Touch Action Buttons
 document.getElementById('touch-btn-undo')?.addEventListener('click', performUndo);
@@ -1225,20 +1085,15 @@ app.onUpdate((dt) => {
   if (animStateMachine) {
     animStateMachine.update(dt);
   }
-
-  // AI Gameplay Agent Loop: Continuous 60 FPS Fluid Movement (Zero stutter/pauses)
-  if (isAiAutoPlay) {
-    const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
-    const distToTarget = foxGroup ? foxGroup.position.distanceTo(targetWorld) : 0;
-
-    if (distToTarget < MOVE_ARRIVAL_EPSILON) {
-      stepAiAgent();
-    }
+  if (dustParticles) {
+    dustParticles.update(dt);
   }
+
+
 
   // Keyboard / Touch Movement Input (Free 360 Movement)
   const now = performance.now();
-  if (!isAiAutoPlay && foxGroup && !isLevelCleared) {
+  if (foxGroup && !isLevelCleared) {
     const move = app.input.getMovementVector();
     let isMoving = false;
     
@@ -1363,22 +1218,15 @@ app.onUpdate((dt) => {
     }
 
     if (animStateMachine) {
-      if (isMoving) animStateMachine.setState('Walk');
-      else animStateMachine.setState('Idle');
+      if (isMoving) {
+        animStateMachine.setState('Walk');
+        dustParticles.emit(foxGroup.position.x, 0, foxGroup.position.z);
+      } else {
+        animStateMachine.setState('Idle');
+      }
     }
     
     app.cameraController.setTargetPosition(foxGroup.position);
-  } else if (foxGroup && isAiAutoPlay) {
-    // AI still uses grid movement lerp
-    const targetWorld = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
-    foxGroup.position.lerp(targetWorld, Math.min(1.0, 9 * dt));
-    const distToTarget = foxGroup.position.distanceTo(targetWorld);
-    if (distToTarget > 0.1 && animStateMachine) {
-      animStateMachine.setState('Walk');
-    } else if (animStateMachine) {
-      animStateMachine.setState('Idle');
-    }
-    app.cameraController.setTargetPosition(targetWorld);
   }
 });
 

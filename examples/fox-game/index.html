@@ -98,16 +98,76 @@
     }
 
     .icon-btn:active {
-      transform: scale(0.95);
-      background: rgba(255, 255, 255, 0.25);
+      transform: scale(0.93);
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    /* Floating Action Speed-Dial (desktop secondary actions) */
+    #speed-dial {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 150;
+      pointer-events: none;
+    }
+
+    #speed-dial > * { pointer-events: auto; }
+
+    #speed-dial-toggle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.5);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #speed-dial-toggle:active { transform: scale(0.9); }
+    #speed-dial-toggle.open { transform: rotate(45deg); }
+
+    .speed-dial-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 0;
+      transform: translateY(-8px) scale(0.95);
+      pointer-events: none;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .speed-dial-group.open {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    /* Hide speed-dial on mobile, hide touch controls on desktop */
+    @media (hover: hover) and (pointer: fine) {
+      /* Desktop: hide the on-screen touch joystick */
+      #touch-controls { display: none !important; }
+    }
+    @media (hover: none) or (pointer: coarse) {
+      /* Mobile: hide speed-dial since touch controls exist */
+      #speed-dial { display: none !important; }
     }
 
     /* Mobile Touch Controls */
     #touch-controls {
       position: absolute;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
+      bottom: 30px;
+      left: 30px;
+      right: 30px;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
@@ -116,8 +176,8 @@
     }
 
     #joystick-zone {
-      width: 140px;
-      height: 140px;
+      width: 120px;
+      height: 120px;
       background: rgba(255, 255, 255, 0.12);
       border-radius: 50%;
       border: 2px solid rgba(255, 255, 255, 0.3);
@@ -129,8 +189,8 @@
     }
 
     #joystick-knob {
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
       background: linear-gradient(135deg, #3b82f6, #60a5fa);
       border-radius: 50%;
       position: absolute;
@@ -144,20 +204,20 @@
 
     .action-buttons {
       display: grid;
-      grid-template-columns: repeat(2, 64px);
-      gap: 12px;
+      grid-template-columns: repeat(2, 56px);
+      gap: 10px;
       pointer-events: auto;
     }
 
     .touch-action-btn {
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
       background: rgba(24, 24, 27, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: white;
       font-weight: 800;
-      font-size: 15px;
+      font-size: 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -254,9 +314,12 @@
         <span id="hud-move-count">0 moves</span>
       </div>
     </div>
+  </div>
 
-    <div class="hud-card">
-      <button id="btn-ai-autoplay" class="icon-btn" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981;">🤖 AI Test & Record</button>
+  <!-- Floating Speed-Dial (desktop secondary actions) -->
+  <div id="speed-dial">
+    <button id="speed-dial-toggle" title="Actions">+</button>
+    <div class="speed-dial-group" id="speed-dial-group">
       <button id="btn-record" class="icon-btn">🎥 Record</button>
       <button id="btn-undo" class="icon-btn">↩️ Undo</button>
       <button id="btn-restart" class="icon-btn">🔄 Restart</button>
