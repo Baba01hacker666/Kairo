@@ -101,8 +101,8 @@ const sky = new THREE.Mesh(
 app.scene.add(sky);
 
 // Fix Kairo engine default camera far plane which was clipping the ground
-app.camera.far = 2500;
-app.camera.updateProjectionMatrix();
+(app.camera as THREE.PerspectiveCamera).far = 2500;
+(app.camera as THREE.PerspectiveCamera).updateProjectionMatrix();
 
 // ── Starfield (dense, with glow sprites) ─────────────────────
 const starGroup = new THREE.Group();
