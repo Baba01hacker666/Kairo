@@ -597,18 +597,14 @@ function setupDropdownMenus() {
 // --- EASY SCRIPT BUILDER & EXECUTOR ---
 const EASY_SCRIPT_PRESETS = {
   rotate: `EasyScript.createBehavior({
-  onUpdate(dt) {
-    this.rotate(0, 1.5 * dt, 0); // Rotate 3D object continuously
+  onStart() {
+    this.spin(1.5); // Spins continuously!
   }
 });`,
   bob: `EasyScript.createBehavior({
   onStart() {
-    this.set('baseY', this.getPosition().y);
-  },
-  onUpdate(dt) {
-    this.rotate(0, 1.0 * dt, 0);
-    const y = (this.get('baseY') || 1) + Math.sin(performance.now() * 0.003) * 0.25;
-    this.setPosition(this.getPosition().x, y, this.getPosition().z);
+    this.spin(1.0);
+    this.bob(0.25); // Bobs up and down smoothly!
   }
 });`,
   player: `EasyScript.createBehavior({
@@ -622,30 +618,21 @@ const EASY_SCRIPT_PRESETS = {
 });`,
   patrol: `EasyScript.createBehavior({
   onStart() {
-    this.set('dir', 1);
-    this.set('startX', this.getPosition().x);
-  },
-  onUpdate(dt) {
-    const dir = this.get('dir') || 1;
-    const startX = this.get('startX') || 0;
-    this.move(dir * 2.5 * dt, 0, 0);
-    if (Math.abs(this.getPosition().x - startX) > 4.0) {
-      this.set('dir', -dir);
-    }
+    this.patrol(5.0, 2.5); // Patrols back and forth!
   }
 });`,
   particles: `EasyScript.createBehavior({
-  onUpdate(dt) {
-    this.rotate(0, 2.0 * dt, 0);
+  onStart() {
+    this.spin(2.0);
   },
   onInteract() {
-    this.emitParticles('sparkle', 30);
+    this.sparkle(30);
     this.playSound('fanfare');
   }
 });`,
   toast: `EasyScript.createBehavior({
   onInteract() {
-    this.showToast('✨ Interacted with 3D Object!', 2000, 'success');
+    this.say('✨ You touched the magic object!', 2000, 'success');
     this.playSound('coin');
   }
 });`

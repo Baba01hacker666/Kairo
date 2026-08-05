@@ -822,11 +822,7 @@ function updatePlayerPositionVisuals(instant: boolean = false): void {
   const targetWorldPos = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
   if (instant) {
     foxGroup.position.copy(targetWorldPos);
-  } else {
-    // Smooth lerp visual position towards grid target
-    foxGroup.position.lerp(targetWorldPos, 0.35);
   }
-
   app.cameraController.setTargetPosition(foxGroup.position);
 }
 
@@ -1022,13 +1018,16 @@ function checkPressurePlates(): void {
       const targetMesh = elementMeshMap.get(elem.linkedId);
 
       if (targetMesh) {
+        const prevState = doorStates.get(elem.linkedId) || false;
         doorStates.set(elem.linkedId, active);
-        if (elem.linkedId.startsWith('bridge')) {
-          targetMesh.rotation.y = active ? Math.PI / 2 : 0;
-        } else {
-          targetMesh.visible = !active;
+        if (active !== prevState) {
+          if (elem.linkedId.startsWith('bridge')) {
+            targetMesh.rotation.y = active ? Math.PI / 2 : 0;
+          } else {
+            targetMesh.visible = !active;
+          }
+          app.audio.playSynthesizedSound('switch');
         }
-        if (active) app.audio.playSynthesizedSound('switch');
       }
     }
   });

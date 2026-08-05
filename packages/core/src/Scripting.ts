@@ -10,84 +10,330 @@ export class ScriptBehavior {
   public object!: THREE.Object3D;
   public app!: any;
   public enabled: boolean = true;
+
+  // Built-in Motion Modes (No manual math required!)
+  private _isSpinning: boolean = false;
+  private _spinSpeed: number = 1.5;
+
+  private _isBobbing: boolean = false;
+  private _bobAmount: number = 0.25;
+  private _bobSpeed: number = 3.0;
+  private _baseY: number | null = null;
+  private _bobTimer: number = 0;
+
+  private _isPatrolling: boolean = false;
+  private _patrolDistance: number = 4.0;
+  private _patrolSpeed: number = 2.5;
+  private _patrolDir: number = 1;
+  private _startX: number | null = null;
+
+  private _isPulsing: boolean = false;
+  private _pulseMin: number = 0.8;
+  private _pulseMax: number = 1.2;
+  private _pulseSpeed: number = 4.0;
+  private _pulseTimer: number = 0;
+  private _baseScale: THREE.Vector3 = new THREE.Vector3(1, 1, 1);
+
+  private _isJumping: boolean = false;
+  private _jumpVelocity: number = 0;
+  private _groundY: number = 0;
+
   private _customData: Record<string, any> = {};
 
   public attach(object: THREE.Object3D, app?: any): void {
     this.object = object;
     this.app = app;
+    if (this.object) {
+      this._baseY = this.object.position.y;
+      this._startX = this.object.position.x;
+      this._baseScale.copy(this.object.scale);
+    }
     this.onStart();
   }
 
-  // Lifecycle Hooks (overridden by user scripts)
+  // Lifecycle Hooks
   public onStart(): void {}
   public onUpdate(dt: number): void {}
   public onCollision(other: THREE.Object3D): void {}
   public onInteract(): void {}
   public onDestroy(): void {}
 
-  // High-Level Easy Movement Helpers
-  public move(dx: number, dy: number, dz: number): void {
-    if (!this.object) return;
-    this.object.position.x += dx;
-    this.object.position.y += dy;
-    this.object.position.z += dz;
-  }
+  // Internal tick running built-in motion presets automatically
+  public _internalTick(dt: number): void {
+    if (!this.enabled || !this.object) return;
 
-  public moveForward(distance: number): void {
-    if (!this.object) return;
-    this.object.translateZ(-distance);
-  }
+    if (this._baseY === null) this._baseY = this.object.position.y;
+    if (this._startX === null) this._startX = this.object.position.x;
 
-  public rotate(rx: number, ry: number, rz: number): void {
-    if (!this.object) return;
-    this.object.rotation.x += rx;
-    this.object.rotation.y += ry;
-    this.object.rotation.z += rz;
-  }
-
-  public lookAt(target: THREE.Vector3 | [number, number, number]): void {
-    if (!this.object) return;
-    if (Array.isArray(target)) {
-      this.object.lookAt(target[0], target[1], target[2]);
-    } else {
-      this.object.lookAt(target);
+    if (this._isSpinning) {
+      this.object.rotation.y += this._spinSpeed * dt;
     }
+
+    if (this._isBobbing && !this._isJumping) {
+      this._bobTimer += dt * this._bobSpeed;
+      this.object.position.y = this._baseY + Math.sin(this._bobTimer) * this._bobAmount;
+    }
+
+    if (this._isPatrolling) {
+      this.object.position.x += this._patrolDir * this._patrolSpeed * dt;
+      if (Math.abs(this.object.position.x - this._startX) > this._patrolDistance) {
+        this._patrolDir = -this._patrolDir;
+      }
+    }
+
+    if (this._isPulsing) {
+      this._pulseTimer += dt * this._pulseSpeed;
+      const s = this._pulseMin + (Math.sin(this._pulseTimer) * 0.5 + 0.5) * (this._pulseMax - this._pulseMin);
+      this.object.scale.set(this._baseScale.x * s, this._baseScale.y * s, this._baseScale.z * s);
+    }
+
+    if (this._isJumping) {
+      this.object.position.y += this._jumpVelocity * dt;
+      this._jumpVelocity -= 18 * dt; // Gravity
+      if (this.object.position.y <= this._groundY) {
+        this.object.position.y = this._groundY;
+        this._isJumping = false;
+        this.dustBurst(12);
+      }
+    }
+
+    this.onUpdate(dt);
   }
 
-  public setPosition(x: number, y: number, z: number): void {
-    if (!this.object) return;
-    this.object.position.set(x, y, z);
+  // --- ULTRA-SIMPLE EASY MOTION COMMANDS ---
+
+  /** Spin the 3D object continuously around Y axis */
+  public spin(speed: number = 1.5): this {
+    this._isSpinning = true;
+    this._spinSpeed = speed;
+    return this;
   }
 
+  /** Gently bob the 3D object up and down */
+  public bob(amount: number = 0.25, speed: number = 3.0): this {
+    this._isBobbing = true;
+    this._bobAmount = amount;
+    this._bobSpeed = speed;
+    return this;
+  }
+
+  /** Patrol back and forth along X axis */
+  public patrol(distance: number = 4.0, speed: number = 2.5): this {
+    this._isPatrolling = true;
+    this._patrolDistance = distance;
+    this._patrolSpeed = speed;
+    return this;
+  }
+
+  /** Rhythmically pulse / scale object size */
+  public pulse(minScale: number = 0.85, maxScale: number = 1.2, speed: number = 4.0): this {
+    this._isPulsing = true;
+    this._pulseMin = minScale;
+    this._pulseMax = maxScale;
+    this._pulseSpeed = speed;
+    return this;
+  }
+
+  /** Make object jump into the air */
+  public jump(force: number = 7.0): this {
+    if (!this.object) return this;
+    if (!this._isJumping) {
+      this._groundY = this._baseY ?? this.object.position.y;
+      this._jumpVelocity = force;
+      this._isJumping = true;
+      this.playSound('jump');
+    }
+    return this;
+  }
+
+  /** Stop all automatic motion behaviors */
+  public stop(): this {
+    this._isSpinning = false;
+    this._isBobbing = false;
+    this._isPatrolling = false;
+    this._isPulsing = false;
+    return this;
+  }
+
+  // --- EASY DIRECTIONAL MOVEMENT HELPERS ---
+
+  /** Move relative by (dx, dy, dz) */
+  public move(dx: number, dy: number, dz: number): this {
+    if (this.object) {
+      this.object.position.x += dx;
+      this.object.position.y += dy;
+      this.object.position.z += dz;
+    }
+    return this;
+  }
+
+  /** Move forward in facing direction */
+  public moveForward(distance: number): this {
+    if (this.object) this.object.translateZ(-distance);
+    return this;
+  }
+
+  /** Move backward */
+  public moveBackward(distance: number): this {
+    if (this.object) this.object.translateZ(distance);
+    return this;
+  }
+
+  /** Move Left along X axis */
+  public moveLeft(distance: number): this {
+    return this.move(-distance, 0, 0);
+  }
+
+  /** Move Right along X axis */
+  public moveRight(distance: number): this {
+    return this.move(distance, 0, 0);
+  }
+
+  /** Move Up along Y axis */
+  public moveUp(distance: number): this {
+    return this.move(0, distance, 0);
+  }
+
+  /** Move Down along Y axis */
+  public moveDown(distance: number): this {
+    return this.move(0, -distance, 0);
+  }
+
+  /** Turn / rotate Left by degrees */
+  public turnLeft(degrees: number = 45): this {
+    return this.rotate(0, (degrees * Math.PI) / 180, 0);
+  }
+
+  /** Turn / rotate Right by degrees */
+  public turnRight(degrees: number = 45): this {
+    return this.rotate(0, (-degrees * Math.PI) / 180, 0);
+  }
+
+  /** Rotate by radians (rx, ry, rz) */
+  public rotate(rx: number, ry: number, rz: number): this {
+    if (this.object) {
+      this.object.rotation.x += rx;
+      this.object.rotation.y += ry;
+      this.object.rotation.z += rz;
+    }
+    return this;
+  }
+
+  /** Smoothly chase / move towards a target 3D position */
+  public chase(targetPos: THREE.Vector3 | [number, number, number], speed: number = 3.0, dt: number = 0.016): this {
+    if (!this.object) return this;
+    const target = Array.isArray(targetPos) ? new THREE.Vector3(...targetPos) : targetPos;
+    const dir = target.clone().sub(this.object.position).normalize();
+    this.object.position.add(dir.multiplyScalar(speed * dt));
+    this.object.lookAt(target);
+    return this;
+  }
+
+  /** Change object position */
+  public setPosition(x: number, y: number, z: number): this {
+    if (this.object) this.object.position.set(x, y, z);
+    return this;
+  }
+
+  /** Get current 3D position vector */
   public getPosition(): THREE.Vector3 {
     return this.object ? this.object.position : new THREE.Vector3();
   }
 
+  /** Distance to another object or vector */
   public getDistanceTo(other: THREE.Object3D | THREE.Vector3): number {
     if (!this.object) return 0;
     const pos = 'position' in other ? (other as THREE.Object3D).position : other;
     return this.object.position.distanceTo(pos);
   }
 
-  // Visual Effects & Sound Helpers
-  public playSound(soundName: string): void {
-    if (this.app?.audio) {
-      this.app.audio.playSynthesizedSound(soundName);
-    }
+  /** Check if near another object */
+  public isNear(other: THREE.Object3D | THREE.Vector3, maxDistance: number = 2.0): boolean {
+    return this.getDistanceTo(other) <= maxDistance;
   }
 
-  public emitParticles(type: 'sparkle' | 'dust_footstep' | 'explosion' | 'collect_burst' = 'sparkle', count: number = 20): void {
-    if (this.app?.particleSys) {
-      this.app.particleSys.emitBurst(this.object.position, type, count);
+  // --- VISUAL & AUDIO HELPERS ---
+
+  /** Change object color */
+  public changeColor(colorHex: number | string): this {
+    if (this.object) {
+      this.object.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh && (child as THREE.Mesh).material) {
+          ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).color.set(colorHex as any);
+        }
+      });
     }
+    return this;
   }
 
-  public showToast(message: string, durationMs: number = 2000, type: 'info' | 'success' | 'warning' = 'info'): void {
+  /** Set random bright neon color */
+  public randomColor(): this {
+    const colors = [0x10b981, 0x3b82f6, 0xef4444, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4];
+    return this.changeColor(colors[Math.floor(Math.random() * colors.length)]);
+  }
+
+  /** Hide object */
+  public hide(): this {
+    if (this.object) this.object.visible = false;
+    return this;
+  }
+
+  /** Show object */
+  public show(): this {
+    if (this.object) this.object.visible = true;
+    return this;
+  }
+
+  /** Show friendly pop-up toast */
+  public say(message: string, durationMs: number = 2000, type: 'info' | 'success' | 'warning' = 'info'): this {
     if (this.app?.ui) {
       this.app.ui.showToast(message, durationMs, type);
     }
+    return this;
   }
 
+  /** Play sound effect */
+  public playSound(soundName: string): this {
+    if (this.app?.audio) {
+      this.app.audio.playSynthesizedSound(soundName);
+    }
+    return this;
+  }
+
+  /** Spawn sparkle particles */
+  public sparkle(count: number = 25): this {
+    if (this.app?.particleSys && this.object) {
+      this.app.particleSys.emitBurst(this.object.position, 'sparkle', count);
+    }
+    return this;
+  }
+
+  /** Spawn explosion particles */
+  public explode(count: number = 40): this {
+    if (this.app?.particleSys && this.object) {
+      this.app.particleSys.emitBurst(this.object.position, 'explosion', count);
+    }
+    return this;
+  }
+
+  /** Spawn dust footstep particles */
+  public dustBurst(count: number = 15): this {
+    if (this.app?.particleSys && this.object) {
+      this.app.particleSys.emitBurst(this.object.position, 'dust_footstep', count);
+    }
+    return this;
+  }
+
+  /** Spawn teleporter warp effect */
+  public teleportEffect(): this {
+    if (this.app?.particleSys && this.object) {
+      this.app.particleSys.emitBurst(this.object.position, 'teleport_flash', 35);
+      this.playSound('teleport');
+    }
+    return this;
+  }
+
+  /** Destroy object */
   public destroy(): void {
     this.onDestroy();
     if (this.object?.parent) {
@@ -95,7 +341,7 @@ export class ScriptBehavior {
     }
   }
 
-  // Easy State Store
+  // --- EASY STATE DATA STORE ---
   public set(key: string, value: any): void {
     this._customData[key] = value;
   }
@@ -125,7 +371,7 @@ export class ScriptRunner {
     for (let i = 0; i < this.scripts.length; i++) {
       const script = this.scripts[i];
       if (script.enabled) {
-        script.onUpdate(dt);
+        script._internalTick(dt);
       }
     }
   }

@@ -65,3 +65,38 @@ test('EngineCompiler shader minification', () => {
   assert.ok(!minified.includes('/*'));
   assert.strictEqual(minified, 'void main(){vec4 color=vec4(1.0,0.5,0.0,1.0);gl_FragColor=color;}');
 });
+
+test('EngineCompiler EasyScript AST compilation', () => {
+  const code = `
+    // Beginner Behavior
+    EasyScript.createBehavior({
+      onStart() {
+        this.spin(2.0);
+        this.bob(0.3);
+      },
+      onInteract() {
+        this.sparkle(30);
+        this.playSound('coin');
+      }
+    });
+  `;
+
+  const compiled = EngineCompiler.compileEasyScript(code);
+  assert.ok(compiled.astStats.helperCalls >= 4);
+  assert.ok(!compiled.compiledCode.includes('// Beginner Behavior'));
+});
+
+test('EngineCompiler geometry quantization', () => {
+  const positions = new Float32Array([0.0, 1.0, 2.0, -1.0, 0.5, 3.0]);
+  const quantized = EngineCompiler.quantizeGeometryBuffers(positions);
+  assert.strictEqual(quantized.length, positions.length);
+  assert.ok(quantized instanceof Uint16Array);
+});
+
+test('EngineCompiler standalone HTML game compilation', () => {
+  const mockLevels = [{ id: 1, name: 'Level 1', world: 1, elements: [] }];
+  const html = EngineCompiler.compileStandaloneGameHtml('My Awesome Game', mockLevels);
+  assert.ok(html.includes('<!DOCTYPE html>'));
+  assert.ok(html.includes('My Awesome Game'));
+  assert.ok(html.includes('Kairo Standalone Build'));
+});
