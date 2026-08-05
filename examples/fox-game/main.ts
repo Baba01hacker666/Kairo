@@ -124,6 +124,8 @@ app.cameraController.yaw = Math.PI;
 app.cameraController.pitch = 0.45;
 app.cameraController.distance = 7.5;
 app.cameraController.heightOffset = 1.6;
+app.cameraController.enableCollisionAvoidance = false;
+app.cameraController.lerpSpeed = 16.0;
 
 app.scene.add(levelObjectsGroup);
 app.scene.add(laserBeamsGroup);
@@ -1442,8 +1444,9 @@ app.onUpdate((dt) => {
             // Check horizontal collision
             if (Math.abs(gridX - cx) < 0.5 + rGrid && Math.abs(currGridZ - cy) < 0.5 + rGrid) {
               blockedX = true;
-              // Check crate/TNT push trigger
-              if (now - lastInputTime > INPUT_COOLDOWN) {
+              const hasPushable = Array.from(crateGridPositions.values()).some(p => p[0] === cx && p[1] === cy) ||
+                                  Array.from(tntGridPositions.values()).some(p => p[0] === cx && p[1] === cy);
+              if (hasPushable && now - lastInputTime > INPUT_COOLDOWN) {
                 const [cardX, cardY] = toCardinalMove({ x: move.x, y: move.y });
                 if (cardX !== 0 || cardY !== 0) {
                   tryMovePlayer(cardX, cardY);
@@ -1454,7 +1457,9 @@ app.onUpdate((dt) => {
             // Check vertical collision
             if (Math.abs(currGridX - cx) < 0.5 + rGrid && Math.abs(gridZ - cy) < 0.5 + rGrid) {
               blockedZ = true;
-              if (now - lastInputTime > INPUT_COOLDOWN) {
+              const hasPushable = Array.from(crateGridPositions.values()).some(p => p[0] === cx && p[1] === cy) ||
+                                  Array.from(tntGridPositions.values()).some(p => p[0] === cx && p[1] === cy);
+              if (hasPushable && now - lastInputTime > INPUT_COOLDOWN) {
                 const [cardX, cardY] = toCardinalMove({ x: move.x, y: move.y });
                 if (cardX !== 0 || cardY !== 0) {
                   tryMovePlayer(cardX, cardY);
