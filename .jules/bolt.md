@@ -9,3 +9,7 @@
 ## 2024-12-07 - Query Cache Key Allocation Spikes
 **Learning:** In the ECS hot path, generating query cache keys via `.map()` and dynamic array allocation (e.g. `queryDesc.all.map(c => this.getComponentTypeId(c)).sort().join(',')`) creates massive garbage collection pressure when systems evaluate queries every frame.
 **Action:** Replaced `.map()` with explicit loop accumulation and added inline fast-paths for 1- and 2-component queries (which don't require array allocation). Also added a `_key` cache property on the `Query` object to skip key generation entirely when users reuse query objects. This optimization reduces GC spikes by eliminating intermediate arrays in the update loop.
+
+## 2024-12-08 - BoundingBox Allocation Elimination in Physics Queries
+**Learning:** High-frequency physics queries like `raycast`, `overlapSphere`, and `overlapBox` iterate through many bodies, allocating intermediate `Vector3` and `BoundingBox` instances via `.clone()` and `new BoundingBox()`. These repeated object allocations create massive Garbage Collection pressure.
+**Action:** Inline bounds calculations and use pre-allocated static variables like `_raycastTempBox`. Adding an optional `target?: BoundingBox` to getters allows callers to reuse existing objects and eliminate hot-path allocations.

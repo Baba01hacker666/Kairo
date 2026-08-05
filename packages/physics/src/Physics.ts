@@ -101,11 +101,20 @@ export class Collider {
   public size: Vector3 = new Vector3(1, 1, 1);
   public isTrigger: boolean = false;
 
-  public getBoundingBox(position: Vector3): BoundingBox {
-    const half = this.size.clone().scale(0.5);
+  public getBoundingBox(position: Vector3, target?: BoundingBox): BoundingBox {
+    const hx = this.size.x * 0.5;
+    const hy = this.size.y * 0.5;
+    const hz = this.size.z * 0.5;
+
+    if (target) {
+      target.min.set(position.x - hx, position.y - hy, position.z - hz);
+      target.max.set(position.x + hx, position.y + hy, position.z + hz);
+      return target;
+    }
+
     return new BoundingBox(
-      position.clone().sub(half),
-      position.clone().add(half)
+      new Vector3(position.x - hx, position.y - hy, position.z - hz),
+      new Vector3(position.x + hx, position.y + hy, position.z + hz)
     );
   }
 }
@@ -179,6 +188,7 @@ export class PhysicsWorld {
   public activeBackend: PhysicsBackendType = 'cannon';
   private bodies: BodyEntry[] = [];
   private cannonWorld: CANNON.World;
+  private static _raycastTempBox = new BoundingBox();
   private bodyLookup: Map<CANNON.Body, BodyEntry> = new Map();
   private collisionListeners: Array<(event: CollisionEvent) => void> = [];
   private triggerListeners: Array<(event: CollisionEvent) => void> = [];
@@ -323,7 +333,7 @@ export class PhysicsWorld {
     // Avoid creating new arrays via mapping and filter arrays.
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
-      const bounds = collider.getBoundingBox(position);
+      const bounds = collider.getBoundingBox(position, PhysicsWorld._raycastTempBox);
       const hit = ray.intersectBox(bounds);
       if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestHit.distance) {
         closestHit = {
@@ -355,10 +365,12 @@ export class PhysicsWorld {
     // Avoid .filter().map() chaining in this hot path.
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
-      const bounds = collider.getBoundingBox(position);
-      const closestX = clamp(center.x, bounds.min.x, bounds.max.x);
-      const closestY = clamp(center.y, bounds.min.y, bounds.max.y);
-      const closestZ = clamp(center.z, bounds.min.z, bounds.max.z);
+      const hx = collider.size.x * 0.5;
+      const hy = collider.size.y * 0.5;
+      const hz = collider.size.z * 0.5;
+      const closestX = clamp(center.x, position.x - hx, position.x + hx);
+      const closestY = clamp(center.y, position.y - hy, position.y + hy);
+      const closestZ = clamp(center.z, position.z - hz, position.z + hz);
       const dx = center.x - closestX;
       const dy = center.y - closestY;
       const dz = center.z - closestZ;
@@ -388,11 +400,13 @@ export class PhysicsWorld {
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
       if (!body.cannonBody) continue;
-      const bounds = collider.getBoundingBox(position);
+      const hx = collider.size.x * 0.5;
+      const hy = collider.size.y * 0.5;
+      const hz = collider.size.z * 0.5;
       if (
-        maxX >= bounds.min.x && minX <= bounds.max.x &&
-        maxY >= bounds.min.y && minY <= bounds.max.y &&
-        maxZ >= bounds.min.z && minZ <= bounds.max.z
+        maxX >= position.x - hx && minX <= position.x + hx &&
+        maxY >= position.y - hy && minY <= position.y + hy &&
+        maxZ >= position.z - hz && minZ <= position.z + hz
       ) {
         results.push(body);
       }
