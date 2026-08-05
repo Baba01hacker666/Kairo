@@ -925,6 +925,11 @@ function loadDemoScene(type) {
 
   if (demoSelect && demoSelect.value !== type) demoSelect.value = type;
 
+  if (type === 'easy-game') {
+    window.location.href = '../examples/easy-script-game/index.html';
+    return;
+  }
+
   if (type === 'game') {
     canvas3D.style.display = 'block';
     canvas2D.style.display = 'none';
