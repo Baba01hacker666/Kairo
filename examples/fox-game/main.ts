@@ -610,12 +610,33 @@ function updateLasers(): void {
   });
 }
 
+let grabbedCrateId: string | null = null;
+
+function updateTouchInteractBtn(): void {
+  const btn = document.getElementById('touch-btn-interact');
+  if (!btn) return;
+  if (grabbedCrateId) {
+    btn.innerHTML = `<span style="font-size: 18px; color: #f59e0b;">📦</span><span class="touch-btn-sub">Drop</span>`;
+  } else {
+    let nextToCrate = false;
+    crateGridPositions.forEach((pos) => {
+      if (Math.abs(pos[0] - playerGridPos[0]) + Math.abs(pos[1] - playerGridPos[1]) === 1) nextToCrate = true;
+    });
+    if (nextToCrate) {
+      btn.innerHTML = `<span style="font-size: 18px; color: #10b981;">📦</span><span class="touch-btn-sub">Grab</span>`;
+    } else {
+      btn.innerHTML = `<span style="font-size: 18px; color: #60a5fa;">E</span><span class="touch-btn-sub">Interact</span>`;
+    }
+  }
+}
+
 // Load Level State
 function loadLevel(levelIndex: number): void {
   currentLevelIndex = Math.max(0, Math.min(ALL_LEVELS.length - 1, levelIndex));
   currentLevel = ALL_LEVELS[currentLevelIndex];
 
   playerGridPos = [...currentLevel.startPos];
+  grabbedCrateId = null;
   moveCount = 0;
   avocadosCollected = 0;
   isLevelCleared = false;
@@ -643,6 +664,7 @@ function loadLevel(levelIndex: number): void {
 
   buildLevelVisuals();
   updatePlayerPositionVisuals(true);
+  updateTouchInteractBtn();
 
   app.ui.showToast(`Entered ${currentLevel.name}`, 3000, 'info');
 }
@@ -675,6 +697,7 @@ function performUndo(): void {
 
   const snapshot = undoStack.pop()!;
   playerGridPos = [...snapshot.playerGridPos];
+  grabbedCrateId = null;
 
   crateGridPositions.clear();
   snapshot.cratesPos.forEach((v, k) => crateGridPositions.set(k, [...v]));
@@ -699,10 +722,39 @@ function performUndo(): void {
 
   buildLevelVisuals();
   updatePlayerPositionVisuals(true);
+  updateTouchInteractBtn();
 }
 
-// Interact with Mirror / Object in front of Fox
+// Interact with Crate (Grab/Drop) or Mirror/Prism (Rotate)
 function performInteract(): void {
+  // If currently grabbing a crate, drop it!
+  if (grabbedCrateId) {
+    grabbedCrateId = null;
+    app.audio.playSynthesizedSound('key');
+    app.ui.showToast('Released Crate 📦', 1500, 'info');
+    updateTouchInteractBtn();
+    return;
+  }
+
+  // Check if standing next to a crate to Grab
+  let grabbedAny = false;
+  crateGridPositions.forEach((pos, id) => {
+    if (grabbedAny) return;
+    const dist = Math.abs(pos[0] - playerGridPos[0]) + Math.abs(pos[1] - playerGridPos[1]);
+    if (dist === 1) {
+      grabbedCrateId = id;
+      pushUndoState();
+      app.audio.playSynthesizedSound('key');
+      particleSys.emitBurst(gridToWorld(pos[0], pos[1], 0.8), 'sparkle', 20);
+      app.ui.showToast('📦 Grabbed Crate! Move to Push or Pull crate, press E to Drop.', 3000, 'success');
+      grabbedAny = true;
+      updateTouchInteractBtn();
+    }
+  });
+
+  if (grabbedAny) return;
+
+  // Check adjacent mirrors/prisms to rotate
   let rotatedAny = false;
   currentLevel.elements.forEach((elem, index) => {
     const elemId = elem.id || `elem_${index}_${elem.type}`;
@@ -728,7 +780,7 @@ function performInteract(): void {
   });
 
   if (!rotatedAny) {
-    app.ui.showToast('Nothing nearby to interact with!', 1500, 'info');
+    app.ui.showToast('Nothing nearby to interact with! (Stand next to a crate to Grab 📦)', 1500, 'info');
   }
 }
 
@@ -807,6 +859,43 @@ function tryMovePlayer(dx: number, dy: number): void {
 
   const [cols, rows] = currentLevel.gridSize;
   if (targetX < 0 || targetX >= cols || targetY < 0 || targetY >= rows) return;
+
+  // Handle Grabbed Crate Synchronized Movement (Pushing AND Pulling)
+  if (grabbedCrateId) {
+    const cratePos = crateGridPositions.get(grabbedCrateId);
+    if (cratePos) {
+      const crateNextX = cratePos[0] + dx;
+      const crateNextY = cratePos[1] + dy;
+      if (crateNextX >= 0 && crateNextX < cols && crateNextY >= 0 && crateNextY < rows) {
+        let blocked = false;
+        if (isGridCellBlocked(crateNextX, crateNextY)) {
+          if (!(crateNextX === playerGridPos[0] && crateNextY === playerGridPos[1])) {
+            blocked = true;
+          }
+        }
+        if (!blocked) {
+          pushUndoState();
+          crateGridPositions.set(grabbedCrateId, [crateNextX, crateNextY]);
+          const crateMesh = elementMeshMap.get(grabbedCrateId);
+          if (crateMesh) crateMesh.position.copy(gridToWorld(crateNextX, crateNextY, 0.75));
+
+          playerGridPos = [targetX, targetY];
+          moveCount++;
+          app.audio.playSynthesizedSound('push');
+
+          if (foxGroup) foxGroup.rotation.y = Math.atan2(dx, dy);
+
+          updatePlayerPositionVisuals();
+          checkPressurePlates();
+          checkCollectibles();
+          checkGoalCondition();
+          updateHUD();
+          updateTouchInteractBtn();
+          return;
+        }
+      }
+    }
+  }
 
   // Check Walls / Inner Obstacles
   for (const elem of currentLevel.elements) {

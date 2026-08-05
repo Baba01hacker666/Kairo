@@ -519,6 +519,71 @@ function setupDropdownMenus() {
     logConsole('[Build] Standalone Game Bundle compiled & downloaded as kairo-game-standalone.html!');
   });
   
+  const openSketchfabStreamer = () => {
+    const url = prompt('🎨 Enter Sketchfab 3D Model URL or Direct .glb link:\n\nExample: https://sketchfab.com/3d-models/fox-1234567890abcdef1234567890abcdef');
+    if (!url || !url.trim()) return;
+
+    let targetUrl = url.trim();
+    const sketchMatch = targetUrl.match(/sketchfab\.com\/(?:3d-models\/|models\/)?(?:[a-zA-Z0-9-]+-)?([a-f0-9]{32})/i);
+    const uid = sketchMatch ? sketchMatch[1] : (/^[a-f0-9]{32}$/i.test(targetUrl) ? targetUrl : null);
+
+    if (uid) {
+      targetUrl = `https://api.sketchfab.com/v3/models/${uid}/download`;
+    }
+
+    logConsole(`[Sketchfab] Streaming 3D model from ${url}...`, 'info');
+
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      targetUrl,
+      (gltf) => {
+        const streamedModel = gltf.scene;
+        streamedModel.position.set(0, 0, 0);
+        
+        // Auto-scale model height
+        const box = new THREE.Box3().setFromObject(streamedModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0.001) {
+          const s = 2.0 / maxDim;
+          streamedModel.scale.set(s, s, s);
+        }
+
+        scene.add(streamedModel);
+        const entityId = `sketchfab_${Date.now()}`;
+        threeObjectsMap.set(entityId, streamedModel);
+
+        state.entities.push({
+          id: entityId,
+          name: uid ? `Sketchfab (${uid.slice(0, 8)})` : 'Streamed 3D Asset',
+          type: 'Streamed 3D Asset',
+          pos: { x: 0, y: 0, z: 0 },
+          scale: { x: 1, y: 1, z: 1 },
+          color: '#6366f1'
+        });
+
+        updateHierarchyTree();
+        logConsole(`✅ [Sketchfab] Successfully streamed and added 3D model to scene!`, 'info');
+        alert(`✅ Successfully streamed 3D model into scene!`);
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const percent = Math.round((xhr.loaded / xhr.total) * 100);
+          logConsole(`[Sketchfab] Loading: ${percent}%`, 'info');
+        }
+      },
+      (err) => {
+        console.error('Sketchfab stream error:', err);
+        logConsole(`❌ [Sketchfab] Stream failed: ${err?.message || err}`, 'error');
+        alert(`❌ Could not stream model: ${err?.message || 'Check URL or CORS'}`);
+      }
+    );
+  };
+
+  bindAction('menu-stream-sketchfab', openSketchfabStreamer);
+  bindAction('menu-add-sketchfab', openSketchfabStreamer);
+
   bindAction('menu-add-stickman', () => { loadDemoScene('stickman'); logConsole('[Scene] Added 3D Character.'); });
   bindAction('menu-add-cube', () => { createEntity('3D Cube', `cube_${Date.now()}`, { x: (Math.random()-0.5)*4, y: 1.5, z: (Math.random()-0.5)*4 }, { x: 1, y: 1, z: 1 }, 0x6366f1); updateHierarchyTree(); logConsole('[Scene] Added 3D Cube entity.'); });
   bindAction('menu-add-sphere', () => { createEntity('3D Sphere', `sphere_${Date.now()}`, { x: (Math.random()-0.5)*4, y: 1.5, z: (Math.random()-0.5)*4 }, { x: 1, y: 1, z: 1 }, 0x10b981, false, 'sphere'); updateHierarchyTree(); logConsole('[Scene] Added 3D Sphere entity.'); });

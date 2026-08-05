@@ -99,10 +99,83 @@ export class AssetManager {
   }
 
   /**
+   * Parse Sketchfab URL or Model UID or direct GLB/GLTF stream URL
+   */
+  public parseSketchfabUrl(input: string): { url: string; isSketchfab: boolean; uid?: string } {
+    const trimmed = input.trim();
+    const sketchfabMatch = trimmed.match(/sketchfab\.com\/(?:3d-models\/|models\/)?(?:[a-zA-Z0-9-]+-)?([a-f0-9]{32})/i);
+    if (sketchfabMatch) {
+      const uid = sketchfabMatch[1];
+      return {
+        url: `https://api.sketchfab.com/v3/models/${uid}/download`,
+        isSketchfab: true,
+        uid
+      };
+    }
+    if (/^[a-f0-9]{32}$/i.test(trimmed)) {
+      return {
+        url: `https://api.sketchfab.com/v3/models/${trimmed}/download`,
+        isSketchfab: true,
+        uid: trimmed
+      };
+    }
+    return { url: trimmed, isSketchfab: false };
+  }
+
+  /**
+   * Stream a 3D Model directly from Sketchfab or remote GLTF/GLB asset URL into the engine
+   */
+  public async streamSketchfabModel(
+    urlOrUid: string,
+    onProgress?: (percent: number) => void,
+    targetHeight: number = 2.0
+  ): Promise<THREE.Object3D> {
+    const parsed = this.parseSketchfabUrl(urlOrUid);
+    let targetUrl = parsed.url;
+
+    if (parsed.isSketchfab && parsed.uid) {
+      try {
+        const response = await fetch(`https://api.sketchfab.com/v3/models/${parsed.uid}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.gltf && data.gltf.url) {
+            targetUrl = data.gltf.url;
+          }
+        }
+      } catch (err) {
+        console.warn('[AssetManager] Sketchfab API metadata fetch warning:', err);
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(
+        targetUrl,
+        (gltf) => {
+          const scene = gltf.scene;
+          scene.name = parsed.uid ? `SketchfabModel_${parsed.uid.slice(0, 8)}` : 'StreamedSketchfabModel';
+          if (targetHeight) this.autoFitModel(scene, targetHeight);
+          this.processLoadedModel(scene, true);
+          this.cache.set(urlOrUid, scene);
+          resolve(scene.clone());
+        },
+        (event) => {
+          if (event.lengthComputable && onProgress) {
+            onProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        },
+        (error: any) => reject(new Error(`Sketchfab stream failed: ${error?.message || error}`))
+      );
+    });
+  }
+
+  /**
    * Unified 3D Model Loader
    * Automatically handles compressed models (Draco .glb, .gltf, .drc, .obj, .fbx, .stl, .ply, .dae, .vox)
    */
   async loadModel(url: string, autoCompress: boolean = false, targetHeight?: number): Promise<THREE.Object3D> {
+    if (url.includes('sketchfab.com') || /^[a-f0-9]{32}$/i.test(url.trim())) {
+      return this.streamSketchfabModel(url, undefined, targetHeight || 2.0);
+    }
     if (this.cache.has(url)) {
       const cloned = this.cache.get(url).clone();
       if (targetHeight) this.autoFitModel(cloned, targetHeight);
