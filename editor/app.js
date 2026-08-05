@@ -203,6 +203,7 @@ function initViewport() {
   setupDropdownMenus();
   setupCollapsibleDrawers();
   setupMobileTouchListeners();
+  setupEasyScriptingAssistant();
 
   // Load Default Playable Game Scene
   loadDemoScene('game');
@@ -591,6 +592,135 @@ function setupDropdownMenus() {
   
   bindAction('menu-help-docs', () => alert('Kairo Engine API Reference:\n\n- @kairo/core: Main Loop, Vector3\n- @kairo/renderer: WebGL 3D & HTML5 2D Canvas Dual Engine'));
   bindAction('menu-help-about', () => alert('Kairo Engine Studio v1.0.0\nTypeScript 2D/3D Dual Engine Studio'));
+}
+
+// --- EASY SCRIPT BUILDER & EXECUTOR ---
+const EASY_SCRIPT_PRESETS = {
+  rotate: `EasyScript.createBehavior({
+  onUpdate(dt) {
+    this.rotate(0, 1.5 * dt, 0); // Rotate 3D object continuously
+  }
+});`,
+  bob: `EasyScript.createBehavior({
+  onStart() {
+    this.set('baseY', this.getPosition().y);
+  },
+  onUpdate(dt) {
+    this.rotate(0, 1.0 * dt, 0);
+    const y = (this.get('baseY') || 1) + Math.sin(performance.now() * 0.003) * 0.25;
+    this.setPosition(this.getPosition().x, y, this.getPosition().z);
+  }
+});`,
+  player: `EasyScript.createBehavior({
+  onUpdate(dt) {
+    const speed = 4.0;
+    if (app.keys?.KeyW || app.keys?.ArrowUp) this.move(0, 0, -speed * dt);
+    if (app.keys?.KeyS || app.keys?.ArrowDown) this.move(0, 0, speed * dt);
+    if (app.keys?.KeyA || app.keys?.ArrowLeft) this.move(-speed * dt, 0, 0);
+    if (app.keys?.KeyD || app.keys?.ArrowRight) this.move(speed * dt, 0, 0);
+  }
+});`,
+  patrol: `EasyScript.createBehavior({
+  onStart() {
+    this.set('dir', 1);
+    this.set('startX', this.getPosition().x);
+  },
+  onUpdate(dt) {
+    const dir = this.get('dir') || 1;
+    const startX = this.get('startX') || 0;
+    this.move(dir * 2.5 * dt, 0, 0);
+    if (Math.abs(this.getPosition().x - startX) > 4.0) {
+      this.set('dir', -dir);
+    }
+  }
+});`,
+  particles: `EasyScript.createBehavior({
+  onUpdate(dt) {
+    this.rotate(0, 2.0 * dt, 0);
+  },
+  onInteract() {
+    this.emitParticles('sparkle', 30);
+    this.playSound('fanfare');
+  }
+});`,
+  toast: `EasyScript.createBehavior({
+  onInteract() {
+    this.showToast('✨ Interacted with 3D Object!', 2000, 'success');
+    this.playSound('coin');
+  }
+});`
+};
+
+function setupEasyScriptingAssistant() {
+  const presetSelect = document.getElementById('easy-script-preset');
+  const codePreview = document.getElementById('easy-script-code-preview');
+  const btnApply = document.getElementById('btn-apply-easy-script');
+  const btnCopy = document.getElementById('btn-copy-easy-code');
+
+  const updatePreview = () => {
+    const key = presetSelect ? presetSelect.value : 'rotate';
+    if (codePreview) {
+      codePreview.innerText = EASY_SCRIPT_PRESETS[key] || EASY_SCRIPT_PRESETS.rotate;
+    }
+  };
+
+  presetSelect?.addEventListener('change', updatePreview);
+  updatePreview();
+
+  btnCopy?.addEventListener('click', () => {
+    const code = codePreview?.innerText || '';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+    }
+    logConsole('[EasyScript] Code copied to clipboard!', 'info');
+    alert('📋 EasyScript code copied to clipboard!');
+  });
+
+  btnApply?.addEventListener('click', () => {
+    if (!state.selectedEntityId) {
+      alert('Please select an Entity from the Hierarchy panel first!');
+      return;
+    }
+
+    const obj = threeObjectsMap.get(state.selectedEntityId);
+    if (!obj) {
+      alert('Selected entity not found in 3D scene!');
+      return;
+    }
+
+    const key = presetSelect ? presetSelect.value : 'rotate';
+    logConsole(`[EasyScript] Attaching '${key}' behavior script to entity '${state.selectedEntityId}'...`, 'info');
+
+    if (key === 'rotate') {
+      obj.userData.scriptUpdate = (dt) => { obj.rotation.y += 1.5 * dt; };
+    } else if (key === 'bob') {
+      const baseY = obj.position.y;
+      obj.userData.scriptUpdate = (dt) => {
+        obj.rotation.y += 1.0 * dt;
+        obj.position.y = baseY + Math.sin(performance.now() * 0.003) * 0.25;
+      };
+    } else if (key === 'player') {
+      obj.userData.scriptUpdate = (dt) => {
+        const speed = 4.0;
+        if (state.keys?.KeyW || state.keys?.ArrowUp) obj.position.z -= speed * dt;
+        if (state.keys?.KeyS || state.keys?.ArrowDown) obj.position.z += speed * dt;
+        if (state.keys?.KeyA || state.keys?.ArrowLeft) obj.position.x -= speed * dt;
+        if (state.keys?.KeyD || state.keys?.ArrowRight) obj.position.x += speed * dt;
+      };
+    } else if (key === 'patrol') {
+      let dir = 1;
+      const startX = obj.position.x;
+      obj.userData.scriptUpdate = (dt) => {
+        obj.position.x += dir * 2.5 * dt;
+        if (Math.abs(obj.position.x - startX) > 4.0) dir = -dir;
+      };
+    } else {
+      obj.userData.scriptUpdate = (dt) => { obj.rotation.y += 2.0 * dt; };
+    }
+
+    logConsole(`✅ [EasyScript] Successfully attached script behavior to entity!`, 'info');
+    alert(`✅ Successfully attached EasyScript behavior to ${state.selectedEntityId}!`);
+  });
 }
 
 function logConsole(msg, type = 'info') {
@@ -1180,6 +1310,13 @@ function animate(now) {
     if (statFps) statFps.innerText = frameCount;
     frameCount = 0; fpsTimer -= 1.0;
   }
+
+  // Execute attached EasyScript behaviors on 3D scene objects
+  threeObjectsMap.forEach(obj => {
+    if (obj.userData && typeof obj.userData.scriptUpdate === 'function') {
+      obj.userData.scriptUpdate(dt);
+    }
+  });
 
   // Branch between Playable Game, 2D Canvas, & 3D Studio Modes!
   if (state.demoType === 'game') {

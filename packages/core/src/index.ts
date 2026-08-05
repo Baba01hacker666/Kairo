@@ -11,3 +11,4 @@ export * from './SaveSystem.ts';
 export * from './Procedural.ts';
 export * from './Cutscene.ts';
 export * from './SceneManager.ts';
+export * from './Scripting.ts';

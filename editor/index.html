@@ -216,6 +216,7 @@
           <div class="tab-header">
             <div class="tab-btn-group">
               <div class="tab-btn active" data-tab="tab-animation">Stickman Studio</div>
+              <div class="tab-btn" data-tab="tab-easy-script" style="color: #6366f1; font-weight: 700;">⚡ Easy Scripting</div>
               <div class="tab-btn" data-tab="tab-console">Console Log</div>
               <div class="tab-btn" data-tab="tab-profiler">Profiler</div>
               <div class="tab-btn" data-tab="tab-shader">Shader Graph</div>
@@ -223,6 +224,36 @@
               <div class="tab-btn" data-tab="tab-physics">Physics</div>
             </div>
             <button id="btn-collapse-drawer" class="btn" style="height: 20px; font-size: 9px; margin-right: 6px;">▼ Hide Drawer</button>
+          </div>
+
+          <div class="tab-content" id="tab-easy-script" style="display: none;">
+            <div style="display: flex; gap: 16px; align-items: flex-start;">
+              <div style="flex: 1; max-width: 320px;">
+                <strong style="color: #6366f1;">⚡ EasyScript Builder</strong>
+                <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted);">Script Preset:</label>
+                    <select id="easy-script-preset" class="form-input" style="width: 100%; margin-top: 2px;">
+                      <option value="rotate">🔄 Continuous Rotator / Spinner</option>
+                      <option value="bob">🎈 Floating & Bobbing Collectible</option>
+                      <option value="player">🏃 Player WASD Controller</option>
+                      <option value="patrol">🎯 Patrol AI Bot (Ping-Pong)</option>
+                      <option value="particles">✨ Particle Emitter Burst</option>
+                      <option value="toast">💬 Interactive Toast & Sound</option>
+                    </select>
+                  </div>
+                  <button id="btn-apply-easy-script" class="btn btn-success" style="font-weight: 700; width: 100%;">⚡ Attach Script to Active Entity</button>
+                </div>
+              </div>
+
+              <div style="flex: 1.5; border-left: 1px solid var(--border-color); padding-left: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 11px; color: var(--accent-secondary);">Generated EasyScript Code:</strong>
+                  <button id="btn-copy-easy-code" class="btn" style="font-size: 9px; padding: 2px 8px;">📋 Copy Code</button>
+                </div>
+                <pre id="easy-script-code-preview" style="background: var(--bg-darker); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 10px; color: #a5b4fc; overflow-x: auto; margin-top: 6px; max-height: 85px; margin-bottom: 0;"></pre>
+              </div>
+            </div>
           </div>
 
           <div class="tab-content" id="tab-animation">
