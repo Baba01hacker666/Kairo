@@ -33,7 +33,8 @@ export default defineConfig({
         procgendungeon: 'examples/procgen-dungeon/index.html',
         cutscenedemo: 'examples/cutscene-demo/index.html',
         arrival: 'examples/the-arrival/index.html',
-        geometryshowcase: 'examples/geometry-showcase/index.html'
+        geometryshowcase: 'examples/geometry-showcase/index.html',
+        easyscriptgame: 'examples/easy-script-game/index.html'
       },
       output: {
         manualChunks(id) {

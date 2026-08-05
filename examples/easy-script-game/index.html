@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>⚡ Kairo EasyScript 3D Quest Game</title>
+  <style>
+    :root {
+      --bg-glass: rgba(15, 23, 42, 0.82);
+      --border-glass: rgba(255, 255, 255, 0.15);
+      --accent-primary: #6366f1;
+      --accent-success: #10b981;
+      --accent-warning: #f59e0b;
+      --accent-danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #07090e; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #f8fafc; }
+
+    #game-container { width: 100%; height: 100%; position: relative; }
+    canvas { width: 100%; height: 100%; display: block; }
+
+    /* Top HUD Glassmorphism Header Bar */
+    .hud-header {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .hud-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      pointer-events: auto;
+    }
+
+    .hud-badge {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .hud-title {
+      font-size: 16px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hud-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .btn {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      pointer-events: auto;
+    }
+
+    .btn:hover {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: #6366f1;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border: none;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+    }
+
+    /* Mobile Virtual Joystick & Action Buttons */
+    .mobile-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .joystick-zone {
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      position: relative;
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+      touch-action: none;
+    }
+
+    .joystick-knob {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #6366f1, #a5b4fc);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.6);
+      pointer-events: none;
+    }
+
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .action-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--bg-glass);
+      border: 2px solid var(--border-glass);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      touch-action: manipulation;
+    }
+
+    .action-btn-jump {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+    }
+
+    /* Modal Dialog */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 650px;
+      width: 90%;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      color: #a5b4fc;
+    }
+
+    pre {
+      background: #020617;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      color: #38bdf8;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div class="hud-header">
+      <div class="hud-card">
+        <span class="hud-badge">EASY SCRIPT</span>
+        <span class="hud-title">⚡ Gem Hunter 3D Quest</span>
+      </div>
+
+      <div class="hud-card">
+        <div class="hud-stats">
+          <span>🥑 <span id="hud-avocado-val">0 / 4</span></span>
+          <span>⭐ <span id="hud-score-val">0</span></span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-view-code" class="btn">💻 View EasyScript</button>
+        <button id="btn-restart" class="btn btn-primary">🔄 Restart</button>
+      </div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <div class="mobile-controls">
+      <div id="joystick-zone" class="joystick-zone">
+        <div id="joystick-knob" class="joystick-knob"></div>
+      </div>
+
+      <div class="action-group">
+        <button id="btn-touch-jump" class="action-btn action-btn-jump" title="Jump">⬆️</button>
+        <button id="btn-touch-interact" class="action-btn" title="Interact">✨</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="code-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div class="modal-title">⚡ EasyScript Game Code</div>
+        <button id="btn-close-modal" class="btn" style="padding: 4px 10px;">✕ Close</button>
+      </div>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px;">
+        This game is built entirely using Kairo Engine's high-level <strong>EasyScript</strong> API. Notice how motion, jumping, particle bursts, audio, and AI chasing require 0 boilerplate math!
+      </p>
+      <pre>
+// 1. 🏃 Player Controller Script
+const playerScript = EasyScript.createBehavior({
+  onUpdate(dt) {
+    const speed = 6.0;
+    if (app.keys.KeyW || app.keys.ArrowUp) this.moveForward(speed * dt);
+    if (app.keys.KeyS || app.keys.ArrowBackward) this.moveBackward(speed * dt);
+    if (app.keys.KeyA || app.keys.ArrowLeft) this.turnLeft(120 * dt);
+    if (app.keys.KeyD || app.keys.ArrowRight) this.turnRight(120 * dt);
+    if (app.keys.Space) this.jump(8.0);
+  }
+});
+
+// 2. 🎈 Collectible Star Item Script
+const starScript = EasyScript.createBehavior({
+  onStart() {
+    this.spin(2.5); // Spins continuously!
+    this.bob(0.35, 3.5); // Bobs up and down!
+    this.pulse(0.85, 1.2, 3.0); // Pulses size!
+  },
+  onInteract() {
+    this.sparkle(40); // Spawns golden sparkles!
+    this.playSound('coin');
+    this.say('Collected Golden Star! +100 PTS ⭐', 2000, 'success');
+    this.destroy();
+  }
+});
+
+// 3. 🎯 AI Patrol / Chaser Bot Script
+const chaserBotScript = EasyScript.createBehavior({
+  onUpdate(dt) {
+    if (this.isNear(player.position, 6.0)) {
+      this.chase(player.position, 3.2, dt); // Chases player!
+    } else {
+      this.patrol(5.0, 2.0); // Patrols back and forth!
+    }
+  },
+  onCollision(other) {
+    this.explode(50); // Spawns explosion particles!
+    this.playSound('explosion');
+    this.say('BOOM! Hit by Enemy Patrol Bot! 💥', 2000, 'warning');
+  }
+});
+      </pre>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
