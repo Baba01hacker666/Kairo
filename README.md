@@ -1,13 +1,14 @@
 # Kairo Engine 🚀
 
-**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 16 modular `@kairo/*` engine packages, 23 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
+**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, **HTML5 Video Editing Engine**, 16 modular `@kairo/*` engine packages, 23 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
 
 🌍 **Live Hub & Studio Editor:** [Play Kairo Engine Demos & Studio Here!](https://Baba01hacker666.github.io/Kairo/)
 
 ---
 
 ## ✨ Major Features
-- **Unified EasyScript Master API**: Single, beginner-friendly entry point unifying all 16 engine packages (Physics, Audio, Particles, AI Pathfinding, Animations, IK, Asset Streaming, Blender `.blend` parsing, Camera Controls, Screenshots/Video Recording, UI Modals, Multiplayer Network Sync).
+- **HTML5 Video Editing & Multitrack Sequencer Engine**: Built-in 6-track video timeline engine (`VideoTimeline`) with keyframed camera shots (`orbit`, `pan`, `dollyZoom`, `crane`), image/video overlays with CSS masking (`circle`, `rounded`, `hexagon`, `vignette`), lower-thirds, video transition cuts (`wipeLeft`, `wipeRight`, `circleWipe`, `glitch`), color grading presets (`cinematicWarm`, `cyberpunkNeon`, `noir`, `vintage`), audio track mixing, and 60 FPS WebM video rendering.
+- **Unified EasyScript Master API**: Single, beginner-friendly entry point unifying all 16 engine packages (Physics, Audio, Particles, AI Pathfinding, Animations, IK, Asset Streaming, Blender `.blend` parsing, Cinematic Camera Shots, Video Editing, UI Modals, Multiplayer Network Sync).
 - **Native Blender `.blend` File Loader**: Binary parser for Blender `.blend` models directly in WebGL and Kairo Studio.
 - **Sketchfab 3D Asset Streamer**: Stream high-quality 3D models live into engine scenes directly via Sketchfab URL or UID.
 - **Ahead-of-Time (AOT) Engine Compiler**: Pre-bakes O(1) spatial collision hashes, minifies EasyScript ASTs, quantizes geometry buffers, and compiles 1-click standalone HTML5 playable games.
@@ -35,8 +36,8 @@ Kairo is built from 16 decoupled, modular packages:
 9. **`@kairo/network`**: Client prediction, WebSocket transport client, state interpolator, RPC routing, and snapshot reconciliation.
 10. **`@kairo/assets`**: Preloader and caching manager for `.blend`, `.glb`/`.gltf`, Sketchfab models, textures, audio buffers, and binary files.
 11. **`@kairo/plugins`**: Plugin architecture with lifecycle hooks (`onLoad`, `onUpdate`, `onRender`, `onUnload`) and dependency tracking.
-12. **`@kairo/ui`**: High-performance HTML5 overlay UI framework, toast notifications, modals, achievements, and game HUD menus.
-13. **`@kairo/tools`**: Real-time CPU/GPU Profiler map, AOT Engine Compiler, MeshCompressor, and 60 FPS WebGL ScreenRecorder.
+12. **`@kairo/ui`**: High-performance HTML5 overlay UI framework, `CinematicOverlayManager`, toast notifications, modals, achievements, and game HUD menus.
+13. **`@kairo/tools`**: `VideoTimeline` Multi-Track Video Editor, Real-time CPU/GPU Profiler map, AOT Engine Compiler, MeshCompressor, and 60 FPS WebGL ScreenRecorder.
 14. **`@kairo/geometry`**: One-line procedural meshes — heightmap terrain with surface sampling, instanced grass, low-poly scenery (trees/rocks/clouds), and PBR primitives.
 15. **`packages/go-raylib`**: Native Golang WebAssembly Raylib API bindings and math library.
 16. **`packages/c-raylib`**: Native C/C++ Raylib bindings.
@@ -45,12 +46,12 @@ Kairo is built from 16 decoupled, modular packages:
 
 ## 🎛️ Kairo Studio & Web Editor (`/editor/`)
 
-Kairo features a complete in-browser game studio editor:
+Kairo features a complete in-browser game studio & video editor:
+- **🎬 HTML5 Video Timeline Editor**: Multi-track video editor with playhead scrubbing, camera shot keyframing, image overlay masking, title cards, color grading presets, and WebM video export.
 - **Scene Hierarchy**: Dynamic 3D entity & object tree inspection and creation.
-- **⚡ EasyScript Builder Panel**: Visual script generator with built-in presets (Spinners, Collectibles, WASD Player, AI Patrol, Particle Bursts) and 1-click script execution.
+- **⚡ EasyScript Builder Panel**: Visual script generator with built-in presets (Spinners, Collectibles, WASD Player, AI Patrol, Particle Bursts, Video Timeline) and 1-click script execution.
 - **Blender & Sketchfab Importer**: Import native `.blend` files or stream 3D models live from Sketchfab.
 - **Inspector Panel**: Real-time property editing for transforms, components, and materials.
-- **Dual Viewport**: Toggle between 3D WebGL Web Studio and 2D Canvas Engine viewports.
 - **AOT Standalone Exporter**: Compile 1-click standalone HTML5 playable games directly from the studio.
 
 ---
@@ -60,7 +61,7 @@ Kairo features a complete in-browser game studio editor:
 Access all 23 interactive demos from the main hub page (`index.html`):
 
 - ⚡ **Gem Hunter 3D Quest (EasyScript)**: 3D quest game built entirely using Kairo's unified `EasyScript` API with live in-game code view.
-- 🎛️ **Kairo Studio & Web Editor**: Dual 2D/3D visual level editor and game studio.
+- 🎛️ **Kairo Studio & Web Editor**: Dual 2D/3D visual level editor, video editor studio, and game studio.
 - 🦊 **Go + Three.js Fox Adventure**: Hybrid WASM physics backend with Three.js rendering & GLTF animations.
 - 🔥 **Go + Raylib System Tester**: WebAssembly test suite & drawing engine powered by Go & Raylib.
 - 🤸 **Modern Stickman 3D**: 2.5D physics platformer with custom character rigs and touch controls.
@@ -93,7 +94,7 @@ npm install
 # Start local development server
 npm run dev
 
-# Run unit & benchmark test suite (48 tests passing)
+# Run unit & benchmark test suite (52 tests passing)
 npm test
 
 # Build production bundle

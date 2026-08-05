@@ -7,8 +7,19 @@ export interface CameraShakeConfig {
   decay?: number;
 }
 
+export interface CinematicShotConfig {
+  type: 'cut' | 'pan' | 'orbit' | 'dolly' | 'crane' | 'track';
+  fromPos?: THREE.Vector3;
+  toPos?: THREE.Vector3;
+  targetPos?: THREE.Vector3;
+  duration?: number;
+  fov?: number;
+  speed?: number;
+  radius?: number;
+}
+
 export class CameraController {
-  public camera: THREE.Camera;
+  public camera: THREE.PerspectiveCamera | THREE.Camera;
   public target: THREE.Vector3 = new THREE.Vector3();
   
   public distance: number = 6.0;
@@ -26,6 +37,11 @@ export class CameraController {
   private shakeTimeRemaining: number = 0;
   private shakeIntensity: number = 0;
   private shakeDecay: number = 1.0;
+
+  // Cinematic Shot State
+  private activeShot: CinematicShotConfig | null = null;
+  private shotTimer: number = 0;
+  private trackingTarget: THREE.Object3D | THREE.Vector3 | null = null;
 
   constructor(camera: THREE.Camera) {
     this.camera = camera;
@@ -51,8 +67,109 @@ export class CameraController {
     this.shakeDecay = config.decay ?? 1.0;
   }
 
+  // --- CINEMATIC SHOTS & MOVEMENT SUITE ---
+
+  /** Hard cut shot immediately to 3D position & lookAt target */
+  public cutTo(pos: THREE.Vector3, lookAtTarget: THREE.Vector3): void {
+    this.activeShot = null;
+    this.camera.position.copy(pos);
+    this.currentPosition.copy(pos);
+    this.target.copy(lookAtTarget);
+    this.camera.lookAt(lookAtTarget);
+  }
+
+  /** Smooth 3D panning camera shot */
+  public panTo(fromPos: THREE.Vector3, toPos: THREE.Vector3, lookAtTarget: THREE.Vector3, durationSeconds: number = 3.0): void {
+    this.activeShot = {
+      type: 'pan',
+      fromPos: fromPos.clone(),
+      toPos: toPos.clone(),
+      targetPos: lookAtTarget.clone(),
+      duration: durationSeconds
+    };
+    this.shotTimer = 0;
+    this.camera.position.copy(fromPos);
+    this.currentPosition.copy(fromPos);
+    this.target.copy(lookAtTarget);
+  }
+
+  /** 360° Cinematic Orbital Camera Shot around target */
+  public orbitShot(centerTarget: THREE.Vector3, radius: number = 8.0, speed: number = 1.0, durationSeconds: number = 5.0): void {
+    this.activeShot = {
+      type: 'orbit',
+      targetPos: centerTarget.clone(),
+      radius,
+      speed,
+      duration: durationSeconds
+    };
+    this.shotTimer = 0;
+    this.target.copy(centerTarget);
+  }
+
+  /** Hitchcock Vertigo Dolly Zoom Effect */
+  public dollyZoom(targetFov: number = 30, durationSeconds: number = 2.5): void {
+    if ((this.camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+      const pCam = this.camera as THREE.PerspectiveCamera;
+      this.activeShot = {
+        type: 'dolly',
+        fov: targetFov,
+        fromPos: pCam.position.clone(),
+        duration: durationSeconds
+      };
+      this.shotTimer = 0;
+    }
+  }
+
+  /** Crane / Jib Camera Shot (Rising or Falling smoothly) */
+  public craneShot(startPos: THREE.Vector3, endPos: THREE.Vector3, durationSeconds: number = 4.0): void {
+    this.panTo(startPos, endPos, this.target, durationSeconds);
+  }
+
+  /** Cinematic Tracking Shot following target object */
+  public trackObject(target: THREE.Object3D | THREE.Vector3, lerpSpeed: number = 8.0): void {
+    this.trackingTarget = target;
+    this.lerpSpeed = lerpSpeed;
+  }
+
   public update(dt: number, sceneObstacles: THREE.Object3D[] = []): void {
-    // Compute ideal orbital camera position
+    // 1. Process Active Cinematic Shot Movement
+    if (this.activeShot) {
+      this.shotTimer += dt;
+      const progress = Math.min(1.0, this.shotTimer / (this.activeShot.duration || 1.0));
+      const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2; // Smooth S-curve easing
+
+      if (this.activeShot.type === 'pan' && this.activeShot.fromPos && this.activeShot.toPos) {
+        this.currentPosition.lerpVectors(this.activeShot.fromPos, this.activeShot.toPos, easeProgress);
+        if (this.activeShot.targetPos) this.target.copy(this.activeShot.targetPos);
+      } else if (this.activeShot.type === 'orbit' && this.activeShot.targetPos) {
+        const angle = this.shotTimer * (this.activeShot.speed || 1.0);
+        const rad = this.activeShot.radius || 8.0;
+        this.currentPosition.x = this.activeShot.targetPos.x + Math.sin(angle) * rad;
+        this.currentPosition.y = this.activeShot.targetPos.y + 3.0;
+        this.currentPosition.z = this.activeShot.targetPos.z + Math.cos(angle) * rad;
+        this.target.copy(this.activeShot.targetPos);
+      } else if (this.activeShot.type === 'dolly' && (this.camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+        const pCam = this.camera as THREE.PerspectiveCamera;
+        pCam.fov += ((this.activeShot.fov || 30) - pCam.fov) * Math.min(1.0, 4.0 * dt);
+        pCam.updateProjectionMatrix();
+      }
+
+      if (progress >= 1.0) {
+        this.activeShot = null;
+      }
+
+      this.camera.position.copy(this.currentPosition);
+      this.camera.lookAt(this.target);
+      return;
+    }
+
+    // 2. Process Tracking Target
+    if (this.trackingTarget) {
+      const pos = 'position' in this.trackingTarget ? (this.trackingTarget as THREE.Object3D).position : this.trackingTarget;
+      this.setTargetPosition(pos);
+    }
+
+    // 3. Compute ideal orbital camera position
     const idealX = this.target.x + this.distance * Math.sin(this.yaw) * Math.cos(this.pitch);
     const idealY = this.target.y + this.distance * Math.sin(this.pitch);
     const idealZ = this.target.z + this.distance * Math.cos(this.yaw) * Math.cos(this.pitch);

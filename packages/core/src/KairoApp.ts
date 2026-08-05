@@ -7,7 +7,7 @@ import { deriveCollider } from '@kairo/geometry';
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
-import { GlobalDebugInspector, DebugInspector, ScreenRecorder, DebugRenderer } from '@kairo/tools';
+import { GlobalDebugInspector, DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline } from '@kairo/tools';
 import { Serializer } from './Serializer.ts';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
@@ -59,7 +59,7 @@ export class KairoApp {
   public ui: UIManager = GlobalUI;
   public debug: DebugInspector = GlobalDebugInspector;
   public debugRenderer: DebugRenderer;
-
+  public videoTimeline: VideoTimeline;
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig = {}) {
@@ -67,6 +67,7 @@ export class KairoApp {
     this.save = new SaveSystem(config.gameId || 'default');
     this.scenes = new SceneManager(this);
     this.cutscene = new CutsceneManager(this);
+    this.videoTimeline = new VideoTimeline(this);
     this.debugRenderer = new DebugRenderer(this);
     this.engine = new Engine();
     
@@ -824,5 +825,103 @@ export class KairoApp {
       },
       memoryMapBreakdown: breakdown
     };
+  }
+
+  // --- CORE ENGINE VIDEO EDITING SUITE ---
+
+  /** Create custom multitrack video timeline with duration */
+  public createVideoTimeline(durationSeconds: number = 10.0): VideoTimeline {
+    this.videoTimeline = new VideoTimeline(this, durationSeconds);
+    return this.videoTimeline;
+  }
+
+  /** Add keyframed camera shot clip to video timeline */
+  public addCameraShot(time: number, duration: number, shotType: 'orbit' | 'pan' | 'dolly' | 'crane', config: any): void {
+    const track = this.videoTimeline.tracks.find(t => t.type === 'camera');
+    if (track) {
+      this.videoTimeline.addClip(track.id, {
+        name: `Camera ${shotType}`,
+        type: 'camera',
+        startTime: time,
+        duration,
+        props: { shotType, ...config }
+      });
+    }
+  }
+
+  /** Add image / graphic overlay clip with masking to video timeline */
+  public addVideoOverlay(time: number, duration: number, url: string, maskConfig?: any): void {
+    const track = this.videoTimeline.tracks.find(t => t.type === 'overlay');
+    if (track) {
+      this.videoTimeline.addClip(track.id, {
+        name: 'Image Overlay',
+        type: 'overlay',
+        startTime: time,
+        duration,
+        props: { url, ...maskConfig }
+      });
+    }
+  }
+
+  /** Add text / title subtitle clip to video timeline */
+  public addVideoText(time: number, duration: number, text: string): void {
+    const track = this.videoTimeline.tracks.find(t => t.type === 'text');
+    if (track) {
+      this.videoTimeline.addClip(track.id, {
+        name: 'Title Card',
+        type: 'text',
+        startTime: time,
+        duration,
+        props: { text }
+      });
+    }
+  }
+
+  /** Add video transition cut to video timeline */
+  public addVideoTransition(time: number, duration: number, transitionType: 'wipeLeft' | 'wipeRight' | 'fadeBlack' | 'circleWipe' | 'glitch'): void {
+    const track = this.videoTimeline.tracks.find(t => t.type === 'transition');
+    if (track) {
+      this.videoTimeline.addClip(track.id, {
+        name: `Transition ${transitionType}`,
+        type: 'transition',
+        startTime: time,
+        duration,
+        props: { transitionType }
+      });
+    }
+  }
+
+  /** Add color grading preset filter to video timeline */
+  public addVideoColorGrading(time: number, duration: number, preset: 'cinematicWarm' | 'cyberpunkNeon' | 'noir' | 'sepia' | 'vintage' | 'none'): void {
+    const track = this.videoTimeline.tracks.find(t => t.type === 'colorGrade');
+    if (track) {
+      this.videoTimeline.addClip(track.id, {
+        name: `Color Grade ${preset}`,
+        type: 'colorGrade',
+        startTime: time,
+        duration,
+        props: { preset }
+      });
+    }
+  }
+
+  /** Play active video timeline */
+  public playVideo(): void {
+    this.videoTimeline.play();
+  }
+
+  /** Pause active video timeline */
+  public pauseVideo(): void {
+    this.videoTimeline.pause();
+  }
+
+  /** Seek video timeline playhead */
+  public seekVideo(timeSeconds: number): void {
+    this.videoTimeline.seek(timeSeconds);
+  }
+
+  /** Export video timeline as WebM video file */
+  public async exportVideo(filename: string = 'kairo-video-edit.webm'): Promise<void> {
+    return this.videoTimeline.exportVideo(filename);
   }
 }

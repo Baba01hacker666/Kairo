@@ -3,6 +3,8 @@
  * Provides responsive, animated, themeable HUD overlays, menus, modals, toasts, and settings controls.
  */
 
+import { GlobalCinematicOverlay } from './CinematicOverlay.ts';
+
 export interface UITheme {
   primaryColor: string;
   accentColor: string;
@@ -387,6 +389,27 @@ export class UIManager {
       el.style.opacity = targetOpacity.toString();
       setTimeout(resolve, durationMs);
     });
+  }
+
+  // --- CINEMATIC OVERLAY & VIDEO EDITING HELPERS ---
+  public showImageOverlay(url: string, options?: any): string {
+    return GlobalCinematicOverlay.showImageOverlay(url, options);
+  }
+
+  public removeImageOverlay(id: string): void {
+    GlobalCinematicOverlay.removeImageOverlay(id);
+  }
+
+  public setLetterbox(enabled: boolean, barHeightPercent?: number): void {
+    GlobalCinematicOverlay.setLetterbox(enabled, barHeightPercent);
+  }
+
+  public async transitionCut(type?: any, durationMs?: number): Promise<void> {
+    await GlobalCinematicOverlay.transitionCut(type, durationMs);
+  }
+
+  public setColorGrading(preset: any): void {
+    GlobalCinematicOverlay.setColorGrading(preset);
   }
 }
 

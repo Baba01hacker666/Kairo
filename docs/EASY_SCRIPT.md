@@ -1,10 +1,37 @@
 # ⚡ Kairo EasyScript Master API Reference
 
-**EasyScript** is the unified, beginner-friendly entry point for every subsystem in Kairo Engine! Whether you are building 3D physics games, character animations, particle bursts, audio synthesized effects, Sketchfab & Blender model loading, camera controls, or multiplayer state sync, you can access every engine API with single, intuitive 1-line commands.
+**EasyScript** is the unified, beginner-friendly entry point for every subsystem in Kairo Engine! Whether you are building 3D physics games, character animations, HTML5 video editing timelines, image overlay masking, camera shots, particle bursts, audio synthesized effects, Sketchfab & Blender model loading, camera controls, or multiplayer state sync, you can access every engine API with single, intuitive 1-line commands.
+
+---
+
+## 🎬 Video Editing & Cinematic Keyframing API
+- `this.createVideoTimeline(durationSeconds)` - Creates a custom multi-track video timeline.
+- `this.addCameraShot(time, duration, type, config)` - Keyframes camera shots (`'orbit'`, `'pan'`, `'dolly'`, `'crane'`).
+- `this.addVideoOverlay(time, duration, url, maskConfig)` - Adds image/video overlay graphics with CSS masks (`'circle'`, `'rounded'`, `'hexagon'`, `'vignette'`).
+- `this.addVideoText(time, duration, text)` - Adds title cards, lower-thirds, and subtitles.
+- `this.addVideoTransition(time, duration, type)` - Adds video transition cuts (`'wipeLeft'`, `'wipeRight'`, `'circleWipe'`, `'glitch'`).
+- `this.addVideoColorGrading(time, duration, preset)` - Applies color grading filter presets (`'cinematicWarm'`, `'cyberpunkNeon'`, `'noir'`, `'vintage'`).
+- `this.playVideoTimeline()` - Plays the active video editing timeline.
+- `this.exportVideoFile(filename)` - Exports the video timeline to a 60 FPS WebM video file.
 
 ---
 
 ## 🛠️ Complete EasyScript Unified API Reference
+
+### 🎥 Cinematic Camera Shots & Movements
+- `this.cutToShot(pos, lookAtTarget)` - Hard cut immediately to 3D position & lookAt target.
+- `this.panCamera(fromPos, toPos, lookAtTarget, duration)` - Smooth 3D panning camera shot.
+- `this.orbitCamera(centerTarget, radius, speed, duration)` - 360° orbital camera shot around target.
+- `this.dollyZoom(targetFov, duration)` - Hitchcock Vertigo Dolly Zoom effect.
+- `this.craneShot(startPos, endPos, duration)` - Crane / Jib camera shot rising or falling.
+- `this.trackObject(targetObj)` - Camera tracking following an entity.
+
+### 🖼️ Video Overlay, Masking & Color Grading
+- `this.showOverlayImage(url, options)` - Displays floating image graphics with masking (`circle`, `rounded`, `hexagon`).
+- `this.removeOverlayImage(id)` - Removes overlay image.
+- `this.letterbox(enabled, barHeightPercent)` - Displays 21:9 cinematic black letterbox bars.
+- `this.transitionCut(type, durationMs)` - Video transition cut (`wipeLeft`, `circleWipe`, `glitch`).
+- `this.setColorGrading(preset)` - Color grading preset (`cinematicWarm`, `cyberpunkNeon`, `noir`, `vintage`).
 
 ### 🔄 Automatic Motions & Controls (No Math!)
 - `this.spin(speed?)` - Continuously rotates object around Y axis.
@@ -21,14 +48,6 @@
 - `this.jump(force?)` - Makes object jump up with gravity & dust landing.
 - `this.chase(targetPos, speed, dt)` - Smoothly chases towards a 3D target.
 - `this.navigateTo(targetPos, speed, dt)` - AI pathfinding navigation.
-
-### 🎥 Camera & UI Tools
-- `this.shakeCamera(intensity?, duration?)` - Triggers screen shake effect.
-- `this.setCameraDistance(distance)` - Sets camera distance behind character.
-- `this.say(message, duration?, type?)` - Displays a pop-up toast notification.
-- `this.showModal(title, content, buttons?)` - Displays an interactive UI dialogue modal.
-- `this.takeScreenshot()` - Takes a 60 FPS WebGL screenshot.
-- `this.recordVideo(seconds)` - Records a WebGL video clip.
 
 ### 🎨 Visual & Audio Effects
 - `this.changeColor('#ff0000')` - Changes material color.
@@ -48,33 +67,19 @@
 - `this.streamSketchfab(urlOrUid)` - Streams 3D model directly from Sketchfab API.
 - `this.loadBlenderModel(blendUrl)` - Loads native Blender `.blend` model file.
 
-### 🌐 Multiplayer Network Sync
-- `this.syncState(stateData)` - Broadcasts state replication over network.
-- `this.sendRPC(name, payload)` - Sends Remote Procedure Call (RPC).
-
 ---
 
-## 🎨 Example: Complete Game Entity in EasyScript
+## 🎨 Example: Video Editing Script in EasyScript
 
 ```js
 EasyScript.createBehavior({
   onStart() {
-    this.spin(2.0);
-    this.bob(0.3);
-    this.say('Welcome to Kairo Engine! 🚀', 2500, 'success');
-  },
-  onUpdate(dt) {
-    if (this.isNear(player.position, 5.0)) {
-      this.chase(player.position, 3.5, dt);
-    }
-  },
-  onInteract() {
-    this.shakeCamera(0.6, 0.4);
-    this.sparkle(50);
-    this.playSound('fanfare');
-    this.showModal('🎉 Level Complete!', 'You collected all gems!', [
-      { text: 'Play Again', primary: true, onClick: () => location.reload() }
-    ]);
+    this.createVideoTimeline(12.0);
+    this.addCameraShot(0.0, 4.0, 'orbit', { target: [0, 2, 0], radius: 8.0 });
+    this.addVideoOverlay(1.0, 5.0, 'https://threejs.org/files/favicon.ico', { mask: 'circle', x: '80%', y: '20%' });
+    this.addVideoColorGrading(0.0, 12.0, 'cyberpunkNeon');
+    this.addVideoText(0.0, 3.0, '🎬 Kairo Engine Cinematic Video');
+    this.playVideoTimeline();
   }
 });
 ```

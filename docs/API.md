@@ -9,99 +9,47 @@ This document provides a comprehensive reference for all core packages in the Ka
 ### `EasyScript` Master API & `ScriptBehavior`
 Unified, beginner-friendly single-line API unifying all Kairo Engine packages & subsystems into 1 interface:
 - `EasyScript.createBehavior({ onStart?, onUpdate?, onInteract?, onCollision? })`: Create custom behavior.
+- **Video Editing**: `createVideoTimeline(duration)`, `addCameraShot(time, duration, type, config)`, `addVideoOverlay(time, duration, url, maskConfig)`, `addVideoText(time, duration, text)`, `addVideoTransition(time, duration, type)`, `addVideoColorGrading(time, duration, preset)`, `playVideoTimeline()`, `exportVideoFile(filename)`.
+- **Cinematic Shots**: `cutToShot(pos, lookAtTarget)`, `panCamera(fromPos, toPos, lookAtTarget, duration)`, `orbitCamera(centerTarget, radius, speed, duration)`, `dollyZoom(targetFov, duration)`, `craneShot(startPos, endPos, duration)`, `trackObject(targetObj)`.
+- **Overlay & Masking**: `showOverlayImage(url, options)`, `removeOverlayImage(id)`, `letterbox(enabled, barHeightPercent)`, `transitionCut(type, durationMs)`, `setColorGrading(preset)`.
 - **Motions**: `spin(speed?)`, `bob(amount?, speed?)`, `patrol(dist?, speed?)`, `pulse(min?, max?, speed?)`, `jump(force?)`, `stop()`.
 - **Steering & Movement**: `move(dx, dy, dz)`, `moveForward(dist)`, `moveBackward(dist)`, `moveLeft(dist)`, `moveRight(dist)`, `turnLeft(deg)`, `turnRight(deg)`, `chase(targetPos, speed, dt)`, `navigateTo(targetPos, speed, dt)`.
-- **Camera & UI**: `shakeCamera(intensity?, duration?)`, `setCameraDistance(dist)`, `say(message, duration?, type?)`, `showModal(title, content, buttons?)`, `takeScreenshot()`, `recordVideo(seconds)`.
-- **SFX & Particles**: `playSound('coin' | 'jump' | 'explosion' | 'hit' | 'teleport' | 'key' | 'fanfare' | 'push' | 'hint' | 'switch')`, `sparkle(count?)`, `explode(count?)`, `dustBurst(count?)`, `teleportEffect()`.
+- **SFX & Particles**: `playSound(type)`, `sparkle(count?)`, `explode(count?)`, `dustBurst(count?)`, `teleportEffect()`.
 - **Animations & IK**: `playAnimation(stateName, fadeDuration?)`, `setIKHeight(height)`.
 - **Assets**: `streamSketchfab(urlOrUid)`, `loadBlenderModel(blendUrl)`.
 - **Multiplayer**: `syncState(stateData)`, `sendRPC(rpcName, payload)`.
 
-### `Vector3`
-- `new Vector3(x?, y?, z?)`: Create 3D vector.
-- `add(v: Vector3): this`: Component-wise addition.
-- `sub(v: Vector3): this`: Component-wise subtraction.
-- `scale(s: number): this`: Scalar multiplication.
-- `length(): number`: Compute length.
-- `normalize(): this`: Normalize vector.
-- `dot(v: Vector3): number`: Dot product.
-- `cross(v: Vector3): Vector3`: Cross product.
-
-### `Engine`
-- `start()`: Start main game loop.
-- `pause()`: Pause update and render updates.
-- `resume()`: Resume execution.
-- `stop()`: Terminate the game loop and clean up animation frames.
-
 ### `KairoApp`
 - `new KairoApp(config?: KairoAppConfig)`: Create high-level engine wrapper.
-- `app.scene`, `app.camera`, `app.renderer`: Exposed Three.js scene, camera and renderer.
-- `app.physics`: Shared `PhysicsWorld` instance.
-- `app.ui`: `UIManager` overlay system.
-- `createBox(opts)`: Spawn a box mesh (optionally a physics rigid body).
-- `attachPhysics(mesh, opts?)`: Make any THREE mesh solid.
-- `onUpdate(cb)`: Register per-frame update callback receiving `dt`.
-- `captureScreenshot()`, `startRecording(fps?)`, `stopRecording(filename?)`: Output tools.
+- `app.videoTimeline`: `VideoTimeline` multitrack video editor engine instance.
+- `createVideoTimeline(duration)`: Instantiate new video editing timeline.
+- `addCameraShot(time, duration, shotType, config)`: Add keyframed camera shot clip.
+- `addVideoOverlay(time, duration, url, maskConfig)`: Add image/video overlay clip with masking.
+- `addVideoText(time, duration, text)`: Add title card / subtitle clip.
+- `addVideoTransition(time, duration, transitionType)`: Add transition cut clip.
+- `addVideoColorGrading(time, duration, preset)`: Add color grading preset filter clip.
+- `playVideo()` / `pauseVideo()` / `seekVideo(time)` / `exportVideo(filename)`: Control video timeline playback and export.
 
 ---
 
-## 2. `@kairo/assets`
+## 2. `@kairo/tools`
 
-### `AssetManager`
-- `loadModel(url, autoCompress?, targetHeight?)`: Load GLTF, GLB, OBJ, FBX, STL, PLY, DAE, VOX, or `.blend` models.
-- `streamSketchfabModel(urlOrUid, onProgress?, targetHeight?)`: Stream 3D models directly from Sketchfab API.
-- `autoFitModel(model, targetHeight)`: Auto-scale and align bottom pivot.
-- `generateAutoCollider(model)`: Auto-calculate capsule/box colliders for 3D meshes.
-
-### `BlendLoader`
-- `new BlendLoader()`: Native binary Blender `.blend` file parser.
-- `parse(arrayBuffer: ArrayBuffer): THREE.Group`: Parse binary `.blend` file headers and BHead blocks into WebGL Three.js object graph.
-
----
-
-## 3. `@kairo/tools`
-
-### `EngineCompiler`
-- `compileGame(levels, options)`: Ahead-of-Time compiler; pre-bakes O(1) spatial collision hashes & binary payload checksums.
-- `compileEasyScript(scriptCode)`: AST minification and static helper analysis.
-- `compileStandaloneGameHtml(title, levels, options)`: Compiles 1-click standalone HTML5 playable game bundles.
-- `quantizeGeometryBuffers(positions)`: Quantizes 32-bit Float vertex positions into 16-bit `Uint16Array` buffers.
+### `VideoTimeline`
+- `new VideoTimeline(app?, totalDuration?)`: Multi-track HTML5 video editing timeline engine.
+- `addTrack(name, type)`: Add video track (`'camera'`, `'overlay'`, `'text'`, `'transition'`, `'audio'`, `'colorGrade'`).
+- `addClip(trackId, clipData)`: Add clip to track with keyframes and parameters.
+- `seek(time)`: Scrub playhead to timestamp.
+- `play()` / `pause()`: Play or pause timeline.
+- `evaluateAt(time)`: Evaluate active clips, camera shots, image overlays, transitions & color grading.
+- `exportVideo(filename)`: Record and export full WebM video file.
+- `toJSON()` / `fromJSON(data)`: Serialize / deserialize video timeline project.
 
 ---
 
-## 4. `@kairo/ecs`
+## 3. `@kairo/ui`
 
-### `World`
-- `createEntity(name?: string): EntityId`: Instantiate entity ID.
-- `addComponent<T>(entity: EntityId, component: T): T`: Attach component.
-- `getComponent<T>(entity: EntityId, cType: ComponentType<T>): T`: Retrieve component.
-- `query(desc: Query): EntityId[]`: Query entities matching component list.
-- `addSystem(system: System): this`: Register update system.
-
----
-
-## 5. `@kairo/physics`
-
-### `PhysicsWorld`
-- `registerBody(body: RigidBody, collider: Collider, position: Vector3)`: Register rigid body.
-- `step(dt: number)`: Advance physics step (Impulse & Gravity).
-- `raycast(ray: Ray, maxDistance?: number): RaycastHit | null`: Perform ray collision test.
-
----
-
-## 6. `@kairo/audio`
-
-### `AudioManager`
-- `playSynthesizedSound(type)`: Synthesize retro SFX on Web Audio context (`'coin'`, `'jump'`, `'explosion'`, `'hit'`, `'teleport'`, `'key'`, `'fanfare'`, `'push'`, `'hint'`, `'switch'`).
-- `setMasterVolume(vol: number)`: Tweak master gain.
-
----
-
-## 7. `@kairo/ui`
-
-### `UIManager`
-- `showToast(message, durationMs?, type?)`: Bottom pop-in toast.
-- `showSubtitle(text, durationMs?)`: Subtitle dialogue lines.
-- `createModal(title, contentHtml, buttons)`: Centered modal card.
-- `createGameMenu(title, options)`: Full-screen menu overlay.
-- `flash(color?, durationMs?)` / `fade(opacity, color?, durationMs?)`: Screen transition effects.
+### `CinematicOverlayManager`
+- `showImageOverlay(url, options)`: Floating image graphic overlays with CSS masks (`circle`, `rounded`, `hexagon`, `vignette`).
+- `setLetterbox(enabled, barHeightPercent)`: 21:9 Widescreen letterbox black bars.
+- `transitionCut(type, durationMs)`: Video transition cuts (`wipeLeft`, `wipeRight`, `circleWipe`, `glitch`).
+- `setColorGrading(preset)`: Color grading filter presets (`cinematicWarm`, `cyberpunkNeon`, `noir`, `vintage`).

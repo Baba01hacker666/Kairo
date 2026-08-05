@@ -220,6 +220,7 @@
             <div class="tab-btn-group">
               <div class="tab-btn active" data-tab="tab-animation">Stickman Studio</div>
               <div class="tab-btn" data-tab="tab-easy-script" style="color: #6366f1; font-weight: 700;">⚡ Easy Scripting</div>
+              <div class="tab-btn" data-tab="tab-video-editor" style="color: #ec4899; font-weight: 700;">🎬 Video Editor</div>
               <div class="tab-btn" data-tab="tab-console">Console Log</div>
               <div class="tab-btn" data-tab="tab-profiler">Profiler</div>
               <div class="tab-btn" data-tab="tab-shader">Shader Graph</div>
@@ -255,6 +256,53 @@
                   <button id="btn-copy-easy-code" class="btn" style="font-size: 9px; padding: 2px 8px;">📋 Copy Code</button>
                 </div>
                 <pre id="easy-script-code-preview" style="background: var(--bg-darker); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 10px; color: #a5b4fc; overflow-x: auto; margin-top: 6px; max-height: 85px; margin-bottom: 0;"></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-Track HTML5 Video Timeline Editor Tab -->
+          <div class="tab-content" id="tab-video-editor" style="display: none;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Timeline Transport Bar -->
+              <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-darker); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <button id="video-btn-play" class="btn btn-success" style="font-size: 11px;">▶ Play Cut</button>
+                  <button id="video-btn-pause" class="btn" style="font-size: 11px;">⏸ Pause</button>
+                  <button id="video-btn-rewind" class="btn" style="font-size: 11px;">⏮ Seek 0s</button>
+                  <span style="font-family: var(--font-mono); font-size: 12px; color: #f472b6; font-weight: 700; margin-left: 8px;" id="video-timecode">00:00:00.000</span>
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button id="video-btn-add-shot" class="btn" style="font-size: 10px; background: rgba(236, 72, 153, 0.2); color: #f472b6;">🎬 + Camera Shot</button>
+                  <button id="video-btn-add-overlay" class="btn" style="font-size: 10px; background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">🖼️ + Image Overlay</button>
+                  <button id="video-btn-letterbox" class="btn" style="font-size: 10px; background: rgba(16, 185, 129, 0.2); color: #34d399;">🎥 21:9 Letterbox</button>
+                  <button id="video-btn-export" class="btn btn-primary" style="font-size: 10px; font-weight: 800;">📹 Export WebM Video</button>
+                </div>
+              </div>
+
+              <!-- Multi-Track Track List & Scrubbing Bar -->
+              <div style="display: flex; flex-direction: column; gap: 4px; background: var(--bg-dark); padding: 6px; border-radius: 6px; max-height: 100px; overflow-y: auto;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 10px; padding: 3px 6px; background: rgba(236, 72, 153, 0.1); border-radius: 4px;">
+                  <span style="width: 130px; font-weight: 700; color: #f472b6;">🎥 1. Camera Shots</span>
+                  <div style="flex: 1; height: 16px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative;" id="track-vis-camera">
+                    <div style="position: absolute; left: 0%; width: 35%; height: 100%; background: rgba(236, 72, 153, 0.4); border-radius: 3px; border: 1px solid #f472b6; font-size: 8px; color: white; display: flex; align-items: center; padding-left: 4px;">Orbit Shot 0s-3.5s</div>
+                    <div style="position: absolute; left: 40%; width: 50%; height: 100%; background: rgba(99, 102, 241, 0.4); border-radius: 3px; border: 1px solid #818cf8; font-size: 8px; color: white; display: flex; align-items: center; padding-left: 4px;">Pan Track 4s-9s</div>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 10px; padding: 3px 6px; background: rgba(99, 102, 241, 0.1); border-radius: 4px;">
+                  <span style="width: 130px; font-weight: 700; color: #818cf8;">🖼️ 2. Image Overlays</span>
+                  <div style="flex: 1; height: 16px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative;" id="track-vis-overlay">
+                    <div style="position: absolute; left: 10%; width: 40%; height: 100%; background: rgba(52, 211, 153, 0.4); border-radius: 3px; border: 1px solid #34d399; font-size: 8px; color: white; display: flex; align-items: center; padding-left: 4px;">Circle Mask Logo 1s-5s</div>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 10px; padding: 3px 6px; background: rgba(251, 191, 36, 0.1); border-radius: 4px;">
+                  <span style="width: 130px; font-weight: 700; color: #fbbf24;">🎨 3. Color Grading & FX</span>
+                  <div style="flex: 1; height: 16px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative;" id="track-vis-fx">
+                    <div style="position: absolute; left: 0%; width: 100%; height: 100%; background: rgba(251, 191, 36, 0.3); border-radius: 3px; border: 1px solid #fbbf24; font-size: 8px; color: white; display: flex; align-items: center; padding-left: 4px;">Cyberpunk Neon Grade</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

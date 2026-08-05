@@ -257,7 +257,167 @@ export class ScriptBehavior {
     return this.getDistanceTo(other) <= maxDistance;
   }
 
-  // --- CAMERA, UI & TOOLS ENGINE APIS ---
+  // --- CINEMATIC SHOTS & CAMERA MOVEMENT APIS ---
+
+  /** Hard cut shot immediately to 3D position & lookAt target */
+  public cutToShot(pos: THREE.Vector3 | [number, number, number], lookAtTarget: THREE.Vector3 | [number, number, number]): this {
+    if (this.app?.cameraController) {
+      const p = Array.isArray(pos) ? new THREE.Vector3(...pos) : pos;
+      const l = Array.isArray(lookAtTarget) ? new THREE.Vector3(...lookAtTarget) : lookAtTarget;
+      this.app.cameraController.cutTo(p, l);
+    }
+    return this;
+  }
+
+  /** Smooth 3D panning camera shot */
+  public panCamera(fromPos: THREE.Vector3 | [number, number, number], toPos: THREE.Vector3 | [number, number, number], lookAtTarget: THREE.Vector3 | [number, number, number], durationSeconds: number = 3.0): this {
+    if (this.app?.cameraController) {
+      const f = Array.isArray(fromPos) ? new THREE.Vector3(...fromPos) : fromPos;
+      const t = Array.isArray(toPos) ? new THREE.Vector3(...toPos) : toPos;
+      const l = Array.isArray(lookAtTarget) ? new THREE.Vector3(...lookAtTarget) : lookAtTarget;
+      this.app.cameraController.panTo(f, t, l, durationSeconds);
+    }
+    return this;
+  }
+
+  /** 360° Orbital Camera Shot around target */
+  public orbitCamera(centerTarget: THREE.Vector3 | [number, number, number], radius: number = 8.0, speed: number = 1.0, durationSeconds: number = 5.0): this {
+    if (this.app?.cameraController) {
+      const c = Array.isArray(centerTarget) ? new THREE.Vector3(...centerTarget) : centerTarget;
+      this.app.cameraController.orbitShot(c, radius, speed, durationSeconds);
+    }
+    return this;
+  }
+
+  /** Hitchcock Vertigo Dolly Zoom Effect */
+  public dollyZoom(targetFov: number = 30, durationSeconds: number = 2.5): this {
+    if (this.app?.cameraController) {
+      this.app.cameraController.dollyZoom(targetFov, durationSeconds);
+    }
+    return this;
+  }
+
+  /** Crane / Jib Camera Shot (Rising or Falling smoothly) */
+  public craneShot(startPos: THREE.Vector3 | [number, number, number], endPos: THREE.Vector3 | [number, number, number], durationSeconds: number = 4.0): this {
+    if (this.app?.cameraController) {
+      const s = Array.isArray(startPos) ? new THREE.Vector3(...startPos) : startPos;
+      const e = Array.isArray(endPos) ? new THREE.Vector3(...endPos) : endPos;
+      this.app.cameraController.craneShot(s, e, durationSeconds);
+    }
+    return this;
+  }
+
+  /** Track / Follow target object smoothly with camera */
+  public trackObject(target: THREE.Object3D | THREE.Vector3): this {
+    if (this.app?.cameraController) {
+      this.app.cameraController.trackObject(target);
+    }
+    return this;
+  }
+
+  // --- VIDEO EDITING, MULTI-TRACK KEYFRAMING & OVERLAY APIS ---
+
+  /** Create custom multitrack video timeline with total duration */
+  public createVideoTimeline(durationSeconds: number = 10.0): any {
+    if (this.app?.createVideoTimeline) {
+      return this.app.createVideoTimeline(durationSeconds);
+    }
+    return null;
+  }
+
+  /** Add keyframed camera shot clip to video timeline */
+  public addCameraShot(time: number, duration: number, shotType: 'orbit' | 'pan' | 'dolly' | 'crane', config: any): this {
+    if (this.app?.addCameraShot) {
+      this.app.addCameraShot(time, duration, shotType, config);
+    }
+    return this;
+  }
+
+  /** Add image / graphic overlay clip with masking to video timeline */
+  public addVideoOverlay(time: number, duration: number, url: string, maskConfig?: any): this {
+    if (this.app?.addVideoOverlay) {
+      this.app.addVideoOverlay(time, duration, url, maskConfig);
+    }
+    return this;
+  }
+
+  /** Add title card / text subtitle clip to video timeline */
+  public addVideoText(time: number, duration: number, text: string): this {
+    if (this.app?.addVideoText) {
+      this.app.addVideoText(time, duration, text);
+    }
+    return this;
+  }
+
+  /** Add video transition cut to video timeline */
+  public addVideoTransition(time: number, duration: number, type: 'wipeLeft' | 'wipeRight' | 'fadeBlack' | 'circleWipe' | 'glitch'): this {
+    if (this.app?.addVideoTransition) {
+      this.app.addVideoTransition(time, duration, type);
+    }
+    return this;
+  }
+
+  /** Add color grading preset filter to video timeline */
+  public addVideoColorGrading(time: number, duration: number, preset: 'cinematicWarm' | 'cyberpunkNeon' | 'noir' | 'sepia' | 'vintage' | 'none'): this {
+    if (this.app?.addVideoColorGrading) {
+      this.app.addVideoColorGrading(time, duration, preset);
+    }
+    return this;
+  }
+
+  /** Play video editing timeline */
+  public playVideoTimeline(): this {
+    if (this.app?.playVideo) {
+      this.app.playVideo();
+    }
+    return this;
+  }
+
+  /** Export video timeline to 60 FPS WebM video file */
+  public async exportVideoFile(filename: string = 'kairo-video-edit.webm'): Promise<void> {
+    if (this.app?.exportVideo) {
+      await this.app.exportVideo(filename);
+    }
+  }
+
+  /** Display image graphics, logos, or texture cutouts over 3D viewport with masking */
+  public showOverlayImage(url: string, options?: any): string {
+    if (this.app?.ui?.showImageOverlay) {
+      return this.app.ui.showImageOverlay(url, options);
+    }
+    return '';
+  }
+
+  /** Remove image overlay graphic */
+  public removeOverlayImage(id: string): this {
+    if (this.app?.ui?.removeImageOverlay) {
+      this.app.ui.removeImageOverlay(id);
+    }
+    return this;
+  }
+
+  /** Toggle 21:9 Widescreen Letterbox Black Bars */
+  public letterbox(enabled: boolean = true, barHeightPercent: number = 10): this {
+    if (this.app?.ui?.setLetterbox) {
+      this.app.ui.setLetterbox(enabled, barHeightPercent);
+    }
+    return this;
+  }
+
+  /** Video Editing Screen Transition Cut ('wipeLeft' | 'wipeRight' | 'fadeBlack' | 'circleWipe' | 'glitch') */
+  public async transitionCut(type: 'wipeLeft' | 'wipeRight' | 'fadeBlack' | 'circleWipe' | 'glitch' = 'fadeBlack', durationMs: number = 500): Promise<void> {
+    if (this.app?.ui?.transitionCut) {
+      await this.app.ui.transitionCut(type, durationMs);
+    }
+  }
+
+  /** Apply Color Grading Preset ('cinematicWarm' | 'cyberpunkNeon' | 'noir' | 'sepia' | 'vintage' | 'none') */
+  public setColorGrading(preset: 'cinematicWarm' | 'cyberpunkNeon' | 'noir' | 'sepia' | 'vintage' | 'none'): this {
+    if (this.app?.ui?.setColorGrading) {
+      this.app.ui.setColorGrading(preset);
+    }
+    return this;
+  }
 
   /** Trigger camera shake effect */
   public shakeCamera(intensity: number = 0.4, duration: number = 0.3): this {
