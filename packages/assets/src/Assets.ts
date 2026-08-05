@@ -10,8 +10,9 @@ import { VOXLoader } from 'three/examples/jsm/loaders/VOXLoader.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { FontLoader, Font } from 'three/examples/jsm/loaders/FontLoader.js';
 import { MeshCompressor, CompressionStats } from './MeshCompressor.ts';
+import { BlendLoader } from './BlendLoader.ts';
 
-export type AssetModelType = 'gltf' | 'glb' | 'obj' | 'fbx' | 'stl' | 'ply' | 'dae' | 'vox' | 'drc';
+export type AssetModelType = 'gltf' | 'glb' | 'obj' | 'fbx' | 'stl' | 'ply' | 'dae' | 'vox' | 'drc' | 'blend';
 
 export interface ModelBoundsInfo {
   width: number;
@@ -34,6 +35,7 @@ export class AssetManager {
   private plyLoader = new PLYLoader();
   private colladaLoader = new ColladaLoader();
   private voxLoader = new VOXLoader();
+  private blendLoader = new BlendLoader();
   private svgLoader = new SVGLoader();
   private fontLoader = new FontLoader();
   private textureLoader = new THREE.TextureLoader();
@@ -254,6 +256,13 @@ export class AssetManager {
             const mesh = (list[i] as any)?.mesh;
             if (mesh) group.add(mesh);
           }
+          this.cache.set(url, group);
+          resolve(group);
+        }, undefined, reject);
+
+      } else if (ext === 'blend') {
+        this.blendLoader.load(url, (group) => {
+          this.processLoadedModel(group, autoCompress);
           this.cache.set(url, group);
           resolve(group);
         }, undefined, reject);

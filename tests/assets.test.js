@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import * as THREE from 'three';
 import { AssetManager } from '../packages/assets/src/Assets.ts';
 import { MeshCompressor } from '../packages/assets/src/MeshCompressor.ts';
+import { BlendLoader } from '../packages/assets/src/BlendLoader.ts';
 
 test('AssetManager instance API methods', () => {
   const manager = new AssetManager();
@@ -44,4 +45,25 @@ test('MeshCompressor vertex optimization & quantization', () => {
 
   const quantizedGeo = MeshCompressor.quantizeGeometry(geo);
   assert.ok(quantizedGeo.getAttribute('quantizedPosition'));
+});
+
+test('BlendLoader binary .blend parsing', () => {
+  const loader = new BlendLoader();
+  // Construct mock 12-byte .blend file header ("BLENDER_v300") + ENDB block
+  const buffer = new ArrayBuffer(36);
+  const bytes = new Uint8Array(buffer);
+  const headerStr = 'BLENDER_v300';
+  for (let i = 0; i < headerStr.length; i++) {
+    bytes[i] = headerStr.charCodeAt(i);
+  }
+  // Block code 'ENDB'
+  bytes[12] = 'E'.charCodeAt(0);
+  bytes[13] = 'N'.charCodeAt(0);
+  bytes[14] = 'D'.charCodeAt(0);
+  bytes[15] = 'B'.charCodeAt(0);
+
+  const parsedGroup = loader.parse(buffer);
+  assert.ok(parsedGroup instanceof THREE.Group);
+  assert.strictEqual(parsedGroup.name, 'BlenderScene');
+  assert.ok(parsedGroup.children.length > 0);
 });

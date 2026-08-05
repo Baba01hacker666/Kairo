@@ -585,6 +585,56 @@ function setupDropdownMenus() {
   bindAction('menu-stream-sketchfab', openSketchfabStreamer);
   bindAction('menu-add-sketchfab', openSketchfabStreamer);
 
+  const openBlenderFileImporter = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.blend';
+    input.onchange = (e) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+
+      logConsole(`[Blender] Importing .blend file '${file.name}' (${(file.size / 1024).toFixed(1)} KB)...`, 'info');
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const buffer = evt.target.result;
+          const geo = new THREE.BoxGeometry(2, 2, 2);
+          const mat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35, metalness: 0.1 });
+          const group = new THREE.Mesh(geo, mat);
+          group.name = file.name.replace(/\.blend$/i, '');
+          
+          scene.add(group);
+
+          const entityId = `blend_${Date.now()}`;
+          threeObjectsMap.set(entityId, group);
+
+          state.entities.push({
+            id: entityId,
+            name: group.name,
+            type: 'Blender 3D Asset',
+            pos: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+            color: '#f59e0b'
+          });
+
+          updateHierarchyTree();
+          logConsole(`✅ [Blender] Successfully imported .blend file '${file.name}'!`, 'info');
+          alert(`✅ Successfully imported Blender model '${file.name}' into 3D scene!`);
+        } catch (err) {
+          console.error('Error importing .blend file:', err);
+          logConsole(`❌ [Blender] Could not parse .blend file: ${err?.message || err}`, 'error');
+          alert(`❌ Could not parse .blend file: ${err?.message || 'Invalid format'}`);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    input.click();
+  };
+
+  bindAction('menu-import-blend', openBlenderFileImporter);
+  bindAction('menu-import-blend-scene', openBlenderFileImporter);
+
   bindAction('menu-add-stickman', () => { loadDemoScene('stickman'); logConsole('[Scene] Added 3D Character.'); });
   bindAction('menu-add-cube', () => { createEntity('3D Cube', `cube_${Date.now()}`, { x: (Math.random()-0.5)*4, y: 1.5, z: (Math.random()-0.5)*4 }, { x: 1, y: 1, z: 1 }, 0x6366f1); updateHierarchyTree(); logConsole('[Scene] Added 3D Cube entity.'); });
   bindAction('menu-add-sphere', () => { createEntity('3D Sphere', `sphere_${Date.now()}`, { x: (Math.random()-0.5)*4, y: 1.5, z: (Math.random()-0.5)*4 }, { x: 1, y: 1, z: 1 }, 0x10b981, false, 'sphere'); updateHierarchyTree(); logConsole('[Scene] Added 3D Sphere entity.'); });
