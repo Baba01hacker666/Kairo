@@ -1,21 +1,21 @@
 # Kairo Engine 🚀
 
-**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 16 modular `@kairo/*` engine packages, 22 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
+**Kairo Engine** is a modern, modular, high-performance 2D/3D TypeScript & WebAssembly Game Engine monorepo equipped with an integrated **Web Studio Editor**, 16 modular `@kairo/*` engine packages, 23 playable interactive demos, WebGL/WebGPU render pipelines, and decoupled Golang WebAssembly physics backends.
 
 🌍 **Live Hub & Studio Editor:** [Play Kairo Engine Demos & Studio Here!](https://Baba01hacker666.github.io/Kairo/)
 
 ---
 
 ## ✨ Major Features
+- **Unified EasyScript Master API**: Single, beginner-friendly entry point unifying all 16 engine packages (Physics, Audio, Particles, AI Pathfinding, Animations, IK, Asset Streaming, Blender `.blend` parsing, Camera Controls, Screenshots/Video Recording, UI Modals, Multiplayer Network Sync).
+- **Native Blender `.blend` File Loader**: Binary parser for Blender `.blend` models directly in WebGL and Kairo Studio.
+- **Sketchfab 3D Asset Streamer**: Stream high-quality 3D models live into engine scenes directly via Sketchfab URL or UID.
+- **Ahead-of-Time (AOT) Engine Compiler**: Pre-bakes O(1) spatial collision hashes, minifies EasyScript ASTs, quantizes geometry buffers, and compiles 1-click standalone HTML5 playable games.
 - **Dual-Engine Architecture**: Native simultaneous WebGL/WebGPU support via Three.js and Babylon.js running on unified layered canvases.
-- **Cross-Engine Physics Bridge**: A decoupled Cannon.js physics world that seamlessly bridges collisions between Three.js meshes and Babylon.js meshes.
+- **Cross-Engine Physics Bridge**: Decoupled Cannon.js & Havok WASM physics world bridging collisions seamlessly.
 - **Cinematic Cutscene Sequencer**: Async/Await powered linear cutscene engine with camera shakes, UI dialogues, flash/fade screen effects, and safe task aborts.
-- **Scene Manager**: Secure memory-leak proof level loader that automatically dismantles Physics, GUI, and recursive WebGL/WebGPU scene graphs.
-- **Procedural Generation**: Includes native SimplexNoise, PRNG, and Cellular Automata mapping.
-- **Reusable Procedural Geometry (`@kairo/geometry`)**: One-line heightmap terrain (with surface sampling), instanced grass fields, low-poly trees/rocks/clouds, and PBR primitives — deterministic per seed, no asset URLs.
-- **Advanced Debug Renderer**: Real-time rendering of AABB bounding boxes, XZ coordinate grids, wireframe hybrids, and pivot indicators.
+- **Procedural Geometry (`@kairo/geometry`)**: One-line heightmap terrain with surface sampling, instanced grass fields, low-poly scenery (trees/rocks/clouds), and PBR primitives — deterministic per seed.
 - **AAA Post-Processing Pipeline**: Native integrated `EffectComposer` pipeline supporting high-fidelity Unreal Bloom, Film Grain, CRT scanlines, and glow outlines.
-- **Dynamic 3D Text**: Native Canvas2D to 3D Plane texture mapping with full CSS font/emoji support.
 - **ECS (Entity Component System)**: Includes deep `SaveSystem` world-state serialization and recursive cloning.
 
 ---
@@ -24,20 +24,20 @@
 
 Kairo is built from 16 decoupled, modular packages:
 
-1. **`@kairo/core`**: Engine loop (`Engine`), High-level app wrapper (`KairoApp`), EventSystem, Vector/Quaternion math, ObjectPool, SaveSystem, and Serializer.
+1. **`@kairo/core`**: Engine loop (`Engine`), High-level app wrapper (`KairoApp`), EventSystem, Vector/Quaternion math, ObjectPool, SaveSystem, Serializer, and `EasyScript` master scripting suite.
 2. **`@kairo/ecs`**: Fast Component-Entity-System pipeline with Query indexing, World state management, and archetypes.
 3. **`@kairo/renderer`**: WebGL 2.0 & WebGPU render pipeline, PBR materials, dynamic frustum culling, soft shadows, and particle emitters.
 4. **`@kairo/physics`**: 3D & 2D physics simulation world with RigidBodies, Colliders, Raycasting, and Cannon.js / Havok integrations.
-5. **`@kairo/animation`**: Keyframe animation clips, 1D/2D BlendTrees, skeletal joint hierarchies, and state machines.
+5. **`@kairo/animation`**: Keyframe animation clips, 1D/2D BlendTrees, skeletal joint hierarchies, and Inverse Kinematics (IK).
 6. **`@kairo/audio`**: Web Audio API spatial synth, HRTF 3D positional sound, background music track manager, and SFX generator.
 7. **`@kairo/input`**: Unified input manager for Keyboard, Mouse, Touch, Virtual Joystick, and Gamepad API.
 8. **`@kairo/ai`**: A* NavMesh pathfinding grid solver, behavior tree nodes (Sequence, Selector, Action), and state machines.
 9. **`@kairo/network`**: Client prediction, WebSocket transport client, state interpolator, RPC routing, and snapshot reconciliation.
-10. **`@kairo/assets`**: Preloader and caching manager for `.glb`/`.gltf` models, textures, audio buffers, and binary files.
+10. **`@kairo/assets`**: Preloader and caching manager for `.blend`, `.glb`/`.gltf`, Sketchfab models, textures, audio buffers, and binary files.
 11. **`@kairo/plugins`**: Plugin architecture with lifecycle hooks (`onLoad`, `onUpdate`, `onRender`, `onUnload`) and dependency tracking.
 12. **`@kairo/ui`**: High-performance HTML5 overlay UI framework, toast notifications, modals, achievements, and game HUD menus.
 13. **`@kairo/tools`**: Real-time CPU/GPU Profiler map, AOT Engine Compiler, MeshCompressor, and 60 FPS WebGL ScreenRecorder.
-14. **`@kairo/geometry`**: One-line procedural meshes — heightmap terrain with surface sampling, instanced grass, low-poly scenery (trees/rocks/clouds), and PBR primitives (blocks, spheres, torus, capsules, etc.). Deterministic per seed, no asset URLs.
+14. **`@kairo/geometry`**: One-line procedural meshes — heightmap terrain with surface sampling, instanced grass, low-poly scenery (trees/rocks/clouds), and PBR primitives.
 15. **`packages/go-raylib`**: Native Golang WebAssembly Raylib API bindings and math library.
 16. **`packages/c-raylib`**: Native C/C++ Raylib bindings.
 
@@ -47,17 +47,19 @@ Kairo is built from 16 decoupled, modular packages:
 
 Kairo features a complete in-browser game studio editor:
 - **Scene Hierarchy**: Dynamic 3D entity & object tree inspection and creation.
+- **⚡ EasyScript Builder Panel**: Visual script generator with built-in presets (Spinners, Collectibles, WASD Player, AI Patrol, Particle Bursts) and 1-click script execution.
+- **Blender & Sketchfab Importer**: Import native `.blend` files or stream 3D models live from Sketchfab.
 - **Inspector Panel**: Real-time property editing for transforms, components, and materials.
 - **Dual Viewport**: Toggle between 3D WebGL Web Studio and 2D Canvas Engine viewports.
-- **Animation & Physics Tools**: Motion speed controls, IK elevation, particle sliders, and joint state monitors.
-- **Playable Demos**: Play embedded platformer games with touch/keyboard controls directly inside the studio.
+- **AOT Standalone Exporter**: Compile 1-click standalone HTML5 playable games directly from the studio.
 
 ---
 
 ## 🎮 Playable Examples (`examples/`)
 
-Access all interactive demos from the main hub page (`index.html`):
+Access all 23 interactive demos from the main hub page (`index.html`):
 
+- ⚡ **Gem Hunter 3D Quest (EasyScript)**: 3D quest game built entirely using Kairo's unified `EasyScript` API with live in-game code view.
 - 🎛️ **Kairo Studio & Web Editor**: Dual 2D/3D visual level editor and game studio.
 - 🦊 **Go + Three.js Fox Adventure**: Hybrid WASM physics backend with Three.js rendering & GLTF animations.
 - 🔥 **Go + Raylib System Tester**: WebAssembly test suite & drawing engine powered by Go & Raylib.
@@ -71,13 +73,10 @@ Access all interactive demos from the main hub page (`index.html`):
 - 🌸 **Cinematic Cherry Blossoms**: Particle emission and keyframe animation demo.
 - ✨ **High-Quality PBR Render**: Physically Based Rendering with soft shadows and skeletal GLTF animation.
 - 📊 **GDP Engine Architecture Explainer**: Interactive engine cycle and ECS visualizer with voiceover.
-- 📦 **Super Easy Starter API Demo**: Beginner-friendly physics scene using `KairoApp`.
-- 🌲 **Pure TS Fox Game**: Third-person platformer game engine implementation in pure TypeScript.
-
-- 🎬 **Cinematic Cutscene Demo**: Showcases the new async cutscene sequencer, screen effects, and UI dialogue system.
-- 🎬 **The Arrival — Cinematic Short**: A fully choreographed sci-fi film — bloom post-processing, orbiting starfield, 3D canvas text, camera choreography, dialogue subtitles, and an awakening monolith.
+- 🌲 **Pure TS Fox Game**: 50 solvable partitioned level puzzle platformer with 3D laser beams and crate grab push/pull mechanics.
+- 🎬 **The Arrival — Cinematic Short**: A fully choreographed sci-fi film — bloom post-processing, orbiting starfield, 3D canvas text, camera choreography, and dialogue subtitles.
 - 🏰 **Procedural Dungeon Generator**: Demonstrates Cellular Automata cave generation and PRNG terrain logic.
-- 🏔️ **Procedural Geometry Library**: One-line terrain, instanced grass, trees, rocks, clouds and primitives from the new `@kairo/geometry` package — no hand-written mesh math.
+- 🏔️ **Procedural Geometry Library**: One-line terrain, instanced grass, trees, rocks, clouds and primitives from `@kairo/geometry`.
 
 ---
 
@@ -94,7 +93,7 @@ npm install
 # Start local development server
 npm run dev
 
-# Run unit test suite (26 tests)
+# Run unit & benchmark test suite (48 tests passing)
 npm test
 
 # Build production bundle
