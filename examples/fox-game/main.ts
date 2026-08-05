@@ -8,6 +8,7 @@ import { MemoryManager } from '@kairo/assets';
 import { Serializer } from '@kairo/core';
 import { ALL_LEVELS, LevelDefinition, LevelElement, WORLD_NAMES } from './levels.ts';
 import { MOVE_ARRIVAL_EPSILON, canAcceptMoveInput, toCardinalMove } from './movement.ts';
+import { globalSketchfabStreamer, PRESET_MODEL_STREAMS } from './sketchfab.ts';
 
 // Mobile Performance & Touch Detection
 const isMobile = typeof navigator !== 'undefined' && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768);
@@ -37,6 +38,7 @@ const undoStack: GridSnapshot[] = [];
 let foxGroup: THREE.Group | null = null;
 let animStateMachine: AnimationStateMachine | null = null;
 const levelObjectsGroup = new THREE.Group();
+const laserBeamsGroup = new THREE.Group();
 const elementMeshMap: Map<string, THREE.Object3D> = new Map();
 const foxFallbackMaterial = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.75, metalness: 0.05 });
 const foxFallbackAccentMaterial = new THREE.MeshStandardMaterial({ color: 0xfff7ed, roughness: 0.8, metalness: 0.02 });
@@ -83,7 +85,6 @@ function installFoxModel(model: THREE.Group, instant: boolean = true): void {
   updatePlayerPositionVisuals(instant);
 }
 
-
 // Particle System
 const particleSys = new ParticleSystem(isMobile ? 300 : 1200);
 
@@ -99,7 +100,7 @@ const collectedItems: Set<string> = new Set();
 
 let dustParticles: DustParticles;
 
-// Initialize Kairo App Engine with Mobile Performance Optimizations
+// Initialize Kairo App Engine
 const app = new KairoApp({
   canvas: 'game-canvas',
   background: 0x09090b,
@@ -115,16 +116,17 @@ app.save.defineAchievement({ id: 'first_level', title: 'A New Journey', descript
 app.save.defineAchievement({ id: 'collector', title: 'Avocado Collector', description: 'Collect 10 avocados', icon: '🥑' });
 
 if (isMobile) {
-  app.renderer.setPixelRatio(1.0); // Clamp pixel ratio to 1.0 on mobile to prevent 4K canvas lag
+  app.renderer.setPixelRatio(1.0);
 }
 
-// Camera Setup: Third-Person Perspective (Behind character facing forward)
-app.cameraController.yaw = Math.PI; // Position camera behind Fox
-app.cameraController.pitch = 0.45;  // Slightly elevated third person angle
+// Camera Setup: Third-Person Perspective
+app.cameraController.yaw = Math.PI;
+app.cameraController.pitch = 0.45;
 app.cameraController.distance = 7.5;
 app.cameraController.heightOffset = 1.6;
 
 app.scene.add(levelObjectsGroup);
+app.scene.add(laserBeamsGroup);
 app.scene.add(particleSys.mesh);
 
 dustParticles = new DustParticles(app.scene, 100);
@@ -132,12 +134,10 @@ dustParticles = new DustParticles(app.scene, 100);
 // Load 3D Models
 const gltfLoader = new GLTFLoader();
 
-// Robust asset URL resolver across root, subfolders, and GitHub Pages
 function getAssetUrl(relativePath: string): string {
   const clean = relativePath.replace(/^\//, '');
   if (typeof window !== 'undefined') {
     const parts = window.location.pathname.split('/').filter(Boolean);
-    // If running under subfolder /examples/fox-game/, step up to root
     const depth = parts.length > 1 && parts.includes('examples') ? parts.indexOf('examples') + 1 : 0;
     const prefix = depth > 0 ? '../'.repeat(parts.length - depth) : './';
     return prefix + clean;
@@ -148,7 +148,7 @@ function getAssetUrl(relativePath: string): string {
 let avocadoTemplate: THREE.Group | null = null;
 let helmetTemplate: THREE.Group | null = null;
 
-// Load Fox Model & Skeletal Animations.
+// Load Fox Model & Skeletal Animations
 installFoxModel(createFallbackFoxModel());
 gltfLoader.load(
   getAssetUrl('models/Fox.glb'),
@@ -169,7 +169,7 @@ gltfLoader.load(
     animStateMachine.setState('Idle');
 
     installFoxModel(loadedFox);
-    console.log('✅ Successfully loaded high quality Fox.glb model!');
+    console.log('✅ Loaded default Fox.glb model');
   },
   undefined,
   (error) => {
@@ -210,7 +210,7 @@ gltfLoader.load(
   }
 );
 
-// Helper to map grid coordinates to world 3D position
+// Map grid coordinates to 3D world position
 function gridToWorld(x: number, y: number, height: number = 0): THREE.Vector3 {
   const offsetX = -(currentLevel.gridSize[0] * TILE_SIZE) / 2 + TILE_SIZE / 2;
   const offsetZ = -(currentLevel.gridSize[1] * TILE_SIZE) / 2 + TILE_SIZE / 2;
@@ -296,7 +296,7 @@ function buildLevelVisuals(): void {
   levelObjectsGroup.add(floorMeshA);
   levelObjectsGroup.add(floorMeshB);
 
-  // Instanced Boundary Walls
+  // Instanced Boundary Outer Walls
   const wallGeo = new THREE.BoxGeometry(TILE_SIZE, 2.0, TILE_SIZE);
   const wallMat = new THREE.MeshStandardMaterial({
     color: currentLevel.world === 1 ? 0x2d4c1e : currentLevel.world === 2 ? 0x334155 : currentLevel.world === 3 ? 0x57534e : currentLevel.world === 4 ? 0x312e81 : 0x18181b,
@@ -378,7 +378,18 @@ function buildLevelVisuals(): void {
   currentLevel.elements.forEach((elem, index) => {
     const elemId = elem.id || `elem_${index}_${elem.type}`;
 
-    if (elem.type === 'crate') {
+    if (elem.type === 'wall') {
+      const innerWallMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(TILE_SIZE * 0.98, 2.0, TILE_SIZE * 0.98),
+        new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7, metalness: 0.2 })
+      );
+      innerWallMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 1.0));
+      innerWallMesh.castShadow = !isMobile;
+      innerWallMesh.receiveShadow = !isMobile;
+      levelObjectsGroup.add(innerWallMesh);
+      elementMeshMap.set(elemId, innerWallMesh);
+
+    } else if (elem.type === 'crate') {
       const crateMesh = new THREE.Mesh(
         new THREE.BoxGeometry(1.5, 1.5, 1.5),
         new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6, metalness: 0.2 })
@@ -487,10 +498,116 @@ function buildLevelVisuals(): void {
       mirrorGroup.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.9));
       levelObjectsGroup.add(mirrorGroup);
       elementMeshMap.set(elemId, mirrorGroup);
+
+    } else if (elem.type === 'laser_source') {
+      const sourceMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.6, 0.8, 16),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, emissive: 0xb45309, emissiveIntensity: 0.4 })
+      );
+      sourceMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.4));
+      levelObjectsGroup.add(sourceMesh);
+      elementMeshMap.set(elemId, sourceMesh);
+
+    } else if (elem.type === 'laser_target') {
+      const targetMesh = new THREE.Mesh(
+        new THREE.TorusGeometry(0.5, 0.12, 12, 24),
+        new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x1d4ed8, emissiveIntensity: 0.6 })
+      );
+      targetMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.5));
+      levelObjectsGroup.add(targetMesh);
+      elementMeshMap.set(elemId, targetMesh);
+
+    } else if (elem.type === 'rotating_bridge') {
+      const bridgeMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(TILE_SIZE * 0.9, 0.2, TILE_SIZE * 0.9),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 })
+      );
+      bridgeMesh.position.copy(gridToWorld(elem.pos[0], elem.pos[1], 0.1));
+      bridgeMesh.rotation.y = ((elem.rotation || 0) * Math.PI) / 180;
+      levelObjectsGroup.add(bridgeMesh);
+      elementMeshMap.set(elemId, bridgeMesh);
     }
   });
 
+  updateLasers();
   updateHUD();
+}
+
+// Dynamic Laser Beam Raytracing System
+function updateLasers(): void {
+  MemoryManager.disposeHierarchy(laserBeamsGroup);
+  while (laserBeamsGroup.children.length > 0) {
+    laserBeamsGroup.remove(laserBeamsGroup.children[0]);
+  }
+
+  const [cols, rows] = currentLevel.gridSize;
+
+  currentLevel.elements.forEach((elem, index) => {
+    if (elem.type === 'laser_source') {
+      let currX = elem.pos[0];
+      let currY = elem.pos[1];
+
+      // Laser direction vector (0: East [1,0], 90: South [0,1], 180: West [-1,0], 270: North [0,-1])
+      const rot = elem.rotation || 0;
+      let dirX = rot === 0 ? 1 : rot === 180 ? -1 : 0;
+      let dirY = rot === 90 ? 1 : rot === 270 ? -1 : 0;
+
+      for (let step = 0; step < Math.max(cols, rows) * 2; step++) {
+        const nextX = currX + dirX;
+        const nextY = currY + dirY;
+
+        if (nextX < 0 || nextX >= cols || nextY < 0 || nextY >= rows) break;
+
+        // Render laser segment
+        const startPos = gridToWorld(currX, currY, 0.5);
+        const endPos = gridToWorld(nextX, nextY, 0.5);
+        const distance = startPos.distanceTo(endPos);
+
+        const beamMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        const beamGeo = new THREE.CylinderGeometry(0.06, 0.06, distance, 8);
+        const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+
+        beamMesh.position.copy(startPos.clone().add(endPos).multiplyScalar(0.5));
+        beamMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), endPos.clone().sub(startPos).normalize());
+        laserBeamsGroup.add(beamMesh);
+
+        currX = nextX;
+        currY = nextY;
+
+        // Laser reflection / hit detection
+        let hitObject = false;
+        for (const targetElem of currentLevel.elements) {
+          if (targetElem.pos[0] === currX && targetElem.pos[1] === currY) {
+            const elemId = targetElem.id || `elem_${index}_${targetElem.type}`;
+
+            if (targetElem.type === 'mirror') {
+              const mRot = mirrorRotations.get(elemId) ?? (targetElem.rotation || 0);
+              if (mRot === 45 || mRot === 225) {
+                const temp = dirX;
+                dirX = dirY;
+                dirY = temp;
+              } else {
+                const temp = dirX;
+                dirX = -dirY;
+                dirY = -temp;
+              }
+            } else if (targetElem.type === 'laser_target') {
+              doorStates.set(targetElem.linkedId || '', true);
+              const targetMesh = elementMeshMap.get(elemId);
+              if (targetMesh && (targetMesh as THREE.Mesh).material) {
+                ((targetMesh as THREE.Mesh).material as THREE.MeshStandardMaterial).emissive.setHex(0x10b981);
+              }
+              hitObject = true;
+            } else if (targetElem.type === 'wall' || targetElem.type === 'crate' || (targetElem.type === 'door' && !doorStates.get(elemId))) {
+              hitObject = true;
+            }
+          }
+        }
+
+        if (hitObject) break;
+      }
+    }
+  });
 }
 
 // Load Level State
@@ -558,7 +675,7 @@ function performUndo(): void {
 
   const snapshot = undoStack.pop()!;
   playerGridPos = [...snapshot.playerGridPos];
-  
+
   crateGridPositions.clear();
   snapshot.cratesPos.forEach((v, k) => crateGridPositions.set(k, [...v]));
 
@@ -595,7 +712,7 @@ function performInteract(): void {
       if (dx <= 1 && dy <= 1) {
         pushUndoState();
         const currentRot = mirrorRotations.get(elemId) || 0;
-        const newRot = (currentRot + 90) % 360;
+        const newRot = (currentRot + 45) % 360;
         mirrorRotations.set(elemId, newRot);
 
         const mirrorMesh = elementMeshMap.get(elemId);
@@ -605,6 +722,7 @@ function performInteract(): void {
         app.audio.playSynthesizedSound('switch');
         app.ui.showToast(`Rotated ${elem.type === 'prism' ? 'Prism' : 'Mirror'} to ${newRot}°! 🔄`, 1500, 'info');
         rotatedAny = true;
+        updateLasers();
       }
     }
   });
@@ -636,7 +754,7 @@ function toggleManualRecording(): void {
         app.ui.showToast('✅ Recording Saved to Downloads', 3000, 'success');
       }
     });
-    
+
     if (btn) {
       btn.innerText = '🎥 Record';
       btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
@@ -645,16 +763,39 @@ function toggleManualRecording(): void {
   }
 }
 
-// Update Fox position & Camera target
+// Update Fox position & Camera target smoothly
 function updatePlayerPositionVisuals(instant: boolean = false): void {
   if (!foxGroup) return;
 
   const targetWorldPos = gridToWorld(playerGridPos[0], playerGridPos[1], 0);
   if (instant) {
     foxGroup.position.copy(targetWorldPos);
+  } else {
+    // Smooth lerp visual position towards grid target
+    foxGroup.position.lerp(targetWorldPos, 0.35);
   }
 
-  app.cameraController.setTargetPosition(targetWorldPos);
+  app.cameraController.setTargetPosition(foxGroup.position);
+}
+
+// Grid Cell Blocking Helper (Precise AABB overlap check)
+function isGridCellBlocked(gx: number, gy: number): boolean {
+  const [cols, rows] = currentLevel.gridSize;
+  if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true;
+
+  for (const elem of currentLevel.elements) {
+    if (elem.type === 'wall' && elem.pos[0] === gx && elem.pos[1] === gy) return true;
+    if (elem.type === 'door' && elem.pos[0] === gx && elem.pos[1] === gy) {
+      const elemId = elem.id || `door_${gx}_${gy}`;
+      if (!doorStates.get(elemId)) return true;
+    }
+  }
+
+  let blocked = false;
+  crateGridPositions.forEach((pos) => { if (pos[0] === gx && pos[1] === gy) blocked = true; });
+  tntGridPositions.forEach((pos, id) => { if (pos[0] === gx && pos[1] === gy && !tntDestroyedSet.has(id)) blocked = true; });
+
+  return blocked;
 }
 
 // Grid Movement Logic
@@ -667,12 +808,12 @@ function tryMovePlayer(dx: number, dy: number): void {
   const [cols, rows] = currentLevel.gridSize;
   if (targetX < 0 || targetX >= cols || targetY < 0 || targetY >= rows) return;
 
-  // Check Doors
+  // Check Walls / Inner Obstacles
   for (const elem of currentLevel.elements) {
+    if (elem.type === 'wall' && elem.pos[0] === targetX && elem.pos[1] === targetY) return;
     if (elem.type === 'door' && elem.pos[0] === targetX && elem.pos[1] === targetY) {
       const elemId = elem.id || `door_${elem.pos[0]}_${elem.pos[1]}`;
-      const isOpen = doorStates.get(elemId);
-      if (!isOpen) {
+      if (!doorStates.get(elemId)) {
         app.ui.showToast('Door is locked!', 1500, 'warning');
         return;
       }
@@ -696,10 +837,7 @@ function tryMovePlayer(dx: number, dy: number): void {
     const crateNextY = targetY + dy;
     if (crateNextX < 0 || crateNextX >= cols || crateNextY < 0 || crateNextY >= rows) return;
 
-    let blocked = false;
-    crateGridPositions.forEach((pos) => { if (pos[0] === crateNextX && pos[1] === crateNextY) blocked = true; });
-    tntGridPositions.forEach((pos, id) => { if (pos[0] === crateNextX && pos[1] === crateNextY && !tntDestroyedSet.has(id)) blocked = true; });
-    if (blocked) return;
+    if (isGridCellBlocked(crateNextX, crateNextY)) return;
 
     pushUndoState();
     crateGridPositions.set(pushedCrateId, [crateNextX, crateNextY]);
@@ -728,7 +866,7 @@ function tryMovePlayer(dx: number, dy: number): void {
     foxGroup.rotation.y = Math.atan2(dx, dy);
   }
 
-  // Move player
+  // Move player to target grid position
   playerGridPos = [targetX, targetY];
   moveCount++;
 
@@ -744,7 +882,7 @@ function tryMovePlayer(dx: number, dy: number): void {
     particleSys.emitBurst(gridToWorld(playerGridPos[0], playerGridPos[1], 0.1), 'dust_footstep', 6);
     const slideX = playerGridPos[0] + dx;
     const slideY = playerGridPos[1] + dy;
-    if (slideX >= 0 && slideX < cols && slideY >= 0 && slideY < rows) {
+    if (slideX >= 0 && slideX < cols && slideY >= 0 && slideY < rows && !isGridCellBlocked(slideX, slideY)) {
       playerGridPos = [slideX, slideY];
     }
   }
@@ -754,9 +892,12 @@ function tryMovePlayer(dx: number, dy: number): void {
     if (elem.type === 'conveyor' && elem.pos[0] === playerGridPos[0] && elem.pos[1] === playerGridPos[1]) {
       const shiftX = elem.dir === 'E' ? 1 : elem.dir === 'W' ? -1 : 0;
       const shiftY = elem.dir === 'S' ? 1 : elem.dir === 'N' ? -1 : 0;
-      playerGridPos[0] = Math.max(0, Math.min(cols - 1, playerGridPos[0] + shiftX));
-      playerGridPos[1] = Math.max(0, Math.min(rows - 1, playerGridPos[1] + shiftY));
-      app.audio.playSynthesizedSound('switch');
+      const convX = Math.max(0, Math.min(cols - 1, playerGridPos[0] + shiftX));
+      const convY = Math.max(0, Math.min(rows - 1, playerGridPos[1] + shiftY));
+      if (!isGridCellBlocked(convX, convY)) {
+        playerGridPos = [convX, convY];
+        app.audio.playSynthesizedSound('switch');
+      }
     }
   }
 
@@ -782,22 +923,28 @@ function tryMovePlayer(dx: number, dy: number): void {
 
 // Pressure Plate Check
 function checkPressurePlates(): void {
-  currentLevel.elements.forEach((elem, index) => {
+  currentLevel.elements.forEach((elem) => {
     if (elem.type === 'plate' && elem.linkedId) {
       const isPlayerOn = playerGridPos[0] === elem.pos[0] && playerGridPos[1] === elem.pos[1];
       let isCrateOn = false;
       crateGridPositions.forEach((pos) => { if (pos[0] === elem.pos[0] && pos[1] === elem.pos[1]) isCrateOn = true; });
 
       const active = isPlayerOn || isCrateOn;
-      const targetDoor = elementMeshMap.get(elem.linkedId);
+      const targetMesh = elementMeshMap.get(elem.linkedId);
 
-      if (targetDoor) {
+      if (targetMesh) {
         doorStates.set(elem.linkedId, active);
-        targetDoor.visible = !active;
+        if (elem.linkedId.startsWith('bridge')) {
+          targetMesh.rotation.y = active ? Math.PI / 2 : 0;
+        } else {
+          targetMesh.visible = !active;
+        }
         if (active) app.audio.playSynthesizedSound('switch');
       }
     }
   });
+
+  updateLasers();
 }
 
 // Collectibles Check
@@ -848,7 +995,7 @@ function checkGoalCondition(): void {
     const levelStars = app.save.getProgress('levelStars', {}) as Record<number, number>;
     levelStars[currentLevel.id] = Math.max(levelStars[currentLevel.id] || 0, stars);
     app.save.setProgress('levelStars', levelStars);
-    
+
     app.save.setProgress('totalAvocados', (app.save.getProgress('totalAvocados', 0) as number) + avocadosCollected);
 
     if (currentLevelIndex === 0) app.save.unlockAchievement('first_level', app.ui);
@@ -884,8 +1031,95 @@ function updateHUD(): void {
   if (moveEl) moveEl.innerText = `${moveCount} moves`;
 }
 
-// UI Button Listeners (Desktop & Touch)
+// Sketchfab & 3D Model Streamer Modal
+function showSketchfabStreamerModal(): void {
+  let gridHtml = `
+    <div style="margin-bottom: 16px;">
+      <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 12px;">
+        Stream high quality 3D character models directly from Sketchfab or remote GLTF repositories!
+      </p>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+        <input id="sketchfab-url-input" type="text" placeholder="Paste Sketchfab URL or direct .glb link..." 
+          style="flex: 1; padding: 10px 14px; border-radius: 10px; background: #18181b; border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 13px;">
+        <button id="btn-stream-custom" style="padding: 10px 16px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #10b981); border: none; color: white; font-weight: 700; cursor: pointer;">
+          🚀 Stream
+        </button>
+      </div>
+
+      <div style="font-weight: 700; font-size: 14px; margin-bottom: 10px;">Curated Stream Catalog</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
+  `;
+
+  PRESET_MODEL_STREAMS.forEach((preset) => {
+    gridHtml += `
+      <div class="level-card" onclick="window.streamPresetModel('${preset.id}')" style="align-items: flex-start; text-align: left; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 6px;">
+          <span style="font-weight: 800; font-size: 14px;">${preset.name}</span>
+          <span style="font-size: 10px; padding: 2px 6px; border-radius: 6px; background: rgba(59,130,246,0.2); color: #60a5fa; font-weight: 700;">${preset.badge}</span>
+        </div>
+        <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 6px;">By ${preset.author}</div>
+        <div style="font-size: 11px; color: #e4e4e7;">${preset.description}</div>
+      </div>
+    `;
+  });
+
+  gridHtml += `</div></div>`;
+
+  (window as any).streamPresetModel = (presetId: string) => {
+    const preset = PRESET_MODEL_STREAMS.find(p => p.id === presetId);
+    if (preset) {
+      loadStreamedCharacterModel(preset.url, preset.name);
+    }
+  };
+
+  app.ui.createModal('🎨 Sketchfab & 3D Model Streamer', gridHtml, [{ text: 'Close', onClick: () => {} }]);
+
+  setTimeout(() => {
+    document.getElementById('btn-stream-custom')?.addEventListener('click', () => {
+      const inputEl = document.getElementById('sketchfab-url-input') as HTMLInputElement;
+      if (inputEl && inputEl.value.trim()) {
+        loadStreamedCharacterModel(inputEl.value.trim(), 'Custom Stream');
+      } else {
+        app.ui.showToast('Please enter a valid Sketchfab URL or .glb link!', 2000, 'warning');
+      }
+    });
+  }, 100);
+}
+
+// Load streamed character model into Fox scene
+async function loadStreamedCharacterModel(urlOrUid: string, name: string): Promise<void> {
+  app.ui.showToast(`⌛ Streaming 3D model: ${name}...`, 4000, 'info');
+
+  try {
+    const streamed = await globalSketchfabStreamer.loadStreamedModel(urlOrUid, (progress) => {
+      app.ui.showToast(`⌛ Streaming ${name} (${progress}%)...`, 1000, 'info');
+    });
+
+    installFoxModel(streamed.scene, true);
+
+    if (streamed.animations.length > 0) {
+      animStateMachine = new AnimationStateMachine(streamed.scene);
+      animStateMachine.registerState('Idle', streamed.animations[0], { fadeDuration: 0.2 });
+      if (streamed.animations[1]) animStateMachine.registerState('Walk', streamed.animations[1], { fadeDuration: 0.15 });
+      if (streamed.animations[2]) animStateMachine.registerState('Run', streamed.animations[2], { fadeDuration: 0.15 });
+      animStateMachine.setState('Idle');
+    } else {
+      animStateMachine = null;
+    }
+
+    particleSys.emitBurst(foxGroup?.position || new THREE.Vector3(), 'sparkle', 40);
+    app.audio.playSynthesizedSound('fanfare');
+    app.ui.showToast(`✅ Successfully streamed 3D model: ${streamed.name}!`, 3500, 'success');
+  } catch (err: any) {
+    console.error('Error streaming 3D model:', err);
+    app.ui.showToast(`❌ Could not stream model: ${err.message || err}`, 3500, 'warning');
+  }
+}
+
+// UI Button Listeners
 document.getElementById('btn-record')?.addEventListener('click', toggleManualRecording);
+document.getElementById('btn-sketchfab')?.addEventListener('click', showSketchfabStreamerModal);
 document.getElementById('btn-undo')?.addEventListener('click', performUndo);
 document.getElementById('btn-restart')?.addEventListener('click', () => loadLevel(currentLevelIndex));
 document.getElementById('btn-hint')?.addEventListener('click', () => {
@@ -903,11 +1137,10 @@ speedDialToggle?.addEventListener('click', () => {
   speedDialToggle.classList.toggle('open');
   speedDialGroup?.classList.toggle('open');
 });
-// Close speed-dial when any action is clicked
 speedDialGroup?.querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
     speedDialToggle?.classList.remove('open');
-    speedDialGroup.classList.remove('open');
+    speedDialGroup?.classList.remove('open');
   });
 });
 
@@ -967,7 +1200,7 @@ if (joystickZone && joystickKnob) {
   joystickZone.addEventListener('touchcancel', resetJoystick);
 }
 
-// Touch Drag Camera Orbit (Swipe anywhere on screen to rotate camera 360°)
+// Touch Drag Camera Orbit
 let lastTouchX = 0;
 let lastTouchY = 0;
 let isTouchingCamera = false;
@@ -1030,6 +1263,7 @@ function showLevelSelectModal(): void {
 function showSystemGameMenu(): void {
   app.ui.createGameMenu('🦊 Fox Game Menu', [
     { text: '▶ Resume Game', onClick: () => {} },
+    { text: '🎨 3D Model Streamer', onClick: () => showSketchfabStreamerModal() },
     { text: '🗺️ Level Select', onClick: () => showLevelSelectModal() },
     { text: '🔄 Restart Level', color: 'rgba(234, 179, 8, 0.2)', onClick: () => loadLevel(currentLevelIndex) },
     { text: '❓ View Hint', onClick: () => {
@@ -1073,11 +1307,7 @@ function showSettingsModal(): void {
 
 // Input & AI Update Loop
 let lastInputTime = 0;
-const INPUT_COOLDOWN = 260; // ms; keep grid steps readable and avoid re-targeting mid-animation
-function getFoxDistanceToGridTarget(): number {
-  if (!foxGroup) return 0;
-  return foxGroup.position.distanceTo(gridToWorld(playerGridPos[0], playerGridPos[1], 0));
-}
+const INPUT_COOLDOWN = 220; // ms
 
 app.onUpdate((dt) => {
   particleSys.update(dt);
@@ -1089,91 +1319,85 @@ app.onUpdate((dt) => {
     dustParticles.update(dt);
   }
 
-
-
-  // Keyboard / Touch Movement Input (Free 360 Movement)
+  // Keyboard / Touch Movement Input (Free 360 Movement with smooth grid synchronization)
   const now = performance.now();
   if (foxGroup && !isLevelCleared) {
     const move = app.input.getMovementVector();
     let isMoving = false;
-    
+
     if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
       isMoving = true;
-      const speed = 7.0;
-      let nextX = foxGroup.position.x + move.x * speed * dt;
-      let nextZ = foxGroup.position.z + move.y * speed * dt;
+      const speed = 6.5;
 
-      // 3D Collision Detection & Grid interactions
-      const radius = 0.5; // Fox collision radius
       const [cols, rows] = currentLevel.gridSize;
       const offsetX = -(cols * TILE_SIZE) / 2 + TILE_SIZE / 2;
       const offsetZ = -(rows * TILE_SIZE) / 2 + TILE_SIZE / 2;
-      
-      const isBlocked = (wx: number, wz: number): boolean => {
-         const gx = Math.round((wx - offsetX) / TILE_SIZE);
-         const gy = Math.round((wz - offsetZ) / TILE_SIZE);
-         if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true;
-         
-         let blocked = false;
-         for (const elem of currentLevel.elements) {
-           if (elem.type === 'door' && elem.pos[0] === gx && elem.pos[1] === gy) {
-             const elemId = elem.id || `door_${gx}_${gy}`;
-             if (!doorStates.get(elemId)) blocked = true;
-           }
-         }
-         
-         let hitCrate = false;
-         let hitTnt = false;
-         crateGridPositions.forEach((pos) => { if (pos[0] === gx && pos[1] === gy) hitCrate = true; });
-         tntGridPositions.forEach((pos, id) => { if (pos[0] === gx && pos[1] === gy && !tntDestroyedSet.has(id)) hitTnt = true; });
-         
-         if (hitCrate || hitTnt) {
-           blocked = true;
-           // Try pushing if we press against it
-           if (now - lastInputTime > INPUT_COOLDOWN) {
-             const [dx, dy] = toCardinalMove({ x: move.x, y: move.y });
-             if (Math.abs(dx) + Math.abs(dy) === 1) {
-               // Temporarily align playerGridPos to trigger push in tryMovePlayer
-               const oldPlayerGrid = [...playerGridPos] as [number, number];
-               playerGridPos = [gx - dx, gy - dy];
-               tryMovePlayer(dx, dy);
-               playerGridPos = oldPlayerGrid;
-               lastInputTime = now;
-             }
-           }
-         }
-         return blocked;
-      };
 
-      // X-Axis Collision
-      if (isBlocked(nextX + radius, foxGroup.position.z) || isBlocked(nextX - radius, foxGroup.position.z)) {
-        nextX = foxGroup.position.x;
+      let nextX = foxGroup.position.x + move.x * speed * dt;
+      let nextZ = foxGroup.position.z + move.y * speed * dt;
+
+      // Player radius in grid units (~0.25 grid cell width)
+      const rGrid = 0.22;
+      const gridX = (nextX - offsetX) / TILE_SIZE;
+      const gridZ = (nextZ - offsetZ) / TILE_SIZE;
+
+      // Collision checks with precise cell bounding box overlap
+      let blockedX = false;
+      let blockedZ = false;
+
+      const currGridX = (foxGroup.position.x - offsetX) / TILE_SIZE;
+      const currGridZ = (foxGroup.position.z - offsetZ) / TILE_SIZE;
+
+      for (let cx = Math.floor(gridX - 1); cx <= Math.ceil(gridX + 1); cx++) {
+        for (let cy = Math.floor(gridZ - 1); cy <= Math.ceil(gridZ + 1); cy++) {
+          if (isGridCellBlocked(cx, cy)) {
+            // Check horizontal collision
+            if (Math.abs(gridX - cx) < 0.5 + rGrid && Math.abs(currGridZ - cy) < 0.5 + rGrid) {
+              blockedX = true;
+              // Check crate/TNT push trigger
+              if (now - lastInputTime > INPUT_COOLDOWN) {
+                const [cardX, cardY] = toCardinalMove({ x: move.x, y: move.y });
+                if (cardX !== 0 || cardY !== 0) {
+                  tryMovePlayer(cardX, cardY);
+                  lastInputTime = now;
+                }
+              }
+            }
+            // Check vertical collision
+            if (Math.abs(currGridX - cx) < 0.5 + rGrid && Math.abs(gridZ - cy) < 0.5 + rGrid) {
+              blockedZ = true;
+              if (now - lastInputTime > INPUT_COOLDOWN) {
+                const [cardX, cardY] = toCardinalMove({ x: move.x, y: move.y });
+                if (cardX !== 0 || cardY !== 0) {
+                  tryMovePlayer(cardX, cardY);
+                  lastInputTime = now;
+                }
+              }
+            }
+          }
+        }
       }
-      // Z-Axis Collision
-      if (isBlocked(nextX, nextZ + radius) || isBlocked(nextX, nextZ - radius)) {
-        nextZ = foxGroup.position.z;
-      }
 
-      foxGroup.position.x = nextX;
-      foxGroup.position.z = nextZ;
+      if (!blockedX) foxGroup.position.x = nextX;
+      if (!blockedZ) foxGroup.position.z = nextZ;
 
-      // Smooth Rotation
+      // Smooth Character Facing Rotation
       const targetRot = Math.atan2(move.x, move.y);
       let diff = targetRot - foxGroup.rotation.y;
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
-      foxGroup.rotation.y += diff * Math.min(1.0, 10 * dt);
+      foxGroup.rotation.y += diff * Math.min(1.0, 12 * dt);
 
-      // Logical Grid Updates (Trigger Goal, Plates, Collectibles)
-      const newGx = Math.max(0, Math.min(cols - 1, Math.round((nextX - offsetX) / TILE_SIZE)));
-      const newGy = Math.max(0, Math.min(rows - 1, Math.round((nextZ - offsetZ) / TILE_SIZE)));
+      // Logical Grid Position Updates (Trigger Goals, Plates, Collectibles)
+      const newGx = Math.max(0, Math.min(cols - 1, Math.round((foxGroup.position.x - offsetX) / TILE_SIZE)));
+      const newGy = Math.max(0, Math.min(rows - 1, Math.round((foxGroup.position.z - offsetZ) / TILE_SIZE)));
 
       if (newGx !== playerGridPos[0] || newGy !== playerGridPos[1]) {
         playerGridPos = [newGx, newGy];
         moveCount++;
         checkPressurePlates();
         checkCollectibles();
-        
+
         let snapped = false;
         // Snap/Physics for special grid tiles
         for (const elem of currentLevel.elements) {
@@ -1186,27 +1410,28 @@ app.onUpdate((dt) => {
           } else if (elem.type === 'conveyor' && elem.pos[0] === newGx && elem.pos[1] === newGy) {
             const shiftX = elem.dir === 'E' ? 1 : elem.dir === 'W' ? -1 : 0;
             const shiftY = elem.dir === 'S' ? 1 : elem.dir === 'N' ? -1 : 0;
-            playerGridPos[0] = Math.max(0, Math.min(cols - 1, playerGridPos[0] + shiftX));
-            playerGridPos[1] = Math.max(0, Math.min(rows - 1, playerGridPos[1] + shiftY));
-            snapped = true;
-            app.audio.playSynthesizedSound('switch');
-          } else if (elem.type === 'ice' && elem.pos[0] === newGx && elem.pos[1] === newGy) {
-            const [dx, dy] = toCardinalMove({ x: move.x, y: move.y });
-            playerGridPos[0] = Math.max(0, Math.min(cols - 1, playerGridPos[0] + dx));
-            playerGridPos[1] = Math.max(0, Math.min(rows - 1, playerGridPos[1] + dy));
-            snapped = true;
+            const convX = Math.max(0, Math.min(cols - 1, playerGridPos[0] + shiftX));
+            const convY = Math.max(0, Math.min(rows - 1, playerGridPos[1] + shiftY));
+            if (!isGridCellBlocked(convX, convY)) {
+              playerGridPos = [convX, convY];
+              snapped = true;
+              app.audio.playSynthesizedSound('switch');
+            }
           }
         }
-        
+
         if (snapped) {
-           foxGroup.position.copy(gridToWorld(playerGridPos[0], playerGridPos[1], 0));
+          foxGroup.position.copy(gridToWorld(playerGridPos[0], playerGridPos[1], 0));
         }
-        
+
         checkGoalCondition();
         updateHUD();
       }
+    } else {
+      // Idle state: smoothly align fox position visually to target grid cell center
+      updatePlayerPositionVisuals(false);
     }
-    
+
     // Keybinds
     if (app.input.isActionJustPressed('Interact')) performInteract();
     if (app.input.isActionJustPressed('Undo')) performUndo();
@@ -1225,7 +1450,7 @@ app.onUpdate((dt) => {
         animStateMachine.setState('Idle');
       }
     }
-    
+
     app.cameraController.setTargetPosition(foxGroup.position);
   }
 });
@@ -1235,15 +1460,14 @@ app.onUpdate((dt) => {
 (window as any).getMemoryMapDump = () => {
   const dump = app.getMemoryMapDump();
   console.log('[Kairo Engine Memory & CPU Dump]', dump);
-  
-  // Download as JSON file
+
   const str = JSON.stringify(dump, null, 2);
   const blob = new Blob([str], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `kairo-memory-and-cpu-map-dump-${Date.now()}.json`;
   a.click();
-  
+
   return dump;
 };
 

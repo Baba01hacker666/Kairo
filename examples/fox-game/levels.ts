@@ -17,11 +17,12 @@ export interface LevelElement {
     | 'conveyor'
     | 'tnt'
     | 'prism'
+    | 'wall'
     | 'oneway';
   pos: [number, number];
   targetPos?: [number, number];
   color?: 'red' | 'blue' | 'gold';
-  rotation?: number; // degrees
+  rotation?: number; // degrees (0, 90, 180, 270)
   dir?: 'N' | 'S' | 'E' | 'W';
   linkedId?: string;
   isHoldPlate?: boolean;
@@ -56,102 +57,152 @@ export function generateAllLevels(): LevelDefinition[] {
     const theme = world === 1 ? 'meadow' : world === 2 ? 'cave' : world === 3 ? 'ruins' : world === 4 ? 'peak' : 'shadow';
     const levelInWorld = ((i - 1) % 10) + 1;
 
-    const size: [number, number] = [6 + Math.floor(i / 5), 6 + Math.floor(i / 5)];
+    // Grid sizes scale gracefully from 7x7 up to 12x12 for high readability & tight puzzles
+    const width = 7 + Math.floor((i - 1) / 8);
+    const height = 7 + Math.floor((i - 1) / 8);
+    const size: [number, number] = [width, height];
+
     const startPos: [number, number] = [1, 1];
-    const goalPos: [number, number] = [size[0] - 2, size[1] - 2];
+    const goalPos: [number, number] = [width - 2, height - 2];
 
     const elements: LevelElement[] = [];
 
-    // Add avocados (collectibles)
-    elements.push({ type: 'avocado', pos: [2, 1] });
-    elements.push({ type: 'avocado', pos: [size[0] - 3, 2] });
-    elements.push({ type: 'avocado', pos: [size[0] - 2, size[1] - 3] });
+    // Helper to check valid empty grid pos
+    const isOccupied = (x: number, y: number) => {
+      if ((x === startPos[0] && y === startPos[1]) || (x === goalPos[0] && y === goalPos[1])) return true;
+      return elements.some(e => e.pos[0] === x && e.pos[1] === y);
+    };
 
-    if (i % 5 === 0) {
-      elements.push({ type: 'helmet', pos: [Math.floor(size[0] / 2), Math.floor(size[1] / 2)] });
+    // Divider wall separating start room from goal room, with a door in the middle passage
+    const wallCol = Math.floor(width / 2);
+    const doorRow = Math.floor(height / 2);
+
+    for (let y = 0; y < height; y++) {
+      if (y !== doorRow) {
+        elements.push({ type: 'wall', pos: [wallCol, y] });
+      }
     }
 
+    // Place main gate at the wall opening
+    const gateId = `gate_main_lvl_${i}`;
+    elements.push({ type: 'door', pos: [wallCol, doorRow], id: gateId, color: world === 3 ? (levelInWorld % 2 === 0 ? 'blue' : 'red') : undefined });
+
+    // Collectibles (Avocados) placed strategically in both rooms
+    const avo1Pos: [number, number] = [1, height - 2];
+    const avo2Pos: [number, number] = [wallCol - 1, 1];
+    const avo3Pos: [number, number] = [width - 2, 1];
+    
+    if (!isOccupied(...avo1Pos)) elements.push({ type: 'avocado', pos: avo1Pos });
+    if (!isOccupied(...avo2Pos)) elements.push({ type: 'avocado', pos: avo2Pos });
+    if (!isOccupied(...avo3Pos)) elements.push({ type: 'avocado', pos: avo3Pos });
+
+    if (i % 4 === 0) {
+      const helmetPos: [number, number] = [width - 2, Math.floor(height / 2) + 1];
+      if (!isOccupied(...helmetPos)) elements.push({ type: 'helmet', pos: helmetPos });
+    }
+
+    // World Specific Puzzle Mechanics
     if (world === 1) {
-      // Meadow: Crates, Pressure Plates, Doors, & Ice Slippery Tiles
-      elements.push({ type: 'plate', pos: [3, 2], linkedId: 'door_1', isHoldPlate: levelInWorld > 3 });
-      elements.push({ type: 'door', pos: [4, 2], id: 'door_1' });
+      // Meadow: Pressure Plates, Crates, Ice Slippery Tiles
+      const platePos: [number, number] = [2, Math.min(height - 3, doorRow + 1)];
+      const cratePos: [number, number] = [2, Math.max(1, doorRow - 1)];
+
+      elements.push({ type: 'plate', pos: platePos, linkedId: gateId, isHoldPlate: levelInWorld > 2 });
+      elements.push({ type: 'crate', pos: cratePos });
 
       if (levelInWorld >= 3) {
-        elements.push({ type: 'crate', pos: [2, 2] });
+        // Add ice tiles in the passage
+        elements.push({ type: 'ice', pos: [wallCol - 1, doorRow] });
+        elements.push({ type: 'ice', pos: [wallCol + 1, doorRow] });
       }
-      if (levelInWorld >= 5) {
-        // Ice tiles
-        elements.push({ type: 'ice', pos: [3, 3] });
-        elements.push({ type: 'ice', pos: [3, 4] });
+
+      if (levelInWorld >= 6) {
+        // Second inner wall & second door
+        const secDoorId = `gate_sec_lvl_${i}`;
+        const secDoorRow = doorRow - 2 > 0 ? doorRow - 2 : doorRow + 2;
+        elements.push({ type: 'door', pos: [wallCol + 1, secDoorRow], id: secDoorId });
+        elements.push({ type: 'plate', pos: [wallCol + 2, secDoorRow], linkedId: secDoorId, isHoldPlate: true });
+        elements.push({ type: 'crate', pos: [wallCol + 1, 1] });
       }
-      if (levelInWorld >= 7) {
-        elements.push({ type: 'plate', pos: [2, 4], linkedId: 'door_2', isHoldPlate: true });
-        elements.push({ type: 'door', pos: [3, 4], id: 'door_2' });
-        elements.push({ type: 'crate', pos: [1, 3] });
-      }
+
     } else if (world === 2) {
-      // Caves: Light Beams, Mirrors, & Laser Prisms
-      elements.push({ type: 'laser_source', pos: [1, 3], rotation: 0 });
-      elements.push({ type: 'mirror', pos: [4, 3], rotation: 45 });
-      elements.push({ type: 'laser_target', pos: [4, 5], linkedId: 'door_cave', id: 'target_1' });
-      elements.push({ type: 'door', pos: [goalPos[0] - 1, goalPos[1]], id: 'door_cave' });
+      // Caves: Laser Beams, Rotatable Mirrors, Prisms
+      const laserSourcePos: [number, number] = [1, doorRow];
+      const mirrorPos: [number, number] = [wallCol - 1, doorRow];
+      const laserTargetPos: [number, number] = [wallCol - 1, 1];
 
-      if (levelInWorld >= 5) {
-        elements.push({ type: 'prism', pos: [3, 3], rotation: 90 });
+      elements.push({ type: 'laser_source', pos: laserSourcePos, rotation: 0 }); // Shoots East
+      elements.push({ type: 'mirror', pos: mirrorPos, rotation: 45 }); // Reflects East -> South
+      elements.push({ type: 'laser_target', pos: laserTargetPos, linkedId: gateId, id: `target_${i}` });
+
+      if (levelInWorld >= 4) {
+        // Add prism or second mirror setup
+        elements.push({ type: 'prism', pos: [wallCol - 2, doorRow], rotation: 90 });
       }
+
       if (levelInWorld >= 7) {
-        elements.push({ type: 'crate', pos: [2, 3] });
+        // Block laser path with a pushable crate
+        elements.push({ type: 'crate', pos: [3, doorRow] });
       }
+
     } else if (world === 3) {
-      // Ruins: Moving Platforms, Keycards, Teleporters, & Conveyor Belts
-      const colorKey: 'red' | 'blue' | 'gold' = levelInWorld % 3 === 0 ? 'gold' : levelInWorld % 2 === 0 ? 'blue' : 'red';
-      elements.push({ type: 'key', pos: [2, 3], color: colorKey });
-      elements.push({ type: 'door', pos: [4, 3], color: colorKey, id: 'key_door' });
-      elements.push({ type: 'teleporter', pos: [3, 1], targetPos: [3, 5] });
+      // Ruins: Keycards, Teleporters, Conveyors
+      const keyColor: 'red' | 'blue' | 'gold' = levelInWorld % 3 === 0 ? 'gold' : levelInWorld % 2 === 0 ? 'blue' : 'red';
+      const keyPos: [number, number] = [1, height - 2];
+      
+      elements.push({ type: 'key', pos: keyPos, color: keyColor, linkedId: gateId });
+      elements.push({ type: 'teleporter', pos: [2, 1], targetPos: [wallCol + 1, 1] });
 
       if (levelInWorld >= 4) {
-        elements.push({ type: 'conveyor', pos: [2, 4], dir: 'E' });
-        elements.push({ type: 'conveyor', pos: [3, 4], dir: 'E' });
+        elements.push({ type: 'conveyor', pos: [wallCol - 1, doorRow - 1], dir: 'E' });
+        elements.push({ type: 'conveyor', pos: [wallCol - 1, doorRow + 1], dir: 'N' });
       }
-      if (levelInWorld >= 6) {
-        elements.push({ type: 'moving_platform', pos: [1, 4], targetPos: [5, 4] });
+
+      if (levelInWorld >= 7) {
+        // Secondary Teleporter
+        elements.push({ type: 'teleporter', pos: [width - 2, 2], targetPos: [wallCol + 1, height - 2] });
       }
+
     } else if (world === 4) {
-      // Peak: Rotating Bridges, Weight Plates, & TNT Barrels
-      elements.push({ type: 'rotating_bridge', pos: [3, 3], rotation: 0, id: 'bridge_1' });
-      elements.push({ type: 'plate', pos: [2, 2], linkedId: 'bridge_1' });
-      elements.push({ type: 'crate', pos: [1, 2] });
+      // Peak: Rotating Bridges, Weight Plates, TNT Barrels
+      const bridgeId = `bridge_lvl_${i}`;
+      elements.push({ type: 'rotating_bridge', pos: [wallCol, doorRow], rotation: 0, id: bridgeId });
+      elements.push({ type: 'plate', pos: [wallCol - 1, doorRow], linkedId: bridgeId });
+      elements.push({ type: 'crate', pos: [wallCol - 2, doorRow] });
 
-      if (levelInWorld >= 4) {
-        elements.push({ type: 'tnt', pos: [3, 2] });
+      if (levelInWorld >= 3) {
+        // TNT barrel blocking the path
+        elements.push({ type: 'tnt', pos: [wallCol + 1, doorRow] });
       }
+
       if (levelInWorld >= 6) {
-        elements.push({ type: 'rotating_bridge', pos: [4, 4], rotation: 90, id: 'bridge_2' });
-        elements.push({ type: 'plate', pos: [4, 2], linkedId: 'bridge_2' });
+        const secBridgeId = `bridge_sec_lvl_${i}`;
+        elements.push({ type: 'rotating_bridge', pos: [wallCol + 1, height - 2], rotation: 90, id: secBridgeId });
+        elements.push({ type: 'plate', pos: [wallCol - 1, height - 2], linkedId: secBridgeId });
       }
+
     } else {
-      // Shadow Grove: Master Combination of All Mechanics
-      elements.push({ type: 'key', pos: [1, 2], color: 'gold' });
-      elements.push({ type: 'door', pos: [3, 2], color: 'gold', id: 'shadow_door_1' });
-      elements.push({ type: 'crate', pos: [2, 3] });
-      elements.push({ type: 'tnt', pos: [3, 3] });
-      elements.push({ type: 'ice', pos: [4, 2] });
-      elements.push({ type: 'conveyor', pos: [1, 4], dir: 'E' });
-      elements.push({ type: 'plate', pos: [4, 3], linkedId: 'shadow_door_2', isHoldPlate: true });
-      elements.push({ type: 'door', pos: [5, 3], id: 'shadow_door_2' });
-      elements.push({ type: 'teleporter', pos: [2, 4], targetPos: [4, 4] });
-      elements.push({ type: 'laser_source', pos: [1, 5], rotation: 0 });
-      elements.push({ type: 'mirror', pos: [3, 5], rotation: 45 });
-      elements.push({ type: 'laser_target', pos: [3, 6], linkedId: 'shadow_door_3' });
-      elements.push({ type: 'door', pos: [goalPos[0], goalPos[1] - 1], id: 'shadow_door_3' });
+      // Shadow Grove: Ultimate Master Mechanics Combination
+      elements.push({ type: 'key', pos: [1, doorRow + 1], color: 'gold', linkedId: gateId });
+      elements.push({ type: 'crate', pos: [2, 2] });
+      elements.push({ type: 'tnt', pos: [wallCol - 1, 1] });
+      elements.push({ type: 'ice', pos: [wallCol - 1, doorRow] });
+      elements.push({ type: 'conveyor', pos: [1, doorRow - 1], dir: 'E' });
+      elements.push({ type: 'teleporter', pos: [2, height - 2], targetPos: [wallCol + 1, height - 2] });
+      elements.push({ type: 'laser_source', pos: [wallCol + 1, 1], rotation: 90 });
+      elements.push({ type: 'mirror', pos: [wallCol + 1, doorRow + 1], rotation: 135 });
+      
+      const shadowGateId = `shadow_gate_${i}`;
+      elements.push({ type: 'door', pos: [goalPos[0] - 1, goalPos[1]], id: shadowGateId });
+      elements.push({ type: 'laser_target', pos: [width - 2, doorRow + 1], linkedId: shadowGateId });
     }
 
-    const hintMsg = `World ${world} Level ${levelInWorld}: ${
-      world === 1 ? 'Watch out for slippery ice tiles and push crates onto pressure plates!' :
-      world === 2 ? 'Use rotatable mirrors and laser prisms to direct light beams to sensors.' :
-      world === 3 ? 'Ride conveyor belts and use teleporters to cross large chasms.' :
-      world === 4 ? 'Explode TNT barrels or push crates to align rotating bridges.' :
-      'Master all mechanics—ice, conveyors, lasers, TNT, and teleporters—to reach the goal portal!'
+    const hintMsg = `Level ${i} (${WORLD_NAMES[world].name} Pt. ${levelInWorld}): ${
+      world === 1 ? 'Push the heavy crate onto the pressure plate to keep the main gate open!' :
+      world === 2 ? 'Interact (E key / touch button) to rotate the mirror 45° and direct the laser beam onto the target sensor.' :
+      world === 3 ? 'Collect the matching keycard and ride teleporters or conveyor belts across inner walls.' :
+      world === 4 ? 'Push TNT into obstacles or activate weight plates to align rotating bridges.' :
+      'Master all mechanics—lasers, ice, conveyors, TNT, and keycards—to reach the exit portal!'
     }`;
 
     levels.push({
@@ -164,7 +215,7 @@ export function generateAllLevels(): LevelDefinition[] {
       startPos,
       goalPos,
       elements,
-      parMoves: 10 + i * 2
+      parMoves: 8 + i * 2
     });
   }
 
