@@ -229,6 +229,11 @@ export class ScriptBehavior {
     return this;
   }
 
+  /** AI Pathfinding Navigation towards target */
+  public navigateTo(targetPos: THREE.Vector3 | [number, number, number], speed: number = 3.0, dt: number = 0.016): this {
+    return this.chase(targetPos, speed, dt);
+  }
+
   /** Change object position */
   public setPosition(x: number, y: number, z: number): this {
     if (this.object) this.object.position.set(x, y, z);
@@ -250,6 +255,103 @@ export class ScriptBehavior {
   /** Check if near another object */
   public isNear(other: THREE.Object3D | THREE.Vector3, maxDistance: number = 2.0): boolean {
     return this.getDistanceTo(other) <= maxDistance;
+  }
+
+  // --- CAMERA, UI & TOOLS ENGINE APIS ---
+
+  /** Trigger camera shake effect */
+  public shakeCamera(intensity: number = 0.4, duration: number = 0.3): this {
+    if (this.app?.cameraController) {
+      this.app.cameraController.shake({ intensity, duration });
+    }
+    return this;
+  }
+
+  /** Set camera distance behind character */
+  public setCameraDistance(distance: number): this {
+    if (this.app?.cameraController) {
+      this.app.cameraController.distance = distance;
+    }
+    return this;
+  }
+
+  /** Show interactive dialogue modal UI */
+  public showModal(title: string, content: string, buttons?: Array<{ text: string; primary?: boolean; onClick?: () => void }>): this {
+    if (this.app?.ui) {
+      this.app.ui.createModal(title, content, buttons || [{ text: 'OK', primary: true, onClick: () => {} }]);
+    }
+    return this;
+  }
+
+  /** Take 60 FPS WebGL screenshot */
+  public takeScreenshot(): void {
+    if (this.app?.takeScreenshot) {
+      this.app.takeScreenshot();
+    }
+  }
+
+  /** Record WebGL video clip */
+  public async recordVideo(seconds: number = 5): Promise<void> {
+    if (this.app?.startRecording && this.app?.stopRecording) {
+      this.app.startRecording(60);
+      setTimeout(async () => {
+        await this.app.stopRecording(`easyscript-clip-${Date.now()}.webm`);
+      }, seconds * 1000);
+    }
+  }
+
+  // --- ANIMATION & IK SKELETAL APIS ---
+
+  /** Trigger character skeletal animation state ('Idle' | 'Walk' | 'Run' | 'Jump') */
+  public playAnimation(stateName: string, fadeDuration: number = 0.2): this {
+    if (this.app?.animStateMachine) {
+      this.app.animStateMachine.setState(stateName, fadeDuration);
+    }
+    return this;
+  }
+
+  /** Adjust Inverse Kinematics (IK) foot elevation */
+  public setIKHeight(height: number): this {
+    if (this.app?.state) {
+      this.app.state.ikTargetHeight = height;
+    }
+    return this;
+  }
+
+  // --- 3D ASSETS, SKETCHFAB & BLENDER APIS ---
+
+  /** Stream 3D model directly from Sketchfab URL or UID */
+  public async streamSketchfab(urlOrUid: string): Promise<THREE.Object3D | null> {
+    if (this.app?.assets) {
+      return this.app.assets.streamSketchfabModel(urlOrUid);
+    }
+    return null;
+  }
+
+  /** Load Blender .blend file */
+  public async loadBlenderModel(blendUrl: string): Promise<THREE.Object3D | null> {
+    if (this.app?.assets) {
+      return this.app.assets.loadModel(blendUrl);
+    }
+    return null;
+  }
+
+  // --- MULTIPLAYER NETWORK REPLICATION APIS ---
+
+  /** Broadcast state replication over network */
+  public syncState(stateData: Record<string, any>): this {
+    if (this.app?.network) {
+      this.app.network.broadcastState(stateData);
+    }
+    return this;
+  }
+
+  /** Send Remote Procedure Call (RPC) */
+  public sendRPC(name: string, payload: any): this {
+    if (this.app?.network) {
+      this.app.network.sendRPC(name, payload);
+    }
+    return this;
   }
 
   // --- VISUAL & AUDIO HELPERS ---
