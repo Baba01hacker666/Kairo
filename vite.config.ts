@@ -27,6 +27,7 @@ export default defineConfig({
         editor: 'editor/index.html',
         aipathfinding: 'examples/ai-pathfinding/index.html',
         scifiexplorer: 'examples/scifi-explorer/index.html',
+        gocargame: 'examples/go-car-game/index.html',
         cargame: 'examples/car-game/index.html',
         wasmswarm: 'examples/wasm-asteroid-swarm/index.html',
         platformer25d: 'examples/platformer-2.5d/index.html',
