@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   
   <style>
     :root {
@@ -47,6 +48,32 @@
       filter: blur(60px);
       pointer-events: none;
       z-index: 0;
+    }
+
+    /* Animation Initial States */
+    header .badge-pill,
+    header h1,
+    header p.subtitle,
+    header .stats-bar,
+    .filter-container,
+    .card {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* Custom Cursor Glow */
+    #cursor-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(56, 189, 248, 0) 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      mix-blend-mode: screen;
+      opacity: 0;
     }
 
     /* Hero Header */
@@ -291,6 +318,7 @@
   </style>
 </head>
 <body>
+  <div id="cursor-glow"></div>
   <div class="bg-glow-1"></div>
 
   <header>
@@ -613,6 +641,52 @@
   </footer>
 
   <script>
+    // GSAP Animations
+    document.addEventListener("DOMContentLoaded", () => {
+      // Setup elements for animation
+      gsap.set(["header .badge-pill", "header h1", "header p.subtitle", "header .stats-bar", ".filter-container", ".card"], { visibility: "visible" });
+      gsap.set("#cursor-glow", { xPercent: -50, yPercent: -50 });
+
+      const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
+
+      // Hero animations
+      tl.fromTo("header .badge-pill", { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, delay: 0.2 })
+        .fromTo("header h1", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 1 }, "-=0.6")
+        .fromTo("header p.subtitle", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, "-=0.8")
+        .fromTo("header .stats-bar", { scale: 0.95, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8 }, "-=0.6")
+        .fromTo(".filter-container", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, "-=0.6")
+        .fromTo(".card", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.05 }, "-=0.6");
+
+      // Background ambient glow animation
+      gsap.to(".bg-glow-1", {
+        scale: 1.1,
+        opacity: 0.8,
+        duration: 4,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut"
+      });
+
+      // Interactive Cursor Glow
+      const cursorGlow = document.getElementById('cursor-glow');
+      let mouseX = window.innerWidth / 2;
+      let mouseY = window.innerHeight / 2;
+      
+      gsap.to(cursorGlow, { opacity: 1, duration: 2, delay: 1 });
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        gsap.to(cursorGlow, {
+          x: mouseX,
+          y: mouseY,
+          duration: 0.6,
+          ease: "power2.out",
+          overwrite: "auto"
+        });
+      });
+    });
+
     // Category Filtering Logic
     const tabs = document.querySelectorAll('.filter-tab');
     const cards = document.querySelectorAll('.card');
