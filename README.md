@@ -74,7 +74,7 @@ Access all 23 interactive demos from the main hub page (`index.html`):
 - 🌸 **Cinematic Cherry Blossoms**: Particle emission and keyframe animation demo.
 - ✨ **High-Quality PBR Render**: Physically Based Rendering with soft shadows and skeletal GLTF animation.
 - 📊 **GDP Engine Architecture Explainer**: Interactive engine cycle and ECS visualizer with voiceover.
-- 🌲 **Pure TS Fox Game**: 50 solvable partitioned level puzzle platformer with 3D laser beams and crate grab push/pull mechanics.
+- 🌲 **Pure TS Fox Game**: 50 solvable partitioned level puzzle platformer with 3D laser beams and crate grab push/pull mechanics. <------ only thing i like
 - 🎬 **The Arrival — Cinematic Short**: A fully choreographed sci-fi film — bloom post-processing, orbiting starfield, 3D canvas text, camera choreography, and dialogue subtitles.
 - 🏰 **Procedural Dungeon Generator**: Demonstrates Cellular Automata cave generation and PRNG terrain logic.
 - 🏔️ **Procedural Geometry Library**: One-line terrain, instanced grass, trees, rocks, clouds and primitives from `@kairo/geometry`.
