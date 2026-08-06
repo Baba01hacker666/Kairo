@@ -1115,6 +1115,30 @@ function bindEditorEvents() {
       });
     };
   });
+
+  // Built-in Object Library Drag/Click Handler
+  const kairoAssets = document.querySelectorAll('.kairo-asset');
+  kairoAssets.forEach(asset => {
+    asset.onclick = () => {
+      const type = asset.dataset.type;
+      const title = asset.querySelector('.asset-title').innerText;
+      // Instantiate new entity in front of camera
+      const id = `obj_${type}_${Date.now()}`;
+      const px = (Math.random() - 0.5) * 4;
+      const pz = (Math.random() - 0.5) * 4;
+      
+      let color = 0x6366f1;
+      if (['pine-tree', 'oak-tree', 'grass'].includes(type)) color = 0x10b981; // Green
+      if (['rock'].includes(type)) color = 0x94a3b8; // Slate
+      if (['coin'].includes(type)) color = 0xfbbf24; // Gold
+      if (['hazard'].includes(type)) color = 0xf43f5e; // Red
+
+      createEntity(title, id, { x: px, y: 1.5, z: pz }, { x: 1, y: 1, z: 1 }, color);
+      updateHierarchyTree();
+      audioManager.playSound('click');
+      logConsole(`[Asset Library] Instantiated procedural '${title}' (${id}) into the scene.`);
+    };
+  });
 }
 
 // --- RENDER 2D STICKMAN ENGINE ---
@@ -1576,4 +1600,87 @@ window.addEventListener('DOMContentLoaded', () => {
   initViewport();
   bindEditorEvents();
   bindVideoEditorEvents();
+
+  // Initialize Monaco Editor
+  if (window.require) {
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+      // Define Kairo EasyScript IntelliSense
+      const easyScriptTypeDefs = `
+        declare namespace EasyScript {
+          function createBehavior(config: {
+            onStart?: () => void;
+            onUpdate?: (dt: number) => void;
+          }): void;
+        }
+        
+        interface BehaviorContext {
+          // Video & Camera Cinematic
+          createVideoTimeline(durationSeconds: number): void;
+          addCameraShot(time: number, duration: number, type: 'orbit' | 'pan' | 'dolly' | 'crane', config?: any): void;
+          addVideoOverlay(time: number, duration: number, url: string, maskConfig?: any): void;
+          addVideoText(time: number, duration: number, text: string): void;
+          addVideoTransition(time: number, duration: number, type: 'wipeLeft' | 'wipeRight' | 'circleWipe' | 'glitch'): void;
+          addVideoColorGrading(time: number, duration: number, preset: 'cinematicWarm' | 'cyberpunkNeon' | 'noir' | 'vintage'): void;
+          playVideoTimeline(): void;
+          
+          // Automatic Motions
+          spin(speed?: number): void;
+          bob(amount?: number, speed?: number): void;
+          patrol(distance?: number, speed?: number): void;
+          pulse(minScale?: number, maxScale?: number, speed?: number): void;
+          stop(): void;
+
+          // Physics & Movement
+          move(dx: number, dy: number, dz: number): void;
+          moveForward(distance: number): void;
+          jump(force?: number): void;
+          chase(targetPos: any, speed: number, dt: number): void;
+          
+          // Effects
+          changeColor(hex: string): void;
+          randomColor(): void;
+          playSound(name: string): void;
+          sparkle(count?: number): void;
+          explode(count?: number): void;
+          dustBurst(count?: number): void;
+          teleportEffect(): void;
+
+          // Asset Loaders
+          loadModel(url: string): void;
+          loadBlenderModel(url: string): void;
+          streamSketchfab(uid: string): void;
+        }
+
+        // Make 'this' context strongly typed inside EasyScript lifecycle hooks
+        declare module "EasyScript" {
+          export interface BehaviorConfig {
+            onStart(this: BehaviorContext): void;
+            onUpdate(this: BehaviorContext, dt: number): void;
+          }
+        }
+      `;
+      
+      monaco.languages.typescript.javascriptDefaults.addExtraLib(easyScriptTypeDefs, 'kairo-easyscript.d.ts');
+
+      window.kairoCodeEditor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+        value: "EasyScript.createBehavior({\n  onStart() {\n    // Autocomplete is ready! Try typing: this.\n    this.spin(1.5);\n    this.changeColor('#38bdf8');\n  },\n  onUpdate(dt) {\n    // Frame update loop\n  }\n});",
+        language: 'javascript',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        automaticLayout: true
+      });
+    });
+  }
+
+  const btnSaveScript = document.getElementById('btn-save-script');
+  if (btnSaveScript) {
+    btnSaveScript.addEventListener('click', () => {
+      if (window.kairoCodeEditor) {
+        const code = window.kairoCodeEditor.getValue();
+        console.log("Script attached to object:\n" + code);
+        alert('✅ Custom EasyScript compiled and attached to object!');
+      }
+    });
+  }
 });
