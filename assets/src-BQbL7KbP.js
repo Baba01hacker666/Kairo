@@ -92,7 +92,25 @@ import{$ as e,A as t,C as n,Ct as r,D as i,E as a,Et as o,F as s,G as c,H as l,I
         border: none;
         color: white;
         transition: transform 0.15s, background 0.15s;
-      `,t.style.background=e.primary?this.theme.primaryColor:`rgba(255, 255, 255, 0.1)`,t.onmouseenter=()=>t.style.transform=`scale(1.04)`,t.onmouseleave=()=>t.style.transform=`scale(1)`,t.onclick=()=>{t.disabled||(s.querySelectorAll(`button`).forEach(e=>e.disabled=!0),r.style.opacity=`0`,i.style.transform=`scale(0.9)`,setTimeout(()=>r.remove(),250),e.onClick())},s.appendChild(t)}),i.appendChild(a),i.appendChild(o),i.appendChild(s),r.appendChild(i),this.container.appendChild(r),requestAnimationFrame(()=>{r.style.opacity=`1`,i.style.transform=`scale(1)`}),r}showAchievement(e,t,n=`🏆`){if(!this.container||typeof document>`u`)return;let r=document.createElement(`div`);r.style.cssText=`
+      `,t.style.background=e.primary?this.theme.primaryColor:`rgba(255, 255, 255, 0.1)`,t.onmouseenter=()=>t.style.transform=`scale(1.04)`,t.onmouseleave=()=>t.style.transform=`scale(1)`,t.onclick=()=>{t.disabled||(s.querySelectorAll(`button`).forEach(e=>e.disabled=!0),r.style.opacity=`0`,i.style.transform=`scale(0.9)`,setTimeout(()=>r.remove(),250),e.onClick())},s.appendChild(t)}),i.appendChild(a),i.appendChild(o),i.appendChild(s),r.appendChild(i),this.container.appendChild(r),requestAnimationFrame(()=>{r.style.opacity=`1`,i.style.transform=`scale(1)`}),r}showStartScreen(e){if(!this.container||typeof document>`u`)return null;let t=document.createElement(`div`);t.style.cssText=`
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: auto; z-index: 3000; color: white; text-align: center;
+    `;let n=document.createElement(`h1`);n.innerText=e.title,n.style.cssText=`font-size: 64px; font-weight: 800; margin: 0 0 10px 0; color: ${this.theme.primaryColor}; text-shadow: 0 4px 20px rgba(0,0,0,0.5);`;let r=document.createElement(`p`);r.innerText=e.subtitle||``,r.style.cssText=`font-size: 24px; color: ${this.theme.mutedTextColor}; margin: 0 0 40px 0; max-width: 600px;`;let i=document.createElement(`button`);return i.innerText=e.btnText||`START GAME`,i.style.cssText=`
+      padding: 16px 48px; border-radius: 30px; font-size: 20px; font-weight: 700;
+      background: ${this.theme.accentColor}; color: white; border: none; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3); transition: transform 0.2s;
+    `,i.onmouseenter=()=>i.style.transform=`scale(1.05)`,i.onmouseleave=()=>i.style.transform=`scale(1)`,i.onclick=()=>{t.style.opacity=`0`,t.style.transition=`opacity 0.5s ease`,setTimeout(()=>{t.remove(),e.onStart()},500)},t.appendChild(n),e.subtitle&&t.appendChild(r),t.appendChild(i),this.container.appendChild(t),t}showEndScreen(e){if(!this.container||typeof document>`u`)return null;let t=document.createElement(`div`);t.style.cssText=`
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: auto; z-index: 3000; color: white; text-align: center;
+    `;let n=document.createElement(`h1`);n.innerText=e.title,n.style.cssText=`font-size: 56px; font-weight: 800; margin: 0 0 10px 0; color: #ef4444; text-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);`;let r=document.createElement(`p`);r.innerText=e.subtitle||``,r.style.cssText=`font-size: 20px; color: ${this.theme.mutedTextColor}; margin: 0 0 20px 0; max-width: 600px;`;let i=document.createElement(`div`);e.score&&(i.innerText=`Score: `+e.score,i.style.cssText=`font-size: 32px; font-weight: bold; color: #facc15; margin: 0 0 40px 0;`);let a=document.createElement(`button`);return a.innerText=e.btnText||`RESTART`,a.style.cssText=`
+      padding: 16px 48px; border-radius: 30px; font-size: 20px; font-weight: 700;
+      background: ${this.theme.primaryColor}; color: white; border: none; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3); transition: transform 0.2s;
+    `,a.onmouseenter=()=>a.style.transform=`scale(1.05)`,a.onmouseleave=()=>a.style.transform=`scale(1)`,a.onclick=()=>{t.style.opacity=`0`,t.style.transition=`opacity 0.3s ease`,setTimeout(()=>{t.remove(),e.onRestart()},300)},t.appendChild(n),e.subtitle&&t.appendChild(r),e.score&&t.appendChild(i),t.appendChild(a),this.container.appendChild(t),t}showAchievement(e,t,n=`🏆`){if(!this.container||typeof document>`u`)return;let r=document.createElement(`div`);r.style.cssText=`
       position: absolute;
       top: 24px;
       right: 24px;
