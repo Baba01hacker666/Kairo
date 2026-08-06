@@ -16,7 +16,7 @@ async function initGame() {
 
   // 3. Create Open World Grass Terrain
   // Massive 1000x1000 green field
-  app.createBox({ size: [1000, 1, 1000], position: [0, -0.5, 0], color: 0x15803d, physics: 'none' }); // Lush deep green
+  app.createBox({ size: [1000, 1, 1000], position: [0, -0.5, 0], color: 0x15803d }); // Lush deep green
   (window as any).KairoPhysicsAddBody("ground", 0, 500, 0, -0.5, 0);
 
   // Scatter 40 procedural boulders around the open world
@@ -27,7 +27,7 @@ async function initGame() {
     if (Math.abs(rx) < 20 && Math.abs(rz) < 20) continue;
     
     const size = 3 + Math.random() * 8;
-    app.createBox({ size: [size, size, size], position: [rx, size/2 - 1, rz], color: 0x64748b, physics: 'none' });
+    app.createBox({ size: [size, size, size], position: [rx, size/2 - 1, rz], color: 0x64748b });
     (window as any).KairoPhysicsAddBody(`rock_${i}`, 0, size/2, rx, size/2 - 1, rz);
   }
 
@@ -40,7 +40,7 @@ async function initGame() {
     size: [2, 1, 4],
     position: [0, 2, 0],
     color: 0xef4444, // red fallback
-    physics: 'none'
+
   });
 
   // Try to load the GLTF model and replace the mesh if possible
@@ -130,10 +130,31 @@ async function initGame() {
     // F. Update UI
     const velocityMag = Math.sqrt(state.vx*state.vx + state.vz*state.vz);
     if(speedEl) speedEl.innerText = Math.floor(velocityMag * 3.6) + " KM/H";
+    
+    // G. Win/Lose Condition
+    if (state.py < -20 && !(window as any).isGameOver) {
+      (window as any).isGameOver = true;
+      app.ui.showEndScreen({
+        title: "WASTED",
+        subtitle: "You fell off the edge of the world.",
+        score: Math.floor(velocityMag * 3.6) + " KM/H Max Speed",
+        btnText: "RESPAWN",
+        onRestart: () => {
+          location.reload();
+        }
+      });
+    }
   });
 
-  // 7. Start Engine!
-  app.start();
+  // 7. Show Start Screen before Engine Start!
+  app.ui.showStartScreen({
+    title: "GO WASM RACING",
+    subtitle: "Drift around the boulders. Don't fall off.",
+    btnText: "START ENGINE",
+    onStart: () => {
+      app.start();
+    }
+  });
 }
 
 initGame();

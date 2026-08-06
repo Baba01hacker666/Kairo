@@ -188,6 +188,93 @@ export class UIManager {
     return backdrop;
   }
 
+  public showStartScreen(options: { title: string; subtitle?: string; btnText?: string; onStart: () => void }): HTMLElement | null {
+    if (!this.container || typeof document === 'undefined') return null;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: auto; z-index: 3000; color: white; text-align: center;
+    `;
+    
+    const titleEl = document.createElement('h1');
+    titleEl.innerText = options.title;
+    titleEl.style.cssText = `font-size: 64px; font-weight: 800; margin: 0 0 10px 0; color: ${this.theme.primaryColor}; text-shadow: 0 4px 20px rgba(0,0,0,0.5);`;
+    
+    const subtitleEl = document.createElement('p');
+    subtitleEl.innerText = options.subtitle || '';
+    subtitleEl.style.cssText = `font-size: 24px; color: ${this.theme.mutedTextColor}; margin: 0 0 40px 0; max-width: 600px;`;
+    
+    const btn = document.createElement('button');
+    btn.innerText = options.btnText || 'START GAME';
+    btn.style.cssText = `
+      padding: 16px 48px; border-radius: 30px; font-size: 20px; font-weight: 700;
+      background: ${this.theme.accentColor}; color: white; border: none; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3); transition: transform 0.2s;
+    `;
+    btn.onmouseenter = () => btn.style.transform = 'scale(1.05)';
+    btn.onmouseleave = () => btn.style.transform = 'scale(1)';
+    btn.onclick = () => {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => { overlay.remove(); options.onStart(); }, 500);
+    };
+    
+    overlay.appendChild(titleEl);
+    if (options.subtitle) overlay.appendChild(subtitleEl);
+    overlay.appendChild(btn);
+    this.container.appendChild(overlay);
+    return overlay;
+  }
+
+  public showEndScreen(options: { title: string; subtitle?: string; score?: string; btnText?: string; onRestart: () => void }): HTMLElement | null {
+    if (!this.container || typeof document === 'undefined') return null;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: auto; z-index: 3000; color: white; text-align: center;
+    `;
+    
+    const titleEl = document.createElement('h1');
+    titleEl.innerText = options.title;
+    titleEl.style.cssText = `font-size: 56px; font-weight: 800; margin: 0 0 10px 0; color: #ef4444; text-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);`;
+    
+    const subtitleEl = document.createElement('p');
+    subtitleEl.innerText = options.subtitle || '';
+    subtitleEl.style.cssText = `font-size: 20px; color: ${this.theme.mutedTextColor}; margin: 0 0 20px 0; max-width: 600px;`;
+    
+    const scoreEl = document.createElement('div');
+    if (options.score) {
+      scoreEl.innerText = "Score: " + options.score;
+      scoreEl.style.cssText = `font-size: 32px; font-weight: bold; color: #facc15; margin: 0 0 40px 0;`;
+    }
+
+    const btn = document.createElement('button');
+    btn.innerText = options.btnText || 'RESTART';
+    btn.style.cssText = `
+      padding: 16px 48px; border-radius: 30px; font-size: 20px; font-weight: 700;
+      background: ${this.theme.primaryColor}; color: white; border: none; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3); transition: transform 0.2s;
+    `;
+    btn.onmouseenter = () => btn.style.transform = 'scale(1.05)';
+    btn.onmouseleave = () => btn.style.transform = 'scale(1)';
+    btn.onclick = () => {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => { overlay.remove(); options.onRestart(); }, 300);
+    };
+    
+    overlay.appendChild(titleEl);
+    if (options.subtitle) overlay.appendChild(subtitleEl);
+    if (options.score) overlay.appendChild(scoreEl);
+    overlay.appendChild(btn);
+    this.container.appendChild(overlay);
+    return overlay;
+  }
+
   public showAchievement(title: string, description: string, icon: string = '🏆'): void {
     if (!this.container || typeof document === 'undefined') return;
     const toast = document.createElement('div');

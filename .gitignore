@@ -4,3 +4,9 @@ dist/
 
 .agents/
 .qwen/
+
+# Ignore massive 3D models and textures
+public/models/*.glb
+public/models/*.gltf
+public/models/*.bin
+public/models/textures/
