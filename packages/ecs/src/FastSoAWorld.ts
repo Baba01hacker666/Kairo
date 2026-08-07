@@ -4,7 +4,9 @@
  * Leverages L1/L2 CPU cache prefetching and V8 auto-vectorization (SIMD) for 10,000+ to 50,000+ entities.
  */
 
-export type EntityId = number;
+import type { EntityId } from './ECS.js';
+
+export type FastSoAEntityId = EntityId;
 
 export interface FastSoAWorldOptions {
   maxEntities?: number;
