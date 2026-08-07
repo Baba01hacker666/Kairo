@@ -56,6 +56,10 @@ export declare class KairoApp {
     private sceneObstacles;
     constructor(config?: KairoAppConfig);
     registerObstacle(object: THREE.Object3D): void;
+    createEntity(name?: string): number;
+    createSharedContext(id: string, properties: Record<string, any>): import("@kairo/ecs").SharedEntityContext<Record<string, any>>;
+    createEntityWithSharedContext(contextId: string, name?: string): number;
+    query(q: any): number[];
     clearObstacles(): void;
     setLighting(options: {
         sunPosition?: [number, number, number];
