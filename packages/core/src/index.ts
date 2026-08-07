@@ -6,9 +6,21 @@ export * from './Engine.ts';
 export * from './ObjectPool.ts';
 export * from './KairoApp.ts';
 export * from './Serializer.ts';
-
 export * from './SaveSystem.ts';
 export * from './Procedural.ts';
 export * from './Cutscene.ts';
 export * from './SceneManager.ts';
 export * from './Scripting.ts';
+
+// Unified Engine Package Exports
+export * from '@kairo/ecs';
+export * from '@kairo/renderer';
+export * from '@kairo/physics';
+export * from '@kairo/input';
+export * from '@kairo/audio';
+export * from '@kairo/ui';
+export * from '@kairo/tools';
+export * from '@kairo/ai';
+export * from '@kairo/animation';
+export * from '@kairo/geometry';
+export * from '@kairo/events';
