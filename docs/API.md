@@ -82,3 +82,31 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 ### `Material`
 - `material.setShaderPreset(presetName)`: Apply built-in shader preset to material.
 - `material.setCustomShader(shaderMaterial)`: Assign custom `CustomShaderMaterial` instance to material.
+
+### `CameraController`
+- `setTargetPosition(pos)`: Set camera tracking target with vertical height offset.
+- `cutTo(pos, lookAtTarget)`: Hard cut camera position and orientation immediately.
+- `panTo(fromPos, toPos, lookAtTarget, duration)`: Smooth 3D pan between keyframed camera positions.
+- `orbitShot(centerTarget, radius, speed, duration)`: 360° orbital camera rotation around target.
+- `dollyZoom(targetFov, duration)`: Vertigo dolly zoom effect adjusting FOV smoothly.
+- **Lockstep Tracking**: Uses `currentTarget` lerping and exponential decay `1.0 - Math.exp(-lerpSpeed * dt)` to eliminate character movement jitter.
+
+---
+
+## 5. `@kairo/ecs`
+
+### `World`
+- `world.createEntity(name?)`: Instantiate a new entity ID.
+- `world.createSharedContext(id, properties)`: Register a flyweight `SharedEntityContext` record holding shared invariant properties (`radius`, `color`, `meshTemplate`, `restitution`).
+- `world.createEntityWithSharedContext(contextId, name?)`: Instantiate an entity attached to a shared context archetype.
+- `world.destroyEntity(entity)`: Destroy entity and clean up component storages & shared context attachments.
+- `world.query(query)`: Query matching active entities (returns a defensive copy to prevent cache mutation).
+- `world.sharedContexts`: Instance of `SharedEntityContextManager`.
+
+### `SharedEntityContext` & `SharedEntityContextManager`
+- `new SharedEntityContext(id, properties)`: Immutable shared archetype record.
+- `sharedContexts.registerContext(id, properties)`: Register or retrieve shared context record.
+- `sharedContexts.attachEntityToContext(entity, contextId)`: Associate entity with shared context.
+- `sharedContexts.forEachInContext(contextId, callback)`: High-speed batch iteration over all entities sharing context (5.56x faster execution, 18.1% heap memory savings).
+- `sharedContexts.getStats()`: Compute memory savings bytes and shared entity counts.
+
