@@ -22,4 +22,16 @@ export declare class Serializer {
     static decompressFromBase64(encoded: string): string;
     static cloneDeep<T>(obj: T): T;
     static hashString(str: string): number;
+    /**
+     * Fast XOR Cipher Payload Encryption/Obfuscation for Save State and Code Payload Security
+     */
+    static encryptPayload(dataStr: string, secretKey?: string): string;
+    /**
+     * Fast XOR Cipher Payload Decryption/Deobfuscation
+     */
+    static decryptPayload(encryptedStr: string, secretKey?: string): string;
+    /**
+     * Lightweight Run-Length Encoding (RLE) Payload Compression
+     */
+    static compressRLE(str: string): string;
 }
