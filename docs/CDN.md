@@ -14,6 +14,15 @@ Best for modern browsers and ES module `<script type="module">` setups:
 <head>
   <meta charset="UTF-8">
   <title>My Kairo CDN Game</title>
+  <!-- Import Map for Peer Dependencies -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.js",
+      "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+    }
+  }
+  </script>
 </head>
 <body style="margin: 0; overflow: hidden; background: #0a0c10;">
   <canvas id="game-canvas"></canvas>
