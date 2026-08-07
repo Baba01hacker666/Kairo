@@ -2,11 +2,13 @@ import * as THREE from 'three';
 
 export type TrackType = 'camera' | 'overlay' | 'text' | 'transition' | 'audio' | 'colorGrade';
 
-export interface Keyframe {
+export interface VideoKeyframe {
   time: number; // in seconds
   value: any;   // numeric, vector, or string
   easing?: 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
 }
+
+export type VideoTrackKeyframe = VideoKeyframe;
 
 export interface TimelineClip {
   id: string;
@@ -15,7 +17,7 @@ export interface TimelineClip {
   startTime: number; // in seconds
   duration: number;  // in seconds
   props: Record<string, any>;
-  keyframes?: Record<string, Keyframe[]>;
+  keyframes?: Record<string, VideoKeyframe[]>;
 }
 
 export interface TimelineTrack {
