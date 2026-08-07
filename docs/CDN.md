@@ -20,6 +20,7 @@ Best for modern browsers and ES module `<script type="module">` setups:
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
       "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
       "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
       "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@6.48.1/+esm"
     }
