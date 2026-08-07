@@ -962,10 +962,98 @@ function loadDemoScene(type) {
 
   onWindowResize();
   updateHierarchyTree();
-  selectEntity(state.entities[0] ? state.entities[0].id : null);
+  // --- UNDO / REDO HISTORY MANAGER ---
+const undoStack = [];
+const redoStack = [];
+
+function saveUndoState() {
+  try {
+    const serializedState = {
+      entities: state.entities.map(e => ({
+        id: e.id,
+        name: e.name,
+        position: { x: e.position.x, y: e.position.y, z: e.position.z },
+        scale: { x: e.scale.x, y: e.scale.y, z: e.scale.z },
+        color: e.color
+      })),
+      selectedEntityId: state.selectedEntityId
+    };
+    undoStack.push(JSON.stringify(serializedState));
+    if (undoStack.length > 50) undoStack.shift();
+    redoStack.length = 0;
+  } catch (e) {
+    console.error('[UndoManager] Error saving undo state:', e);
+  }
 }
 
-function createEntity(name, id, pos, scale, colorHex, isDynamic = false, geometryType = 'box') {
+function undoState() {
+  if (undoStack.length === 0) return;
+  try {
+    const currentState = JSON.stringify({
+      entities: state.entities.map(e => ({
+        id: e.id,
+        name: e.name,
+        position: { x: e.position.x, y: e.position.y, z: e.position.z },
+        scale: { x: e.scale.x, y: e.scale.y, z: e.scale.z },
+        color: e.color
+      })),
+      selectedEntityId: state.selectedEntityId
+    });
+    redoStack.push(currentState);
+    
+    const prevState = JSON.parse(undoStack.pop());
+    restoreEditorState(prevState);
+    logConsole('[UndoManager] Undid last action (Ctrl+Z)');
+    audioManager.playSound('click');
+  } catch (e) {
+    console.error('[UndoManager] Error executing undo:', e);
+  }
+}
+
+function redoState() {
+  if (redoStack.length === 0) return;
+  try {
+    const currentState = JSON.stringify({
+      entities: state.entities.map(e => ({
+        id: e.id,
+        name: e.name,
+        position: { x: e.position.x, y: e.position.y, z: e.position.z },
+        scale: { x: e.scale.x, y: e.scale.y, z: e.scale.z },
+        color: e.color
+      })),
+      selectedEntityId: state.selectedEntityId
+    });
+    undoStack.push(currentState);
+
+    const nextState = JSON.parse(redoStack.pop());
+    restoreEditorState(nextState);
+    logConsole('[UndoManager] Redid action (Ctrl+Y)');
+    audioManager.playSound('click');
+  } catch (e) {
+    console.error('[UndoManager] Error executing redo:', e);
+  }
+}
+
+function restoreEditorState(data) {
+  try {
+    threeObjectsMap.forEach((mesh) => scene.remove(mesh));
+    threeObjectsMap.clear();
+    state.entities = [];
+
+    data.entities.forEach(ent => {
+      createEntity(ent.name, ent.id, ent.position, ent.scale, ent.color, false, 'box', false);
+    });
+
+    state.selectedEntityId = data.selectedEntityId;
+    updateHierarchyTree();
+    renderInspector();
+  } catch (err) {
+    console.error('Failed to restore editor state:', err);
+  }
+}
+
+function createEntity(name, id, pos, scale, colorHex, isDynamic = false, geometryType = 'box', recordUndo = true) {
+  if (recordUndo) saveUndoState();
   let geom = geometryType === 'sphere' ? new THREE.SphereGeometry(scale.x * 0.5, 32, 32) : new THREE.BoxGeometry(scale.x, scale.y, scale.z);
   const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3, metalness: 0.4 });
   const mesh = new THREE.Mesh(geom, mat);
@@ -978,6 +1066,20 @@ function createEntity(name, id, pos, scale, colorHex, isDynamic = false, geometr
   threeObjectsMap.set(id, mesh);
 }
 
+function escapeHTML(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>"']/g, match => {
+    switch (match) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#39;';
+      default: return match;
+    }
+  });
+}
+
 // --- UI EVENT BINDINGS & INSPECTOR ---
 function updateHierarchyTree() {
   const container = document.getElementById('hierarchy-list');
@@ -987,7 +1089,7 @@ function updateHierarchyTree() {
   state.entities.forEach(ent => {
     const node = document.createElement('div');
     node.className = `tree-node ${ent.id === state.selectedEntityId ? 'selected' : ''}`;
-    node.innerHTML = `<span>${ent.id.includes('stick') ? '🤸' : (ent.id.includes('coin') ? '🪙' : '📦')}</span> <span>${ent.name}</span>`;
+    node.innerHTML = `<span>${ent.id.includes('stick') ? '🤸' : (ent.id.includes('coin') ? '🪙' : '📦')}</span> <span>${escapeHTML(ent.name)}</span>`;
     node.onclick = () => selectEntity(ent.id);
     container.appendChild(node);
   });
@@ -1014,14 +1116,14 @@ function renderInspector() {
     return;
   }
 
-  if (tag) tag.innerText = `ID: ${ent.id}`;
+  if (tag) tag.innerText = `ID: ${escapeHTML(ent.id)}`;
 
   const isGame = state.demoType === 'game';
 
   container.innerHTML = `
     <div class="inspector-group">
       <div class="inspector-group-title"><span>Identity</span></div>
-      <div class="form-row"><span class="form-label">Name</span><input type="text" class="form-input" value="${ent.name}"></div>
+      <div class="form-row"><span class="form-label">Name</span><input type="text" class="form-input" value="${escapeHTML(ent.name)}"></div>
     </div>
 
     <div class="inspector-group">
@@ -1103,6 +1205,19 @@ function setStickmanAnimState(newState) {
 }
 
 function bindEditorEvents() {
+  window.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      if (e.shiftKey) {
+        redoState();
+      } else {
+        undoState();
+      }
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      redoState();
+    }
+  });
+
   document.getElementById('btn-play').onclick = () => {
     state.isPlaying = true;
     state.isPaused = false;

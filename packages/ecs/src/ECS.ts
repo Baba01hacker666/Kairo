@@ -332,15 +332,11 @@ export class World {
     const key = this.getQueryCacheKey(queryDesc);
     const cached = this.queryCache.get(key);
     if (cached) {
-      return cached;
+      return cached.slice();
     }
 
     let candidateEntities: Iterable<EntityId>;
 
-    // ⚡ Bolt Optimization:
-    // If we require specific components, iterate only over the entities that have
-    // the least common required component, instead of ALL active entities.
-    // This turns an O(N_Total_Entities) operation into an O(N_Smallest_Component_Set) operation.
     if (queryDesc.all.length > 0) {
       let minSize = Infinity;
       let smallestStorage: Map<EntityId, any> | undefined;
@@ -349,7 +345,7 @@ export class World {
         const storage = this.components.get(compType);
         if (!storage || storage.size === 0) {
           this.queryCache.set(key, []);
-          return []; // If any required component is missing, no entity can match
+          return [];
         }
         if (storage.size < minSize) {
           minSize = storage.size;
@@ -368,7 +364,7 @@ export class World {
       }
     }
     this.queryCache.set(key, results);
-    return results;
+    return results.slice();
   }
 
   /**

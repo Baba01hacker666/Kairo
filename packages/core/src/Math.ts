@@ -486,6 +486,46 @@ export class Ray {
       normal
     };
   }
+
+  intersectSphere(center: Vector3, radius: number): { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 } {
+    const lx = center.x - this.origin.x;
+    const ly = center.y - this.origin.y;
+    const lz = center.z - this.origin.z;
+
+    const dirLen = Math.sqrt(this.direction.x * this.direction.x + this.direction.y * this.direction.y + this.direction.z * this.direction.z);
+    const dx = dirLen > 0 ? this.direction.x / dirLen : 0;
+    const dy = dirLen > 0 ? this.direction.y / dirLen : 0;
+    const dz = dirLen > 0 ? this.direction.z / dirLen : -1;
+
+    const tca = lx * dx + ly * dy + lz * dz;
+    const d2 = (lx * lx + ly * ly + lz * lz) - (tca * tca);
+    const r2 = radius * radius;
+
+    if (d2 > r2) {
+      return Ray._missResult;
+    }
+
+    const thc = Math.sqrt(r2 - d2);
+    let t0 = tca - thc;
+    let t1 = tca + thc;
+
+    if (t0 < 0) t0 = t1;
+    if (t0 < 0) return Ray._missResult;
+
+    const hitPoint = new Vector3(
+      this.origin.x + dx * t0,
+      this.origin.y + dy * t0,
+      this.origin.z + dz * t0
+    );
+
+    const normal = new Vector3(
+      (hitPoint.x - center.x) / radius,
+      (hitPoint.y - center.y) / radius,
+      (hitPoint.z - center.z) / radius
+    );
+
+    return { hasHit: true, distance: t0, point: hitPoint, normal };
+  }
 }
 
 export class BoundingBox {

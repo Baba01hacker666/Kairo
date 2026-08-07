@@ -52,7 +52,7 @@ export class EngineCompiler {
     const compiledLevels: CompiledLevelBundle[] = [];
 
     levels.forEach((level) => {
-      const jsonStr = JSON.stringify(level);
+      const jsonStr = JSON.stringify(level, null, 2);
       const originalSize = new TextEncoder().encode(jsonStr).length;
       totalOriginalBytes += originalSize;
 
@@ -73,7 +73,8 @@ export class EngineCompiler {
       }
 
       // 2. Compress & Bake binary level envelope with CRC Checksum
-      const envelope = Serializer.createSaveEnvelope(level);
+      const minifiedLevelStr = JSON.stringify(level);
+      const envelope = Serializer.createSaveEnvelope(JSON.parse(minifiedLevelStr));
       const rawEnv = JSON.stringify(envelope);
       const binaryPayload = opts.compressBinaryLevels ? Serializer.compressToBase64(rawEnv) : rawEnv;
       const compiledSize = new TextEncoder().encode(binaryPayload).length;
@@ -91,9 +92,9 @@ export class EngineCompiler {
       logs.push(`[Level ${level.id}] '${level.name}' compiled (${originalSize}B -> ${compiledSize}B)`);
     });
 
-    const ratio = totalOriginalBytes > 0 
-      ? ((1 - totalCompiledBytes / totalOriginalBytes) * 100).toFixed(1) + '%' 
-      : '0%';
+    const savedBytes = totalOriginalBytes - totalCompiledBytes;
+    const savingsPercent = totalOriginalBytes > 0 ? (savedBytes / totalOriginalBytes) * 100 : 0;
+    const ratio = totalOriginalBytes > 0 ? `${savingsPercent.toFixed(1)}%` : '0%';
 
     logs.push(`[Kairo AOT Compiler] Build complete! ${compiledLevels.length} levels bundled.`);
     logs.push(`[Optimization Summary] Size reduced by ${ratio} (Total: ${(totalCompiledBytes / 1024).toFixed(2)} KB)`);
@@ -106,7 +107,7 @@ export class EngineCompiler {
       totalOriginalSizeBytes: totalOriginalBytes,
       totalCompiledSizeBytes: totalCompiledBytes,
       compressionRatio: ratio,
-      estimatedMemorySavingsPercent: opts.targetPlatform === 'mobile' ? 45 : 30,
+      estimatedMemorySavingsPercent: Math.max(0, Math.round(savingsPercent)),
       compiledLevels,
       logs
     };

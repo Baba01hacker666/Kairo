@@ -269,16 +269,25 @@ export class PhysicsWorld {
   }
 
   step(dt: number): void {
-    if (this.activeBackend === 'go-wasm' && (window as any).kairoWasmPhysics) {
+    if (this.activeBackend === 'go-wasm' && typeof window !== 'undefined' && (window as any).kairoWasmPhysics) {
       (window as any).kairoWasmPhysics.step(dt);
       return;
     }
 
+    if (this.activeBackend === 'havok') {
+      if (typeof window !== 'undefined' && (window as any).havokPlugin) {
+        (window as any).havokPlugin.step(dt);
+        return;
+      } else {
+        if (!PhysicsWorld._havokFallbackWarned) {
+          console.warn('[PhysicsWorld] Havok backend selected but Havok WASM plugin is not loaded; falling back to Cannon.js physics solver.');
+          PhysicsWorld._havokFallbackWarned = true;
+        }
+      }
+    }
+
     const world = this.cannonWorld;
     world.gravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
-    // cannon-es 0.20 applies world gravity to every dynamic body unconditionally,
-    // so `useGravity: false` bodies are cancelled out here with an equal and
-    // opposite force in the same substep, keeping resting/solving behaviour stable.
     this.cancelGravityForNonGravityBodies();
 
     this.syncKinematicAndStaticBodies();
@@ -287,6 +296,8 @@ export class PhysicsWorld {
     this.syncDynamicBodies();
     this.collectCollisionEvents();
   }
+
+  private static _havokFallbackWarned = false;
 
   private cancelGravityForNonGravityBodies(): void {
     const g = this.gravity;
@@ -333,8 +344,16 @@ export class PhysicsWorld {
     // Avoid creating new arrays via mapping and filter arrays.
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
-      const bounds = collider.getBoundingBox(position, PhysicsWorld._raycastTempBox);
-      const hit = ray.intersectBox(bounds);
+      let hit: { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 };
+
+      if (collider.type === ColliderType.Sphere) {
+        const sphereRadius = collider.radius || (collider.size.x * 0.5);
+        hit = ray.intersectSphere(position, sphereRadius);
+      } else {
+        const bounds = collider.getBoundingBox(position, PhysicsWorld._raycastTempBox);
+        hit = ray.intersectBox(bounds);
+      }
+
       if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestHit.distance) {
         closestHit = {
           hasHit: true,
@@ -358,24 +377,33 @@ export class PhysicsWorld {
   }
 
   overlapSphere(center: Vector3, radius: number): RigidBody[] {
-    const radiusSq = radius * radius;
     const results: RigidBody[] = [];
 
-    // ⚡ Bolt Optimization:
-    // Avoid .filter().map() chaining in this hot path.
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
-      const hx = collider.size.x * 0.5;
-      const hy = collider.size.y * 0.5;
-      const hz = collider.size.z * 0.5;
-      const closestX = clamp(center.x, position.x - hx, position.x + hx);
-      const closestY = clamp(center.y, position.y - hy, position.y + hy);
-      const closestZ = clamp(center.z, position.z - hz, position.z + hz);
-      const dx = center.x - closestX;
-      const dy = center.y - closestY;
-      const dz = center.z - closestZ;
-      if (dx * dx + dy * dy + dz * dz <= radiusSq) {
-        results.push(body);
+      
+      if (collider.type === ColliderType.Sphere) {
+        const rSphere = collider.radius || (collider.size.x * 0.5);
+        const totalRadius = radius + rSphere;
+        const dx = center.x - position.x;
+        const dy = center.y - position.y;
+        const dz = center.z - position.z;
+        if (dx * dx + dy * dy + dz * dz <= totalRadius * totalRadius) {
+          results.push(body);
+        }
+      } else {
+        const hx = collider.size.x * 0.5;
+        const hy = collider.size.y * 0.5;
+        const hz = collider.size.z * 0.5;
+        const closestX = clamp(center.x, position.x - hx, position.x + hx);
+        const closestY = clamp(center.y, position.y - hy, position.y + hy);
+        const closestZ = clamp(center.z, position.z - hz, position.z + hz);
+        const dx = center.x - closestX;
+        const dy = center.y - closestY;
+        const dz = center.z - closestZ;
+        if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+          results.push(body);
+        }
       }
     }
     return results;
