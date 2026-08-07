@@ -2,22 +2,63 @@ import { KairoApp } from '@kairo/core';
 
 async function initGame() {
   // 1. Initialize Go WASM Physics
+  const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
   if (!(window as any).Go) {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = '/wasm_exec.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load /wasm_exec.js'));
-      document.head.appendChild(script);
-    });
+    const scriptUrls = [
+      `${cleanBase}wasm_exec.js`,
+      `../../wasm_exec.js`,
+      `./wasm_exec.js`,
+      `/wasm_exec.js`
+    ];
+    let loadedScript = false;
+    for (const url of scriptUrls) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = url;
+          script.onload = () => { loadedScript = true; resolve(); };
+          script.onerror = () => reject();
+          document.head.appendChild(script);
+        });
+        if ((window as any).Go) break;
+      } catch (_) {}
+    }
   }
+
   const go = new (window as any).Go();
-  let wasmRes = await fetch('/kairo-physics.wasm').catch(() => null);
-  if (!wasmRes || !wasmRes.ok) wasmRes = await fetch('/public/kairo-physics.wasm').catch(() => null);
-  if (!wasmRes || !wasmRes.ok) wasmRes = await fetch('./kairo-physics.wasm');
-  const wasmBytes = await wasmRes.arrayBuffer();
+
+  const wasmUrls = [
+    `${cleanBase}kairo-physics.wasm`,
+    `../../kairo-physics.wasm`,
+    `../kairo-physics.wasm`,
+    `./kairo-physics.wasm`,
+    `kairo-physics.wasm`
+  ];
+
+  let wasmBytes: ArrayBuffer | null = null;
+  for (const url of wasmUrls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        if (bytes.length >= 4 && bytes[0] === 0x00 && bytes[1] === 0x61 && bytes[2] === 0x73 && bytes[3] === 0x6d) {
+          wasmBytes = buf;
+          console.log(`⚡ Loaded Go WASM physics from ${url}`);
+          break;
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (!wasmBytes) {
+    throw new Error('Failed to load valid kairo-physics.wasm binary');
+  }
+
   const result = await WebAssembly.instantiate(wasmBytes, go.importObject);
-  go.run(result.instance); // This binds KairoPhysicsAddBody, KairoPhysicsStep, KairoPhysicsApplyForce, KairoPhysicsGetState to window
+  go.run(result.instance); // Binds KairoPhysicsAddBody, KairoPhysicsStep, etc. to window
   
   // 2. Initialize the Kairo Engine App
   const app = new KairoApp({
