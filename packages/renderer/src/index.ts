@@ -1,4 +1,7 @@
 export * from './Material.ts';
+export * from './ShaderMaterial.ts';
+export * from './ShaderPresets.ts';
+export * from './ShaderGraphCompiler.ts';
 export * from './Lighting.ts';
 export * from './Particles.ts';
 export * from './Camera.ts';

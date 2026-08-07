@@ -53,3 +53,32 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `setLetterbox(enabled, barHeightPercent)`: 21:9 Widescreen letterbox black bars.
 - `transitionCut(type, durationMs)`: Video transition cuts (`wipeLeft`, `wipeRight`, `circleWipe`, `glitch`).
 - `setColorGrading(preset)`: Color grading filter presets (`cinematicWarm`, `cyberpunkNeon`, `noir`, `vintage`).
+
+---
+
+## 4. `@kairo/renderer`
+
+### `CustomShaderMaterial`
+- `new CustomShaderMaterial(name, options)`: Custom GLSL shader material wrapper supporting vertex/fragment code, transparent pass, side rendering, and custom uniforms.
+- `setUniform(name, value, type?)`: Set or update shader uniform (`float`, `vec2`, `vec3`, `vec4`, `color`, `texture`).
+- `getUniform(name)`: Get active value of uniform.
+- `update(dt, elapsedTime)`: Update time-based uniforms (`u_time`).
+- `toThreeMaterial()`: Convert or update underlying `THREE.ShaderMaterial` for WebGL rendering.
+- `clone()`: Create deep clone of custom shader material.
+- `toJSON()` / `CustomShaderMaterial.fromJSON(json)`: Serialize and deserialize custom shader materials.
+
+### `ShaderPresets`
+- `ShaderPresets.createWaterShader()`: Procedural wave vertex displacement and shallow/deep depth gradient shader.
+- `ShaderPresets.createDissolveShader()`: Perlin noise alpha discard threshold shader with glowing fiery edges.
+- `ShaderPresets.createHologramShader()`: Additive futuristic hologram shader with scanlines, fresnel rim, and vertex glitch jitter.
+- `ShaderPresets.createToonShader()`: Quantized stepped cel-shading light calculation with outline rim lighting.
+- `ShaderPresets.createFresnelGlowShader()`: Dynamic pulsing fresnel edge aura glow shader.
+- `ShaderPresets.getPreset(name)`: Instantiate preset by name (`'water'`, `'dissolve'`, `'hologram'`, `'toon'`, `'fresnel'`).
+
+### `ShaderGraphCompiler`
+- `ShaderGraphCompiler.compile(graph)`: Compiles visual node graph into vertex and fragment GLSL code strings and uniform map.
+- `ShaderGraphCompiler.createDefaultGraph()`: Returns starter visual graph data.
+
+### `Material`
+- `material.setShaderPreset(presetName)`: Apply built-in shader preset to material.
+- `material.setCustomShader(shaderMaterial)`: Assign custom `CustomShaderMaterial` instance to material.

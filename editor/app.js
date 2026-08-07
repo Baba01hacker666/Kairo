@@ -1025,6 +1025,25 @@ function renderInspector() {
     </div>
 
     <div class="inspector-group">
+      <div class="inspector-group-title"><span>✨ Shader Material</span></div>
+      <div class="form-row">
+        <span class="form-label">Shader Preset</span>
+        <select class="form-input" id="inspect-shader-preset">
+          <option value="none">Standard PBR Material</option>
+          <option value="water">🌊 Water Wave Shader</option>
+          <option value="dissolve">🔥 Dissolve Noise Shader</option>
+          <option value="hologram">🤖 Cyber Hologram Shader</option>
+          <option value="toon">🎨 Toon Cel Shader</option>
+          <option value="fresnel">✨ Glowing Fresnel Rim</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Visual Shader Graph</span>
+        <button class="shader-btn secondary" id="inspect-btn-open-shader-graph" style="width: 100%;">⚡ Open Shader Studio</button>
+      </div>
+    </div>
+
+    <div class="inspector-group">
       <div class="inspector-group-title"><span>${isGame ? '🎮 Mobile Game Controls' : 'Engine System'}</span></div>
       <div class="form-row"><span class="form-label">Move Left/Right</span><span style="color: var(--accent-secondary); font-weight: bold;">A / D or Touch ◀ / ▶ Pads</span></div>
       <div class="form-row"><span class="form-label">Jump</span><span style="color: var(--accent-success); font-weight: bold;">W / Space / Touch ⬆ Pad</span></div>
@@ -1047,6 +1066,28 @@ function renderInspector() {
 
   const animSelect = document.getElementById('inspect-anim-clip');
   if (animSelect) animSelect.onchange = (e) => setStickmanAnimState(e.target.value);
+
+  const shaderSelect = document.getElementById('inspect-shader-preset');
+  if (shaderSelect) {
+    shaderSelect.onchange = (e) => {
+      const preset = e.target.value;
+      const studioPresetSelect = document.getElementById('shader-preset-select');
+      const compileBtn = document.getElementById('btn-compile-shader');
+      if (preset !== 'none') {
+        if (studioPresetSelect) studioPresetSelect.value = preset;
+        if (compileBtn) compileBtn.click();
+        logConsole(`[Inspector] Applied Shader Preset '${preset}' to '${ent.name}'`);
+      }
+    };
+  }
+
+  const btnOpenGraph = document.getElementById('inspect-btn-open-shader-graph');
+  if (btnOpenGraph) {
+    btnOpenGraph.onclick = () => {
+      const tabShaderBtn = document.querySelector('.tab-btn[data-tab="tab-shader"]');
+      if (tabShaderBtn) tabShaderBtn.click();
+    };
+  }
 }
 
 function setStickmanAnimState(newState) {
@@ -1595,11 +1636,352 @@ function showStudioOverlayImage() {
   }
 }
 
+// --- SHADER GRAPH STUDIO CONTROLLER ---
+function initShaderGraphStudio() {
+  const nodesContainer = document.getElementById('shader-nodes-container');
+  const wiresSvg = document.getElementById('shader-wires-svg');
+  const previewCanvas = document.getElementById('shader-preview-canvas');
+  const presetSelect = document.getElementById('shader-preset-select');
+  const presetTag = document.getElementById('shader-preset-tag');
+  const btnCompile = document.getElementById('btn-compile-shader');
+  const btnAddNode = document.getElementById('btn-add-shader-node');
+  const btnToggleCode = document.getElementById('btn-toggle-shader-code');
+  const codeDrawer = document.getElementById('shader-code-drawer');
+  const codePre = document.getElementById('shader-code-preview');
+
+  if (!previewCanvas) return;
+
+  // 1. Setup Three.js Shader Preview Scene
+  const previewRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true, alpha: true });
+  previewRenderer.setSize(280, 180);
+  previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+  const previewScene = new THREE.Scene();
+  const previewCamera = new THREE.PerspectiveCamera(45, 280 / 180, 0.1, 100);
+  previewCamera.position.set(0, 0, 3.2);
+
+  const previewGeo = new THREE.SphereGeometry(1, 48, 48);
+  let currentPreviewMat = createPreviewShaderMaterial('water');
+
+  const previewMesh = new THREE.Mesh(previewGeo, currentPreviewMat);
+  previewScene.add(previewMesh);
+
+  let startTime = performance.now();
+  function animatePreview() {
+    requestAnimationFrame(animatePreview);
+    const elapsedTime = (performance.now() - startTime) / 1000;
+    if (previewMesh) {
+      previewMesh.rotation.y = elapsedTime * 0.3;
+    }
+    if (currentPreviewMat && currentPreviewMat.uniforms.u_time) {
+      currentPreviewMat.uniforms.u_time.value = elapsedTime;
+    }
+    previewRenderer.render(previewScene, previewCamera);
+  }
+  animatePreview();
+
+  // Preset definitions for GLSL preview materials
+  function createPreviewShaderMaterial(preset) {
+    if (preset === 'water') {
+      return new THREE.ShaderMaterial({
+        transparent: true,
+        uniforms: {
+          u_time: { value: 0 },
+          u_shallowColor: { value: new THREE.Color('#10b981') },
+          u_deepColor: { value: new THREE.Color('#0369a1') }
+        },
+        vertexShader: `
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying float vWave;
+          void main() {
+            vUv = uv;
+            vec3 pos = position;
+            float wave = sin(pos.x * 5.0 + u_time * 2.0) * cos(pos.z * 5.0 + u_time * 2.0) * 0.1;
+            pos += normal * wave;
+            vWave = wave;
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float u_time;
+          uniform vec3 u_shallowColor;
+          uniform vec3 u_deepColor;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying float vWave;
+          void main() {
+            float diff = max(dot(vNormal, normalize(vec3(1.0, 2.0, 1.0))), 0.2);
+            vec3 col = mix(u_deepColor, u_shallowColor, vWave * 5.0 + 0.5);
+            gl_FragColor = vec4(col * diff, 0.9);
+          }
+        `
+      });
+    } else if (preset === 'dissolve') {
+      return new THREE.ShaderMaterial({
+        transparent: true,
+        uniforms: { u_time: { value: 0 } },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          void main() {
+            vUv = uv;
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+          void main() {
+            float n = hash(floor(vUv * 12.0));
+            float dissolve = sin(u_time * 1.5) * 0.5 + 0.5;
+            if (n < dissolve) discard;
+            float diff = max(dot(vNormal, normalize(vec3(1.0, 2.0, 1.0))), 0.2);
+            vec3 col = mix(vec3(0.2, 0.6, 1.0), vec3(1.0, 0.4, 0.0), step(n, dissolve + 0.08));
+            gl_FragColor = vec4(col * diff, 1.0);
+          }
+        `
+      });
+    } else if (preset === 'hologram') {
+      return new THREE.ShaderMaterial({
+        transparent: true,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        uniforms: { u_time: { value: 0 } },
+        vertexShader: `
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vUv = uv;
+            vec3 pos = position;
+            pos.x += sin(pos.y * 20.0 + u_time * 8.0) * 0.02;
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vec3 normal = normalize(vNormal);
+            vec3 viewDir = normalize(vViewPosition);
+            float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+            float scanline = sin(vUv.y * 40.0 - u_time * 6.0) * 0.5 + 0.5;
+            vec3 col = vec3(0.0, 0.9, 1.0) * (fresnel + scanline * 0.5);
+            gl_FragColor = vec4(col, fresnel * 0.8 + 0.2);
+          }
+        `
+      });
+    } else if (preset === 'toon') {
+      return new THREE.ShaderMaterial({
+        uniforms: { u_time: { value: 0 } },
+        vertexShader: `
+          varying vec3 vNormal;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vNormal;
+          void main() {
+            vec3 L = normalize(vec3(1.0, 2.0, 1.0));
+            float diff = max(dot(vNormal, L), 0.0);
+            float steps = floor(diff * 3.0) / 3.0;
+            steps = max(steps, 0.2);
+            vec3 col = vec3(0.9, 0.3, 0.2) * steps;
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `
+      });
+    } else { // fresnel
+      return new THREE.ShaderMaterial({
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        uniforms: { u_time: { value: 0 } },
+        vertexShader: `
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform float u_time;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vec3 viewDir = normalize(vViewPosition);
+            float fresnel = pow(1.0 - max(dot(vNormal, viewDir), 0.0), 2.5);
+            float pulse = sin(u_time * 3.0) * 0.3 + 0.8;
+            vec3 col = vec3(0.9, 0.2, 1.0) * fresnel * pulse * 2.0;
+            gl_FragColor = vec4(col, fresnel * 0.9);
+          }
+        `
+      });
+    }
+  }
+
+  // Preset graph nodes for visual graph UI
+  const defaultGraphNodes = [
+    { id: 'n_uv', type: 'input_uv', title: 'UV Coordinates', x: 20, y: 30, inputs: [], outputs: ['UV'] },
+    { id: 'n_time', type: 'input_time', title: 'Game Time', x: 20, y: 130, inputs: [], outputs: ['Time'] },
+    { id: 'n_noise', type: 'input_noise', title: 'Procedural Noise', x: 190, y: 30, inputs: ['UV', 'Scale'], outputs: ['Noise'] },
+    { id: 'n_color', type: 'input_color', title: 'Color Tint', x: 190, y: 140, inputs: [], outputs: ['Color'] },
+    { id: 'n_master', type: 'master_output', title: 'Master Output', x: 370, y: 70, inputs: ['Base Color', 'Alpha'], outputs: [] }
+  ];
+
+  function renderNodes() {
+    if (!nodesContainer) return;
+    nodesContainer.innerHTML = '';
+    defaultGraphNodes.forEach(node => {
+      const el = document.createElement('div');
+      el.className = `shader-node ${node.type === 'master_output' ? 'master-node' : ''}`;
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+
+      let inputsHtml = node.inputs.map(ip => `
+        <div class="shader-port-row">
+          <span class="shader-port" data-port="${ip}"></span>
+          <span>${ip}</span>
+        </div>
+      `).join('');
+
+      let outputsHtml = node.outputs.map(op => `
+        <div class="shader-port-row">
+          <span>${op}</span>
+          <span class="shader-port" data-port="${op}"></span>
+        </div>
+      `).join('');
+
+      el.innerHTML = `
+        <div class="shader-node-header">${node.title}</div>
+        <div class="shader-node-body">
+          ${inputsHtml}
+          ${outputsHtml}
+        </div>
+      `;
+
+      // Node Dragging
+      let isDragging = false, startX = 0, startY = 0;
+      const header = el.querySelector('.shader-node-header');
+      header.onmousedown = (e) => {
+        isDragging = true;
+        startX = e.clientX - node.x;
+        startY = e.clientY - node.y;
+        document.onmousemove = (ev) => {
+          if (!isDragging) return;
+          node.x = Math.max(0, ev.clientX - startX);
+          node.y = Math.max(0, ev.clientY - startY);
+          el.style.left = `${node.x}px`;
+          el.style.top = `${node.y}px`;
+          drawWires();
+        };
+        document.onmouseup = () => {
+          isDragging = false;
+          document.onmousemove = null;
+          document.onmouseup = null;
+        };
+      };
+
+      nodesContainer.appendChild(el);
+    });
+    drawWires();
+  }
+
+  function drawWires() {
+    if (!wiresSvg) return;
+    wiresSvg.innerHTML = `
+      <path d="M 170 60 C 210 60, 180 50, 190 50" stroke="#6366f1" stroke-width="2" fill="none" />
+      <path d="M 340 70 C 360 70, 350 90, 370 90" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.8" />
+    `;
+  }
+
+  renderNodes();
+
+  // Event handlers
+  if (presetSelect) {
+    presetSelect.onchange = (e) => {
+      const preset = e.target.value;
+      if (presetTag) presetTag.innerText = e.target.options[e.target.selectedIndex].text;
+      currentPreviewMat = createPreviewShaderMaterial(preset);
+      previewMesh.material = currentPreviewMat;
+      if (codePre) {
+        codePre.innerText = currentPreviewMat.fragmentShader;
+      }
+      audioManager.playSound('click');
+      logConsole(`[Shader Studio] Loaded Shader Preset: '${preset}'`);
+    };
+  }
+
+  if (btnCompile) {
+    btnCompile.onclick = () => {
+      const preset = presetSelect ? presetSelect.value : 'water';
+      currentPreviewMat = createPreviewShaderMaterial(preset);
+      previewMesh.material = currentPreviewMat;
+
+      // Apply to selected entity in scene if available
+      const ent = state.entities.find(e => e.id === state.selectedEntityId);
+      if (ent && ent.threeMesh) {
+        ent.threeMesh.material = currentPreviewMat;
+        logConsole(`[Shader Compiler] Successfully compiled & applied '${preset}' Shader Material to '${ent.name}' (${ent.id})!`);
+      } else {
+        logConsole(`[Shader Compiler] Successfully compiled '${preset}' Shader Material!`);
+      }
+      audioManager.playSound('jump');
+    };
+  }
+
+  if (btnAddNode) {
+    btnAddNode.onclick = () => {
+      const nodeTypes = ['fresnel', 'math_add', 'math_multiply', 'math_sin'];
+      const randomType = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+      defaultGraphNodes.push({
+        id: `node_${Date.now()}`,
+        type: randomType,
+        title: `Node ${randomType.toUpperCase()}`,
+        x: 100 + Math.random() * 100,
+        y: 80 + Math.random() * 60,
+        inputs: ['A', 'B'],
+        outputs: ['Out']
+      });
+      renderNodes();
+      audioManager.playSound('click');
+    };
+  }
+
+  if (btnToggleCode) {
+    btnToggleCode.onclick = () => {
+      if (!codeDrawer) return;
+      const visible = codeDrawer.style.display !== 'none';
+      codeDrawer.style.display = visible ? 'none' : 'block';
+      if (!visible && currentPreviewMat && codePre) {
+        codePre.innerText = currentPreviewMat.fragmentShader;
+      }
+    };
+  }
+}
+
 // Dom Ready Initialization
 window.addEventListener('DOMContentLoaded', () => {
   initViewport();
   bindEditorEvents();
   bindVideoEditorEvents();
+  initShaderGraphStudio();
 
   // Initialize Monaco Editor
   if (window.require) {

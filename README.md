@@ -7,6 +7,7 @@
 ---
 
 ## ✨ Major Features
+- **Custom Shader System & Visual Shader Graph Studio**: High-performance `CustomShaderMaterial` engine supporting custom GLSL vertex/fragment shaders, dynamic uniforms (`float`, `vec2`, `vec3`, `vec4`, `color`, `texture`), built-in procedural shader presets (🌊 Water Waves, 🔥 Dissolve Noise, 🤖 Cyber Hologram, 🎨 Toon Cel, ✨ Glowing Fresnel Rim), visual node compiler (`ShaderGraphCompiler`), real-time 3D WebGL preview viewport, and live GLSL code generator inside the Web Studio Editor.
 - **HTML5 Video Editing & Multitrack Sequencer Engine**: Built-in 6-track video timeline engine (`VideoTimeline`) with keyframed camera shots (`orbit`, `pan`, `dollyZoom`, `crane`), image/video overlays with CSS masking (`circle`, `rounded`, `hexagon`, `vignette`), lower-thirds, video transition cuts (`wipeLeft`, `wipeRight`, `circleWipe`, `glitch`), color grading presets (`cinematicWarm`, `cyberpunkNeon`, `noir`, `vintage`), audio track mixing, and 60 FPS WebM video rendering.
 - **Unified EasyScript Master API**: Single, beginner-friendly entry point unifying all 16 engine packages (Physics, Audio, Particles, AI Pathfinding, Animations, IK, Asset Streaming, Blender `.blend` parsing, Cinematic Camera Shots, Video Editing, UI Modals, Multiplayer Network Sync).
 - **Native Blender `.blend` File Loader**: Binary parser for Blender `.blend` models directly in WebGL and Kairo Studio.
@@ -27,7 +28,7 @@ Kairo is built from 16 decoupled, modular packages:
 
 1. **`@kairo/core`**: Engine loop (`Engine`), High-level app wrapper (`KairoApp`), EventSystem, Vector/Quaternion math, ObjectPool, SaveSystem, Serializer, and `EasyScript` master scripting suite.
 2. **`@kairo/ecs`**: Fast Component-Entity-System pipeline with Query indexing, World state management, and archetypes.
-3. **`@kairo/renderer`**: WebGL 2.0 & WebGPU render pipeline, PBR materials, dynamic frustum culling, soft shadows, and particle emitters.
+3. **`@kairo/renderer`**: WebGL 2.0 & WebGPU render pipeline, PBR materials, `CustomShaderMaterial`, `ShaderPresets` (Water, Dissolve, Hologram, Toon, Fresnel Glow), `ShaderGraphCompiler` node graph compiler, dynamic frustum culling, soft shadows, and particle emitters.
 4. **`@kairo/physics`**: 3D & 2D physics simulation world with RigidBodies, Colliders, Raycasting, and Cannon.js / Havok integrations.
 5. **`@kairo/animation`**: Keyframe animation clips, 1D/2D BlendTrees, skeletal joint hierarchies, and Inverse Kinematics (IK).
 6. **`@kairo/audio`**: Web Audio API spatial synth, HRTF 3D positional sound, background music track manager, and SFX generator.

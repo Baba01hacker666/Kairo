@@ -394,8 +394,53 @@
           </div>
 
           <div class="tab-content" id="tab-shader" style="display: none;">
-            <div style="background: var(--bg-darker); border: 1px dashed var(--border-color); border-radius: 4px; padding: 10px; text-align: center; color: var(--text-muted);">
-              Visual Shader Graph Compiler [Active]
+            <div class="shader-editor-container">
+              <!-- Shader Editor Toolbar -->
+              <div class="shader-editor-toolbar">
+                <div class="shader-toolbar-group">
+                  <span class="shader-toolbar-label">Preset:</span>
+                  <select id="shader-preset-select" class="shader-select">
+                    <option value="water">🌊 Water Wave Shader</option>
+                    <option value="dissolve">🔥 Dissolve Noise Shader</option>
+                    <option value="hologram">🤖 Cyber Hologram Shader</option>
+                    <option value="toon">🎨 Toon Cel Shader</option>
+                    <option value="fresnel">✨ Glowing Fresnel Rim Shader</option>
+                    <option value="custom">⚡ Visual Graph Custom</option>
+                  </select>
+                </div>
+                <div class="shader-toolbar-group">
+                  <button id="btn-compile-shader" class="shader-btn primary">⚡ Compile & Apply</button>
+                  <button id="btn-add-shader-node" class="shader-btn secondary">➕ Add Node</button>
+                  <button id="btn-toggle-shader-code" class="shader-btn secondary">💻 Toggle GLSL</button>
+                </div>
+              </div>
+
+              <!-- Main Shader Workspace -->
+              <div class="shader-workspace">
+                <!-- Visual Node Canvas -->
+                <div class="shader-canvas-area" id="shader-canvas-area">
+                  <svg id="shader-wires-svg" class="shader-wires-svg"></svg>
+                  <div id="shader-nodes-container" class="shader-nodes-container">
+                    <!-- Nodes rendered dynamically by JS -->
+                  </div>
+                </div>
+
+                <!-- Shader Preview & GLSL Code Split Panel -->
+                <div class="shader-preview-panel">
+                  <div class="shader-preview-header">
+                    <span>WebGL Live Shader Preview</span>
+                    <span id="shader-preset-tag" class="shader-badge">Water Wave</span>
+                  </div>
+                  <div class="shader-preview-viewport">
+                    <canvas id="shader-preview-canvas" width="280" height="180"></canvas>
+                  </div>
+                  <!-- GLSL Drawer -->
+                  <div class="shader-code-drawer" id="shader-code-drawer" style="display: none;">
+                    <div class="shader-code-title">Generated Fragment Shader (GLSL)</div>
+                    <pre id="shader-code-preview" class="shader-code-pre"></pre>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

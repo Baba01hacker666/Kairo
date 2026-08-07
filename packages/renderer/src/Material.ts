@@ -1,4 +1,6 @@
 import { Color } from '@kairo/core';
+import { CustomShaderMaterial } from './ShaderMaterial.ts';
+import { ShaderPresets, ShaderPresetName } from './ShaderPresets.ts';
 
 export const RenderQueue = {
   Opaque: 2000,
@@ -19,10 +21,30 @@ export class Material {
   public mapUrl: string | null = null;
   public normalMapUrl: string | null = null;
   public shaderGraphNodes: any[] = [];
+  
+  public isShaderMaterial: boolean = false;
+  public customShaderMaterial: CustomShaderMaterial | null = null;
 
   constructor(name: string = 'Standard Material') {
     this.name = name;
     this.id = `mat_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  public setShaderPreset(presetName: ShaderPresetName): CustomShaderMaterial {
+    this.customShaderMaterial = ShaderPresets.getPreset(presetName);
+    this.isShaderMaterial = true;
+    this.name = `${this.customShaderMaterial.name}`;
+    this.transparent = this.customShaderMaterial.transparent;
+    this.wireframe = this.customShaderMaterial.wireframe;
+    return this.customShaderMaterial;
+  }
+
+  public setCustomShader(shaderMaterial: CustomShaderMaterial): void {
+    this.customShaderMaterial = shaderMaterial;
+    this.isShaderMaterial = true;
+    this.name = shaderMaterial.name;
+    this.transparent = shaderMaterial.transparent;
+    this.wireframe = shaderMaterial.wireframe;
   }
 
   clone(): Material {
@@ -36,6 +58,10 @@ export class Material {
     mat.opacity = this.opacity;
     mat.mapUrl = this.mapUrl;
     mat.normalMapUrl = this.normalMapUrl;
+    mat.isShaderMaterial = this.isShaderMaterial;
+    if (this.customShaderMaterial) {
+      mat.customShaderMaterial = this.customShaderMaterial.clone();
+    }
     return mat;
   }
 }
