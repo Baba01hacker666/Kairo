@@ -101,6 +101,25 @@ TypeScript 2D/3D Dual Engine Studio`))}var A={rotate:`EasyScript.createBehavior(
     </div>
 
     <div class="inspector-group">
+      <div class="inspector-group-title"><span>✨ Shader Material</span></div>
+      <div class="form-row">
+        <span class="form-label">Shader Preset</span>
+        <select class="form-input" id="inspect-shader-preset">
+          <option value="none">Standard PBR Material</option>
+          <option value="water">🌊 Water Wave Shader</option>
+          <option value="dissolve">🔥 Dissolve Noise Shader</option>
+          <option value="hologram">🤖 Cyber Hologram Shader</option>
+          <option value="toon">🎨 Toon Cel Shader</option>
+          <option value="fresnel">✨ Glowing Fresnel Rim</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Visual Shader Graph</span>
+        <button class="shader-btn secondary" id="inspect-btn-open-shader-graph" style="width: 100%;">⚡ Open Shader Studio</button>
+      </div>
+    </div>
+
+    <div class="inspector-group">
       <div class="inspector-group-title"><span>${i?`🎮 Mobile Game Controls`:`Engine System`}</span></div>
       <div class="form-row"><span class="form-label">Move Left/Right</span><span style="color: var(--accent-secondary); font-weight: bold;">A / D or Touch ◀ / ▶ Pads</span></div>
       <div class="form-row"><span class="form-label">Jump</span><span style="color: var(--accent-success); font-weight: bold;">W / Space / Touch ⬆ Pad</span></div>
@@ -119,13 +138,142 @@ TypeScript 2D/3D Dual Engine Studio`))}var A={rotate:`EasyScript.createBehavior(
         </select>
       </div>
     </div>
-  `;let a=document.getElementById(`inspect-anim-clip`);a&&(a.onchange=e=>B(e.target.value))}function B(e){r.stickmanAnimState=e,n.playSound(e===`jump`?`jump`:e===`run`?`run`:`click`),document.querySelectorAll(`.anim-state-btn`).forEach(t=>{t.classList.toggle(`active`,t.dataset.state===e)});let t=document.getElementById(`stat-anim-mode`);t&&(t.innerText=`${r.demoType===`game`?`Stickman Game`:r.demoType===`stickman2d`?`2D Stickman`:`3D Character`} ${e.toUpperCase()}`)}function V(){document.getElementById(`btn-play`).onclick=()=>{r.isPlaying=!0,r.isPaused=!1,n.playSound(`jump`)},document.getElementById(`btn-pause`).onclick=()=>{r.isPaused=!r.isPaused},document.getElementById(`btn-stop`).onclick=()=>{r.isPlaying=!1,r.isPaused=!1,B(`idle`)};let e=document.getElementById(`project-demo-select`);e&&(e.onchange=e=>F(e.target.value)),document.querySelectorAll(`.anim-state-btn`).forEach(e=>{e.onclick=()=>B(e.dataset.state)});let t=document.getElementById(`anim-speed-slider`);t&&(t.oninput=e=>{r.animSpeed=parseFloat(e.target.value),document.getElementById(`anim-speed-val`).innerText=`${r.animSpeed.toFixed(1)}x`});let i=document.getElementById(`anim-ik-slider`);i&&(i.oninput=e=>{r.ikTargetHeight=parseFloat(e.target.value),document.getElementById(`anim-ik-val`).innerText=`${r.ikTargetHeight.toFixed(2)}m`});let a=document.getElementById(`btn-add-entity`);a&&(a.onclick=()=>{I(`New GameObject`,`obj_${Date.now()}`,{x:(Math.random()-.5)*4,y:1.5,z:(Math.random()-.5)*4},{x:1,y:1,z:1},6514417),L(),n.playSound(`click`)});let o=document.querySelectorAll(`.tab-btn`);o.forEach(e=>{e.onclick=()=>{o.forEach(e=>e.classList.remove(`active`)),e.classList.add(`active`);let t=e.dataset.tab;document.querySelectorAll(`.tab-content`).forEach(e=>{e.style.display=e.id===t?`block`:`none`})}}),document.querySelectorAll(`.kairo-asset`).forEach(e=>{e.onclick=()=>{let t=e.dataset.type,r=e.querySelector(`.asset-title`).innerText,i=`obj_${t}_${Date.now()}`,a=(Math.random()-.5)*4,o=(Math.random()-.5)*4,s=6514417;[`pine-tree`,`oak-tree`,`grass`].includes(t)&&(s=1096065),[`rock`].includes(t)&&(s=9741240),[`coin`].includes(t)&&(s=16498468),[`hazard`].includes(t)&&(s=16007006),I(r,i,{x:a,y:1.5,z:o},{x:1,y:1,z:1},s),L(),n.playSound(`click`),M(`[Asset Library] Instantiated procedural '${r}' (${i}) into the scene.`)}})}function H(e,t){if(!h||!m)return;let n=m.width,i=m.height,a=n/2,o=i/2+50,c=h.createLinearGradient(0,0,0,i);c.addColorStop(0,`#0b0f19`),c.addColorStop(1,`#151923`),h.fillStyle=c,h.fillRect(0,0,n,i);let l=o+140;h.strokeStyle=`#6366f1`,h.lineWidth=3,h.beginPath(),h.moveTo(50,l),h.lineTo(n-50,l),h.stroke(),h.fillStyle=`#232938`;for(let e=60;e<n-60;e+=30)h.beginPath(),h.arc(e,l+15,2,0,Math.PI*2),h.fill();let u=e*.005*r.animSpeed,d=0,f=0,p=0,g=0;if(r.stickmanAnimState===`idle`)d=Math.sin(u*.5)*4,g=Math.sin(u*.5)*8;else if(r.stickmanAnimState===`walk`)d=Math.abs(Math.sin(u))*12,f=Math.sin(u)*35,p=Math.max(0,Math.sin(u+Math.PI/2))*30,g=-Math.sin(u)*35;else if(r.stickmanAnimState===`run`)d=Math.abs(Math.sin(u*1.5))*25,f=Math.sin(u*1.5)*60,p=Math.max(0,Math.sin(u*1.5+Math.PI/2))*50,g=-Math.sin(u*1.5)*60;else if(r.stickmanAnimState===`jump`){let e=u%2/2;d=-Math.sin(e*Math.PI)*140,f=20,p=45,g=-50}let _={x:a,y:o+d},v={x:_.x,y:_.y-85},y={x:_.x,y:_.y-120},b={x:_.x,y:v.y+12},x={x:b.x-22+Math.sin(g*.03)*15,y:b.y+28},S={x:b.x+22-Math.sin(g*.03)*15,y:b.y+28},C={x:x.x-12+Math.sin(g*.03)*20,y:x.y+28},w={x:S.x+10-Math.sin(g*.03)*20,y:S.y+28},T={x:_.x,y:_.y},E={x:_.x,y:_.y},D={x:T.x-12+Math.sin(f*.02)*30,y:T.y+55},O={x:E.x+12-Math.sin(f*.02)*30,y:E.y+55},k={x:D.x+Math.sin((f+p)*.02)*18,y:Math.min(l-6,D.y+55)},A={x:O.x-Math.sin((f-p)*.02)*18,y:Math.min(l-6,O.y+55)};h.fillStyle=`rgba(0, 0, 0, 0.4)`,h.beginPath(),h.ellipse(_.x,l+4,45,10,0,0,Math.PI*2),h.fill();function j(e,t,n=6,r=`#ffffff`){h.strokeStyle=r,h.lineWidth=n,h.lineCap=`round`,h.beginPath(),h.moveTo(e.x,e.y),h.lineTo(t.x,t.y),h.stroke()}j(_,v,8,`#ffffff`),j(T,D,6,`#ffffff`),j(D,k,6,`#ffffff`),j(E,O,6,`#ffffff`),j(O,A,6,`#ffffff`),j(b,x,6,`#ffffff`),j(x,C,6,`#ffffff`),j(b,S,6,`#ffffff`),j(S,w,6,`#ffffff`),h.fillStyle=`#ffffff`,h.beginPath(),h.arc(y.x,y.y,28,0,Math.PI*2),h.fill();let M=s.x-(m.getBoundingClientRect().left+y.x),N=s.y-(m.getBoundingClientRect().top+y.y),P=Math.atan2(N,M),F=Math.min(7,Math.sqrt(M*M+N*N)*.05),I=y.x-9+Math.cos(P)*F,L=y.y-4+Math.sin(P)*F,R=y.x+9+Math.cos(P)*F,z=y.y-4+Math.sin(P)*F;h.fillStyle=`#0f172a`,h.beginPath(),h.arc(I,L,5,0,Math.PI*2),h.fill(),h.beginPath(),h.arc(R,z,5,0,Math.PI*2),h.fill(),h.strokeStyle=`#0f172a`,h.lineWidth=3,h.beginPath(),h.arc(y.x,y.y+6,9,.1,Math.PI-.1),h.stroke()}function U(e){if(i.isGameOver||!r.isPlaying||r.isPaused)return;i.gameTimer+=e;let t=0;(a.KeyA||a.ArrowLeft||o.left)&&--t,(a.KeyD||a.ArrowRight||o.right)&&(t+=1),i.playerX+=t*6*e,i.playerX=Math.max(-12,Math.min(12,i.playerX)),(a.KeyW||a.Space||a.ArrowUp||o.jump)&&i.isGrounded&&(i.playerVelY=12,i.isGrounded=!1,n.playSound(`jump`)),i.playerVelY-=28*e,i.playerY+=i.playerVelY*e,i.playerY<=0&&(i.playerY=0,i.playerVelY=0,i.isGrounded=!0),S.playerGroup&&(S.playerGroup.position.x=i.playerX,S.playerGroup.position.y=2.3+i.playerY,i.isGrounded?Math.abs(t)>.1?r.stickmanAnimState=`run`:r.stickmanAnimState=`idle`:r.stickmanAnimState=`jump`),i.coins.forEach((t,r)=>{t.active&&(t.mesh.rotation.z+=e*3,Math.abs(i.playerX-t.x)<.8&&i.playerY<1.2&&(t.active=!1,t.mesh.visible=!1,i.score+=100,n.playSound(`coin`),M(`[Game] Collected Coin #${r+1}! Score: ${i.score}`)))}),i.hazards.forEach(t=>{Math.abs(i.playerX-t.x)<.6&&i.playerY<.6&&(i.health-=25*e,Math.random()<.05&&n.playSound(`hit`),i.health<=0&&(i.health=0,i.isGameOver=!0,n.playSound(`hit`),M(`[Game] Game Over! You hit a spike hazard.`,`error`)))});let s=document.getElementById(`game-score-val`),c=document.getElementById(`game-health-val`),l=document.getElementById(`game-health-bar-fill`),u=document.getElementById(`game-over-banner`);s&&(s.innerText=i.score),c&&(c.innerText=Math.ceil(i.health)),l&&(l.style.width=`${Math.max(0,i.health)}%`),u&&(u.style.display=i.isGameOver?`flex`:`none`),_.x+=(i.playerX-_.x)*.1,w()}var W=0,G=0,K=0,q=0,J=0,Y=new THREE.Vector3,X=new THREE.Vector3;function Z(e){requestAnimationFrame(Z);let t=Math.min((e-W)/1e3,.1);if(W=e,G++,K+=t,K>=1){let e=document.getElementById(`stat-fps`);e&&(e.innerText=G),G=0,--K}if(g.forEach(e=>{e.userData&&typeof e.userData.scriptUpdate==`function`&&e.userData.scriptUpdate(t)}),r.demoType===`game`)U(t);else if(r.demoType===`stickman2d`){H(e,t);return}if(r.isPlaying&&!r.isPaused&&x.rootGroup){q+=t*r.animSpeed;let e=q*5,n=0,a=0,o=0,s=0,l=0,u=0,d=0,f=0,p=0,m=0,h=0;if(r.stickmanAnimState===`idle`)n=Math.sin(q*1.8)*.02,s=Math.sin(q*1.8)*.08+.05,l=-Math.sin(q*1.8)*.08-.05;else if(r.stickmanAnimState===`walk`)n=Math.abs(Math.sin(e))*.08,f=Math.sin(e)*.5,p=-Math.sin(e)*.5,m=Math.max(0,Math.sin(e+Math.PI/2))*.4,h=Math.max(0,Math.sin(e-Math.PI/2))*.4,s=-Math.sin(e)*.5,l=Math.sin(e)*.5,u=.2,d=.2;else if(r.stickmanAnimState===`run`)o=.3,n=Math.abs(Math.sin(e*1.5))*.15,f=Math.sin(e*1.5)*.85,p=-Math.sin(e*1.5)*.85,m=Math.max(0,Math.sin(e*1.5+Math.PI/2))*.65,h=Math.max(0,Math.sin(e*1.5-Math.PI/2))*.65,s=-Math.sin(e*1.5)*1,l=Math.sin(e*1.5)*1,u=.5,d=.5;else if(r.stickmanAnimState===`jump`){let e=q%1.8/1.8;n=Math.sin(e*Math.PI)*2,a=e*Math.PI*2,s=-1.2,l=-1.2,f=.7,p=.7,m=1,h=1}if(x.pelvis.position.y=r.demoType===`game`?2.3+i.playerY:2.3+n+r.ikTargetHeight,x.pelvis.rotation.x=a,x.torso.rotation.x=o,x.leftUpperArm.rotation.x=s,x.leftForearm.rotation.x=u,x.rightUpperArm.rotation.x=l,x.rightForearm.rotation.x=d,x.leftThigh.rotation.set(f,0,0),x.leftShin.rotation.set(m,0,0),x.rightThigh.rotation.set(p,0,0),x.rightShin.rotation.set(h,0,0),x.rootGroup.updateMatrixWorld(!0),x.leftFoot&&x.rightFoot){x.leftFoot.getWorldPosition(Y),x.rightFoot.getWorldPosition(X);let e=Math.min(Y.y,X.y),t=.08;if(e<t){let n=t-e;x.pelvis.position.y+=n}}if(x.head){let e=c.x*.4+Math.sin(q*.8)*.15,n=-c.y*.25+Math.cos(q*1.1)*.08;x.head.rotation.y+=(e-x.head.rotation.y)*.1,x.head.rotation.x+=(n-x.head.rotation.x)*.1;let r=Math.atan2(-c.y,c.x),i=Math.min(.025,Math.sqrt(c.x*c.x+c.y*c.y)*.03),a=Math.cos(r)*i+Math.sin(q*2.5)*.005,o=Math.sin(r)*i+Math.cos(q*3)*.005;x.leftPupil&&x.rightPupil&&(x.leftPupil.position.x=a,x.leftPupil.position.y=o,x.rightPupil.position.x=a,x.rightPupil.position.y=o),J+=t;let s=1;J%3.5>3.35&&(s=.08),x.leftEye&&x.rightEye&&(x.leftEye.scale.y+=(s-x.leftEye.scale.y)*.4,x.rightEye.scale.y+=(s-x.rightEye.scale.y)*.4)}}p&&d&&f&&p.render(d,f)}function Q(){let e=document.getElementById(`video-btn-play`),t=document.getElementById(`video-btn-pause`),n=document.getElementById(`video-btn-rewind`),r=document.getElementById(`video-timecode`),i=document.getElementById(`video-btn-letterbox`),a=document.getElementById(`video-btn-add-shot`),o=document.getElementById(`video-btn-add-overlay`),s=document.getElementById(`video-btn-export`),c=!1;e&&e.addEventListener(`click`,()=>{M(`[Video Editor] Video Timeline Playback Started.`)}),t&&t.addEventListener(`click`,()=>{M(`[Video Editor] Video Timeline Paused.`)}),n&&n.addEventListener(`click`,()=>{r&&(r.innerText=`00:00:00.000`),cameraController&&cameraController.cutTo(new THREE.Vector3(0,4,10),new THREE.Vector3(0,2.3,0)),M(`[Video Editor] Seeked Playhead to 0.00s.`)}),i&&i.addEventListener(`click`,()=>{c=!c;let e=document.getElementById(`kairo-letterbox-top`)||$(`top`),t=document.getElementById(`kairo-letterbox-bot`)||$(`bot`);e.style.height=c?`10%`:`0%`,t.style.height=c?`10%`:`0%`,M(`[Video Editor] 21:9 Widescreen Letterbox: ${c?`ENABLED`:`DISABLED`}`)}),a&&a.addEventListener(`click`,()=>{cameraController&&(cameraController.orbitShot(new THREE.Vector3(0,2.3,0),9,1.2,5),M(`[Video Editor] Added 360° Orbital Camera Shot clip.`))}),o&&o.addEventListener(`click`,()=>{ee(),M(`[Video Editor] Added Circle Mask Logo Overlay graphic.`)}),s&&s.addEventListener(`click`,()=>{M(`[Video Editor] Exporting Multi-Track WebM Video file...`),alert(`🎬 Video Timeline exported successfully as kairo-video-edit.webm!`)})}function $(e){let t=document.createElement(`div`);return t.id=`kairo-letterbox-${e}`,t.style.cssText=`position: fixed; ${e===`top`?`top:0`:`bottom:0`}; left:0; right:0; height:0%; background:#000; transition: height 0.4s ease; z-index: 9999; pointer-events: none;`,document.body.appendChild(t),t}function ee(){let e=document.getElementById(`studio-overlay-graphic`);e?e.style.display=e.style.display===`none`?`flex`:`none`:(e=document.createElement(`div`),e.id=`studio-overlay-graphic`,e.style.cssText=`
+  `;let a=document.getElementById(`inspect-anim-clip`);a&&(a.onchange=e=>B(e.target.value));let o=document.getElementById(`inspect-shader-preset`);o&&(o.onchange=e=>{let t=e.target.value,r=document.getElementById(`shader-preset-select`),i=document.getElementById(`btn-compile-shader`);t!==`none`&&(r&&(r.value=t),i&&i.click(),M(`[Inspector] Applied Shader Preset '${t}' to '${n.name}'`))});let s=document.getElementById(`inspect-btn-open-shader-graph`);s&&(s.onclick=()=>{let e=document.querySelector(`.tab-btn[data-tab="tab-shader"]`);e&&e.click()})}function B(e){r.stickmanAnimState=e,n.playSound(e===`jump`?`jump`:e===`run`?`run`:`click`),document.querySelectorAll(`.anim-state-btn`).forEach(t=>{t.classList.toggle(`active`,t.dataset.state===e)});let t=document.getElementById(`stat-anim-mode`);t&&(t.innerText=`${r.demoType===`game`?`Stickman Game`:r.demoType===`stickman2d`?`2D Stickman`:`3D Character`} ${e.toUpperCase()}`)}function V(){document.getElementById(`btn-play`).onclick=()=>{r.isPlaying=!0,r.isPaused=!1,n.playSound(`jump`)},document.getElementById(`btn-pause`).onclick=()=>{r.isPaused=!r.isPaused},document.getElementById(`btn-stop`).onclick=()=>{r.isPlaying=!1,r.isPaused=!1,B(`idle`)};let e=document.getElementById(`project-demo-select`);e&&(e.onchange=e=>F(e.target.value)),document.querySelectorAll(`.anim-state-btn`).forEach(e=>{e.onclick=()=>B(e.dataset.state)});let t=document.getElementById(`anim-speed-slider`);t&&(t.oninput=e=>{r.animSpeed=parseFloat(e.target.value),document.getElementById(`anim-speed-val`).innerText=`${r.animSpeed.toFixed(1)}x`});let i=document.getElementById(`anim-ik-slider`);i&&(i.oninput=e=>{r.ikTargetHeight=parseFloat(e.target.value),document.getElementById(`anim-ik-val`).innerText=`${r.ikTargetHeight.toFixed(2)}m`});let a=document.getElementById(`btn-add-entity`);a&&(a.onclick=()=>{I(`New GameObject`,`obj_${Date.now()}`,{x:(Math.random()-.5)*4,y:1.5,z:(Math.random()-.5)*4},{x:1,y:1,z:1},6514417),L(),n.playSound(`click`)});let o=document.querySelectorAll(`.tab-btn`);o.forEach(e=>{e.onclick=()=>{o.forEach(e=>e.classList.remove(`active`)),e.classList.add(`active`);let t=e.dataset.tab;document.querySelectorAll(`.tab-content`).forEach(e=>{e.style.display=e.id===t?`block`:`none`})}}),document.querySelectorAll(`.kairo-asset`).forEach(e=>{e.onclick=()=>{let t=e.dataset.type,r=e.querySelector(`.asset-title`).innerText,i=`obj_${t}_${Date.now()}`,a=(Math.random()-.5)*4,o=(Math.random()-.5)*4,s=6514417;[`pine-tree`,`oak-tree`,`grass`].includes(t)&&(s=1096065),[`rock`].includes(t)&&(s=9741240),[`coin`].includes(t)&&(s=16498468),[`hazard`].includes(t)&&(s=16007006),I(r,i,{x:a,y:1.5,z:o},{x:1,y:1,z:1},s),L(),n.playSound(`click`),M(`[Asset Library] Instantiated procedural '${r}' (${i}) into the scene.`)}})}function H(e,t){if(!h||!m)return;let n=m.width,i=m.height,a=n/2,o=i/2+50,c=h.createLinearGradient(0,0,0,i);c.addColorStop(0,`#0b0f19`),c.addColorStop(1,`#151923`),h.fillStyle=c,h.fillRect(0,0,n,i);let l=o+140;h.strokeStyle=`#6366f1`,h.lineWidth=3,h.beginPath(),h.moveTo(50,l),h.lineTo(n-50,l),h.stroke(),h.fillStyle=`#232938`;for(let e=60;e<n-60;e+=30)h.beginPath(),h.arc(e,l+15,2,0,Math.PI*2),h.fill();let u=e*.005*r.animSpeed,d=0,f=0,p=0,g=0;if(r.stickmanAnimState===`idle`)d=Math.sin(u*.5)*4,g=Math.sin(u*.5)*8;else if(r.stickmanAnimState===`walk`)d=Math.abs(Math.sin(u))*12,f=Math.sin(u)*35,p=Math.max(0,Math.sin(u+Math.PI/2))*30,g=-Math.sin(u)*35;else if(r.stickmanAnimState===`run`)d=Math.abs(Math.sin(u*1.5))*25,f=Math.sin(u*1.5)*60,p=Math.max(0,Math.sin(u*1.5+Math.PI/2))*50,g=-Math.sin(u*1.5)*60;else if(r.stickmanAnimState===`jump`){let e=u%2/2;d=-Math.sin(e*Math.PI)*140,f=20,p=45,g=-50}let _={x:a,y:o+d},v={x:_.x,y:_.y-85},y={x:_.x,y:_.y-120},b={x:_.x,y:v.y+12},x={x:b.x-22+Math.sin(g*.03)*15,y:b.y+28},S={x:b.x+22-Math.sin(g*.03)*15,y:b.y+28},C={x:x.x-12+Math.sin(g*.03)*20,y:x.y+28},w={x:S.x+10-Math.sin(g*.03)*20,y:S.y+28},T={x:_.x,y:_.y},E={x:_.x,y:_.y},D={x:T.x-12+Math.sin(f*.02)*30,y:T.y+55},O={x:E.x+12-Math.sin(f*.02)*30,y:E.y+55},k={x:D.x+Math.sin((f+p)*.02)*18,y:Math.min(l-6,D.y+55)},A={x:O.x-Math.sin((f-p)*.02)*18,y:Math.min(l-6,O.y+55)};h.fillStyle=`rgba(0, 0, 0, 0.4)`,h.beginPath(),h.ellipse(_.x,l+4,45,10,0,0,Math.PI*2),h.fill();function j(e,t,n=6,r=`#ffffff`){h.strokeStyle=r,h.lineWidth=n,h.lineCap=`round`,h.beginPath(),h.moveTo(e.x,e.y),h.lineTo(t.x,t.y),h.stroke()}j(_,v,8,`#ffffff`),j(T,D,6,`#ffffff`),j(D,k,6,`#ffffff`),j(E,O,6,`#ffffff`),j(O,A,6,`#ffffff`),j(b,x,6,`#ffffff`),j(x,C,6,`#ffffff`),j(b,S,6,`#ffffff`),j(S,w,6,`#ffffff`),h.fillStyle=`#ffffff`,h.beginPath(),h.arc(y.x,y.y,28,0,Math.PI*2),h.fill();let M=s.x-(m.getBoundingClientRect().left+y.x),N=s.y-(m.getBoundingClientRect().top+y.y),P=Math.atan2(N,M),F=Math.min(7,Math.sqrt(M*M+N*N)*.05),I=y.x-9+Math.cos(P)*F,L=y.y-4+Math.sin(P)*F,R=y.x+9+Math.cos(P)*F,z=y.y-4+Math.sin(P)*F;h.fillStyle=`#0f172a`,h.beginPath(),h.arc(I,L,5,0,Math.PI*2),h.fill(),h.beginPath(),h.arc(R,z,5,0,Math.PI*2),h.fill(),h.strokeStyle=`#0f172a`,h.lineWidth=3,h.beginPath(),h.arc(y.x,y.y+6,9,.1,Math.PI-.1),h.stroke()}function U(e){if(i.isGameOver||!r.isPlaying||r.isPaused)return;i.gameTimer+=e;let t=0;(a.KeyA||a.ArrowLeft||o.left)&&--t,(a.KeyD||a.ArrowRight||o.right)&&(t+=1),i.playerX+=t*6*e,i.playerX=Math.max(-12,Math.min(12,i.playerX)),(a.KeyW||a.Space||a.ArrowUp||o.jump)&&i.isGrounded&&(i.playerVelY=12,i.isGrounded=!1,n.playSound(`jump`)),i.playerVelY-=28*e,i.playerY+=i.playerVelY*e,i.playerY<=0&&(i.playerY=0,i.playerVelY=0,i.isGrounded=!0),S.playerGroup&&(S.playerGroup.position.x=i.playerX,S.playerGroup.position.y=2.3+i.playerY,i.isGrounded?Math.abs(t)>.1?r.stickmanAnimState=`run`:r.stickmanAnimState=`idle`:r.stickmanAnimState=`jump`),i.coins.forEach((t,r)=>{t.active&&(t.mesh.rotation.z+=e*3,Math.abs(i.playerX-t.x)<.8&&i.playerY<1.2&&(t.active=!1,t.mesh.visible=!1,i.score+=100,n.playSound(`coin`),M(`[Game] Collected Coin #${r+1}! Score: ${i.score}`)))}),i.hazards.forEach(t=>{Math.abs(i.playerX-t.x)<.6&&i.playerY<.6&&(i.health-=25*e,Math.random()<.05&&n.playSound(`hit`),i.health<=0&&(i.health=0,i.isGameOver=!0,n.playSound(`hit`),M(`[Game] Game Over! You hit a spike hazard.`,`error`)))});let s=document.getElementById(`game-score-val`),c=document.getElementById(`game-health-val`),l=document.getElementById(`game-health-bar-fill`),u=document.getElementById(`game-over-banner`);s&&(s.innerText=i.score),c&&(c.innerText=Math.ceil(i.health)),l&&(l.style.width=`${Math.max(0,i.health)}%`),u&&(u.style.display=i.isGameOver?`flex`:`none`),_.x+=(i.playerX-_.x)*.1,w()}var W=0,G=0,K=0,q=0,J=0,Y=new THREE.Vector3,X=new THREE.Vector3;function Z(e){requestAnimationFrame(Z);let t=Math.min((e-W)/1e3,.1);if(W=e,G++,K+=t,K>=1){let e=document.getElementById(`stat-fps`);e&&(e.innerText=G),G=0,--K}if(g.forEach(e=>{e.userData&&typeof e.userData.scriptUpdate==`function`&&e.userData.scriptUpdate(t)}),r.demoType===`game`)U(t);else if(r.demoType===`stickman2d`){H(e,t);return}if(r.isPlaying&&!r.isPaused&&x.rootGroup){q+=t*r.animSpeed;let e=q*5,n=0,a=0,o=0,s=0,l=0,u=0,d=0,f=0,p=0,m=0,h=0;if(r.stickmanAnimState===`idle`)n=Math.sin(q*1.8)*.02,s=Math.sin(q*1.8)*.08+.05,l=-Math.sin(q*1.8)*.08-.05;else if(r.stickmanAnimState===`walk`)n=Math.abs(Math.sin(e))*.08,f=Math.sin(e)*.5,p=-Math.sin(e)*.5,m=Math.max(0,Math.sin(e+Math.PI/2))*.4,h=Math.max(0,Math.sin(e-Math.PI/2))*.4,s=-Math.sin(e)*.5,l=Math.sin(e)*.5,u=.2,d=.2;else if(r.stickmanAnimState===`run`)o=.3,n=Math.abs(Math.sin(e*1.5))*.15,f=Math.sin(e*1.5)*.85,p=-Math.sin(e*1.5)*.85,m=Math.max(0,Math.sin(e*1.5+Math.PI/2))*.65,h=Math.max(0,Math.sin(e*1.5-Math.PI/2))*.65,s=-Math.sin(e*1.5)*1,l=Math.sin(e*1.5)*1,u=.5,d=.5;else if(r.stickmanAnimState===`jump`){let e=q%1.8/1.8;n=Math.sin(e*Math.PI)*2,a=e*Math.PI*2,s=-1.2,l=-1.2,f=.7,p=.7,m=1,h=1}if(x.pelvis.position.y=r.demoType===`game`?2.3+i.playerY:2.3+n+r.ikTargetHeight,x.pelvis.rotation.x=a,x.torso.rotation.x=o,x.leftUpperArm.rotation.x=s,x.leftForearm.rotation.x=u,x.rightUpperArm.rotation.x=l,x.rightForearm.rotation.x=d,x.leftThigh.rotation.set(f,0,0),x.leftShin.rotation.set(m,0,0),x.rightThigh.rotation.set(p,0,0),x.rightShin.rotation.set(h,0,0),x.rootGroup.updateMatrixWorld(!0),x.leftFoot&&x.rightFoot){x.leftFoot.getWorldPosition(Y),x.rightFoot.getWorldPosition(X);let e=Math.min(Y.y,X.y),t=.08;if(e<t){let n=t-e;x.pelvis.position.y+=n}}if(x.head){let e=c.x*.4+Math.sin(q*.8)*.15,n=-c.y*.25+Math.cos(q*1.1)*.08;x.head.rotation.y+=(e-x.head.rotation.y)*.1,x.head.rotation.x+=(n-x.head.rotation.x)*.1;let r=Math.atan2(-c.y,c.x),i=Math.min(.025,Math.sqrt(c.x*c.x+c.y*c.y)*.03),a=Math.cos(r)*i+Math.sin(q*2.5)*.005,o=Math.sin(r)*i+Math.cos(q*3)*.005;x.leftPupil&&x.rightPupil&&(x.leftPupil.position.x=a,x.leftPupil.position.y=o,x.rightPupil.position.x=a,x.rightPupil.position.y=o),J+=t;let s=1;J%3.5>3.35&&(s=.08),x.leftEye&&x.rightEye&&(x.leftEye.scale.y+=(s-x.leftEye.scale.y)*.4,x.rightEye.scale.y+=(s-x.rightEye.scale.y)*.4)}}p&&d&&f&&p.render(d,f)}function Q(){let e=document.getElementById(`video-btn-play`),t=document.getElementById(`video-btn-pause`),n=document.getElementById(`video-btn-rewind`),r=document.getElementById(`video-timecode`),i=document.getElementById(`video-btn-letterbox`),a=document.getElementById(`video-btn-add-shot`),o=document.getElementById(`video-btn-add-overlay`),s=document.getElementById(`video-btn-export`),c=!1;e&&e.addEventListener(`click`,()=>{M(`[Video Editor] Video Timeline Playback Started.`)}),t&&t.addEventListener(`click`,()=>{M(`[Video Editor] Video Timeline Paused.`)}),n&&n.addEventListener(`click`,()=>{r&&(r.innerText=`00:00:00.000`),cameraController&&cameraController.cutTo(new THREE.Vector3(0,4,10),new THREE.Vector3(0,2.3,0)),M(`[Video Editor] Seeked Playhead to 0.00s.`)}),i&&i.addEventListener(`click`,()=>{c=!c;let e=document.getElementById(`kairo-letterbox-top`)||$(`top`),t=document.getElementById(`kairo-letterbox-bot`)||$(`bot`);e.style.height=c?`10%`:`0%`,t.style.height=c?`10%`:`0%`,M(`[Video Editor] 21:9 Widescreen Letterbox: ${c?`ENABLED`:`DISABLED`}`)}),a&&a.addEventListener(`click`,()=>{cameraController&&(cameraController.orbitShot(new THREE.Vector3(0,2.3,0),9,1.2,5),M(`[Video Editor] Added 360° Orbital Camera Shot clip.`))}),o&&o.addEventListener(`click`,()=>{ee(),M(`[Video Editor] Added Circle Mask Logo Overlay graphic.`)}),s&&s.addEventListener(`click`,()=>{M(`[Video Editor] Exporting Multi-Track WebM Video file...`),alert(`🎬 Video Timeline exported successfully as kairo-video-edit.webm!`)})}function $(e){let t=document.createElement(`div`);return t.id=`kairo-letterbox-${e}`,t.style.cssText=`position: fixed; ${e===`top`?`top:0`:`bottom:0`}; left:0; right:0; height:0%; background:#000; transition: height 0.4s ease; z-index: 9999; pointer-events: none;`,document.body.appendChild(t),t}function ee(){let e=document.getElementById(`studio-overlay-graphic`);e?e.style.display=e.style.display===`none`?`flex`:`none`:(e=document.createElement(`div`),e.id=`studio-overlay-graphic`,e.style.cssText=`
       position: fixed; top: 18%; right: 5%; width: 140px; height: 140px;
       background: radial-gradient(circle, rgba(99, 102, 241, 0.9), rgba(168, 85, 247, 0.8));
       clip-path: circle(45% at 50% 50%); display: flex; align-items: center; justify-content: center;
       color: white; font-weight: 900; font-family: sans-serif; font-size: 13px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 999; pointer-events: none; border: 2px solid white;
-    `,e.innerText=`⚡ KAIRO CUT`,document.body.appendChild(e))}window.addEventListener(`DOMContentLoaded`,()=>{C(),V(),Q(),window.require&&(e.config({paths:{vs:`https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs`}}),e([`vs/editor/editor.main`],function(){monaco.languages.typescript.javascriptDefaults.addExtraLib(`
+    `,e.innerText=`⚡ KAIRO CUT`,document.body.appendChild(e))}function te(){let e=document.getElementById(`shader-nodes-container`),t=document.getElementById(`shader-wires-svg`),i=document.getElementById(`shader-preview-canvas`),a=document.getElementById(`shader-preset-select`),o=document.getElementById(`shader-preset-tag`),s=document.getElementById(`btn-compile-shader`),c=document.getElementById(`btn-add-shader-node`),l=document.getElementById(`btn-toggle-shader-code`),u=document.getElementById(`shader-code-drawer`),d=document.getElementById(`shader-code-preview`);if(!i)return;let f=new THREE.WebGLRenderer({canvas:i,antialias:!0,alpha:!0});f.setSize(280,180),f.setPixelRatio(Math.min(window.devicePixelRatio,1.5));let p=new THREE.Scene,m=new THREE.PerspectiveCamera(45,280/180,.1,100);m.position.set(0,0,3.2);let h=new THREE.SphereGeometry(1,48,48),g=b(`water`),_=new THREE.Mesh(h,g);p.add(_);let v=performance.now();function y(){requestAnimationFrame(y);let e=(performance.now()-v)/1e3;_&&(_.rotation.y=e*.3),g&&g.uniforms.u_time&&(g.uniforms.u_time.value=e),f.render(p,m)}y();function b(e){return e===`water`?new THREE.ShaderMaterial({transparent:!0,uniforms:{u_time:{value:0},u_shallowColor:{value:new THREE.Color(`#10b981`)},u_deepColor:{value:new THREE.Color(`#0369a1`)}},vertexShader:`
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying float vWave;
+          void main() {
+            vUv = uv;
+            vec3 pos = position;
+            float wave = sin(pos.x * 5.0 + u_time * 2.0) * cos(pos.z * 5.0 + u_time * 2.0) * 0.1;
+            pos += normal * wave;
+            vWave = wave;
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          }
+        `,fragmentShader:`
+          uniform float u_time;
+          uniform vec3 u_shallowColor;
+          uniform vec3 u_deepColor;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying float vWave;
+          void main() {
+            float diff = max(dot(vNormal, normalize(vec3(1.0, 2.0, 1.0))), 0.2);
+            vec3 col = mix(u_deepColor, u_shallowColor, vWave * 5.0 + 0.5);
+            gl_FragColor = vec4(col * diff, 0.9);
+          }
+        `}):e===`dissolve`?new THREE.ShaderMaterial({transparent:!0,uniforms:{u_time:{value:0}},vertexShader:`
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          void main() {
+            vUv = uv;
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,fragmentShader:`
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+          void main() {
+            float n = hash(floor(vUv * 12.0));
+            float dissolve = sin(u_time * 1.5) * 0.5 + 0.5;
+            if (n < dissolve) discard;
+            float diff = max(dot(vNormal, normalize(vec3(1.0, 2.0, 1.0))), 0.2);
+            vec3 col = mix(vec3(0.2, 0.6, 1.0), vec3(1.0, 0.4, 0.0), step(n, dissolve + 0.08));
+            gl_FragColor = vec4(col * diff, 1.0);
+          }
+        `}):e===`hologram`?new THREE.ShaderMaterial({transparent:!0,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,uniforms:{u_time:{value:0}},vertexShader:`
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vUv = uv;
+            vec3 pos = position;
+            pos.x += sin(pos.y * 20.0 + u_time * 8.0) * 0.02;
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,fragmentShader:`
+          uniform float u_time;
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vec3 normal = normalize(vNormal);
+            vec3 viewDir = normalize(vViewPosition);
+            float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+            float scanline = sin(vUv.y * 40.0 - u_time * 6.0) * 0.5 + 0.5;
+            vec3 col = vec3(0.0, 0.9, 1.0) * (fresnel + scanline * 0.5);
+            gl_FragColor = vec4(col, fresnel * 0.8 + 0.2);
+          }
+        `}):e===`toon`?new THREE.ShaderMaterial({uniforms:{u_time:{value:0}},vertexShader:`
+          varying vec3 vNormal;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,fragmentShader:`
+          varying vec3 vNormal;
+          void main() {
+            vec3 L = normalize(vec3(1.0, 2.0, 1.0));
+            float diff = max(dot(vNormal, L), 0.0);
+            float steps = floor(diff * 3.0) / 3.0;
+            steps = max(steps, 0.2);
+            vec3 col = vec3(0.9, 0.3, 0.2) * steps;
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `}):new THREE.ShaderMaterial({transparent:!0,blending:THREE.AdditiveBlending,uniforms:{u_time:{value:0}},vertexShader:`
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,fragmentShader:`
+          uniform float u_time;
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vec3 viewDir = normalize(vViewPosition);
+            float fresnel = pow(1.0 - max(dot(vNormal, viewDir), 0.0), 2.5);
+            float pulse = sin(u_time * 3.0) * 0.3 + 0.8;
+            vec3 col = vec3(0.9, 0.2, 1.0) * fresnel * pulse * 2.0;
+            gl_FragColor = vec4(col, fresnel * 0.9);
+          }
+        `})}let x=[{id:`n_uv`,type:`input_uv`,title:`UV Coordinates`,x:20,y:30,inputs:[],outputs:[`UV`]},{id:`n_time`,type:`input_time`,title:`Game Time`,x:20,y:130,inputs:[],outputs:[`Time`]},{id:`n_noise`,type:`input_noise`,title:`Procedural Noise`,x:190,y:30,inputs:[`UV`,`Scale`],outputs:[`Noise`]},{id:`n_color`,type:`input_color`,title:`Color Tint`,x:190,y:140,inputs:[],outputs:[`Color`]},{id:`n_master`,type:`master_output`,title:`Master Output`,x:370,y:70,inputs:[`Base Color`,`Alpha`],outputs:[]}];function S(){e&&(e.innerHTML=``,x.forEach(t=>{let n=document.createElement(`div`);n.className=`shader-node ${t.type===`master_output`?`master-node`:``}`,n.style.left=`${t.x}px`,n.style.top=`${t.y}px`;let r=t.inputs.map(e=>`
+        <div class="shader-port-row">
+          <span class="shader-port" data-port="${e}"></span>
+          <span>${e}</span>
+        </div>
+      `).join(``),i=t.outputs.map(e=>`
+        <div class="shader-port-row">
+          <span>${e}</span>
+          <span class="shader-port" data-port="${e}"></span>
+        </div>
+      `).join(``);n.innerHTML=`
+        <div class="shader-node-header">${t.title}</div>
+        <div class="shader-node-body">
+          ${r}
+          ${i}
+        </div>
+      `;let a=!1,o=0,s=0,c=n.querySelector(`.shader-node-header`);c.onmousedown=e=>{a=!0,o=e.clientX-t.x,s=e.clientY-t.y,document.onmousemove=e=>{a&&(t.x=Math.max(0,e.clientX-o),t.y=Math.max(0,e.clientY-s),n.style.left=`${t.x}px`,n.style.top=`${t.y}px`,C())},document.onmouseup=()=>{a=!1,document.onmousemove=null,document.onmouseup=null}},e.appendChild(n)}),C())}function C(){t&&(t.innerHTML=`
+      <path d="M 170 60 C 210 60, 180 50, 190 50" stroke="#6366f1" stroke-width="2" fill="none" />
+      <path d="M 340 70 C 360 70, 350 90, 370 90" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.8" />
+    `)}S(),a&&(a.onchange=e=>{let t=e.target.value;o&&(o.innerText=e.target.options[e.target.selectedIndex].text),g=b(t),_.material=g,d&&(d.innerText=g.fragmentShader),n.playSound(`click`),M(`[Shader Studio] Loaded Shader Preset: '${t}'`)}),s&&(s.onclick=()=>{let e=a?a.value:`water`;g=b(e),_.material=g;let t=r.entities.find(e=>e.id===r.selectedEntityId);t&&t.threeMesh?(t.threeMesh.material=g,M(`[Shader Compiler] Successfully compiled & applied '${e}' Shader Material to '${t.name}' (${t.id})!`)):M(`[Shader Compiler] Successfully compiled '${e}' Shader Material!`),n.playSound(`jump`)}),c&&(c.onclick=()=>{let e=[`fresnel`,`math_add`,`math_multiply`,`math_sin`],t=e[Math.floor(Math.random()*e.length)];x.push({id:`node_${Date.now()}`,type:t,title:`Node ${t.toUpperCase()}`,x:100+Math.random()*100,y:80+Math.random()*60,inputs:[`A`,`B`],outputs:[`Out`]}),S(),n.playSound(`click`)}),l&&(l.onclick=()=>{if(!u)return;let e=u.style.display!==`none`;u.style.display=e?`none`:`block`,!e&&g&&d&&(d.innerText=g.fragmentShader)})}window.addEventListener(`DOMContentLoaded`,()=>{C(),V(),Q(),te(),window.require&&(e.config({paths:{vs:`https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs`}}),e([`vs/editor/editor.main`],function(){monaco.languages.typescript.javascriptDefaults.addExtraLib(`
         declare namespace EasyScript {
           function createBehavior(config: {
             onStart?: () => void;
