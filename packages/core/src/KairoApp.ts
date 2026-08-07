@@ -302,7 +302,9 @@ export class KairoApp {
 
   public createProceduralTerrain(options: any) {
     const terrain = createTerrain(options);
-    this.scene.add(terrain);
+    if (terrain && terrain.mesh) {
+      this.scene.add(terrain.mesh);
+    }
     return terrain;
   }
 
