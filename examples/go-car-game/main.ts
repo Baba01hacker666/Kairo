@@ -2,8 +2,21 @@ import { KairoApp } from '@kairo/core';
 
 async function initGame() {
   // 1. Initialize Go WASM Physics
+  if (!(window as any).Go) {
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/wasm_exec.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load /wasm_exec.js'));
+      document.head.appendChild(script);
+    });
+  }
   const go = new (window as any).Go();
-  const result = await WebAssembly.instantiateStreaming(fetch('/public/kairo-physics.wasm'), go.importObject);
+  let wasmRes = await fetch('/kairo-physics.wasm').catch(() => null);
+  if (!wasmRes || !wasmRes.ok) wasmRes = await fetch('/public/kairo-physics.wasm').catch(() => null);
+  if (!wasmRes || !wasmRes.ok) wasmRes = await fetch('./kairo-physics.wasm');
+  const wasmBytes = await wasmRes.arrayBuffer();
+  const result = await WebAssembly.instantiate(wasmBytes, go.importObject);
   go.run(result.instance); // This binds KairoPhysicsAddBody, KairoPhysicsStep, KairoPhysicsApplyForce, KairoPhysicsGetState to window
   
   // 2. Initialize the Kairo Engine App
