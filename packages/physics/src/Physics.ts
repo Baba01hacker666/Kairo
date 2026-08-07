@@ -99,6 +99,7 @@ export class SpatialHashGrid3D {
 export class Collider {
   public type: ColliderTypeValue = ColliderType.Box;
   public size: Vector3 = new Vector3(1, 1, 1);
+  public radius: number = 0.5;
   public isTrigger: boolean = false;
 
   public getBoundingBox(position: Vector3, target?: BoundingBox): BoundingBox {
