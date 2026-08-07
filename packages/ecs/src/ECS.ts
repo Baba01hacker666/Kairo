@@ -9,6 +9,8 @@
  * - Full Entity & Component Serialization
  */
 
+import { SharedEntityContextManager, SharedEntityContext } from './SharedEntityContext.ts';
+
 export type EntityId = number;
 export type ComponentType<T = any> = new (...args: any[]) => T;
 
@@ -130,6 +132,8 @@ export class World {
     }
   }
 
+  public sharedContexts: SharedEntityContextManager = new SharedEntityContextManager();
+
   createEntity(name?: string): EntityId {
     this.invalidateQueryCache();
     const id = this.nextEntityId++;
@@ -140,6 +144,16 @@ export class World {
       this.entityNames.set(id, name);
       this.addTag(id, name);
     }
+    return id;
+  }
+
+  createSharedContext<T extends Record<string, any>>(id: string, properties: T): SharedEntityContext<T> {
+    return this.sharedContexts.registerContext(id, properties);
+  }
+
+  createEntityWithSharedContext<T extends Record<string, any>>(contextId: string, name?: string): EntityId {
+    const id = this.createEntity(name);
+    this.sharedContexts.attachEntityToContext(id, contextId);
     return id;
   }
 
@@ -187,6 +201,7 @@ export class World {
     this.tags.delete(entity);
     this.children.delete(entity);
     this.entityNames.delete(entity);
+    this.sharedContexts.detachEntity(entity);
     this.activeEntities.delete(entity);
     this.invalidateQueryCache();
   }
