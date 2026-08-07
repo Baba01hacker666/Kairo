@@ -71,16 +71,24 @@ export class FastSoAWorld {
   private gridTableMask: number;
   private frameId: number = 1;
 
-  public static async loadWasm(wasmUrl: string = '/public/wasm/kairo_soa_physics.wasm'): Promise<boolean> {
+  public static async loadWasm(wasmUrl?: string): Promise<boolean> {
     if (FastSoAWorld.isWasmLoaded) return true;
     try {
-      const urls = [
-        wasmUrl,
-        '/wasm/kairo_soa_physics.wasm',
-        '../../public/wasm/kairo_soa_physics.wasm',
-        'public/wasm/kairo_soa_physics.wasm'
-      ];
-      for (const url of urls) {
+      const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+      const candidateUrls: string[] = [];
+      if (wasmUrl) candidateUrls.push(wasmUrl);
+      candidateUrls.push(
+        `${cleanBase}wasm/kairo_soa_physics.wasm`,
+        `../../wasm/kairo_soa_physics.wasm`,
+        `../wasm/kairo_soa_physics.wasm`,
+        `./wasm/kairo_soa_physics.wasm`,
+        `/wasm/kairo_soa_physics.wasm`,
+        `wasm/kairo_soa_physics.wasm`
+      );
+
+      for (const url of candidateUrls) {
         try {
           const res = await fetch(url);
           if (res.ok) {
@@ -88,7 +96,7 @@ export class FastSoAWorld {
             const mod = await WebAssembly.instantiate(bytes, {});
             FastSoAWorld.wasmExports = mod.instance.exports as unknown as SoAWasmExports;
             FastSoAWorld.isWasmLoaded = true;
-            console.log("⚡ [FastSoAWorld] WASM Physics Kernel loaded successfully!");
+            console.log(`⚡ [FastSoAWorld] WASM Physics Kernel loaded successfully from ${url}`);
             return true;
           }
         } catch (_) {}
