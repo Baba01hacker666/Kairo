@@ -1,0 +1,3 @@
+## 2024-05-24 - [Avoid Object Allocations on Hot Path Misses]
+**Learning:** During physics raycasting, bounding box intersections occur at a very high frequency. The `Ray.intersectBox` previously instantiated multiple `Vector3` and intermediate objects even when a ray missed its target, resulting in major Garbage Collection spikes. Avoid allocating objects when resolving 'miss' or 'default' states in high-frequency queries.
+**Action:** Use pre-allocated static constants (like `Ray._missResult`) for returning state from failed high-frequency functions. Replace chained arithmetic methods (`clone().add().scale()`) that implicitly allocate new objects with single `new Object(...)` direct evaluations.

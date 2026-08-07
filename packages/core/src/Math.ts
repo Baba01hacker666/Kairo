@@ -421,6 +421,11 @@ export class Color {
 export class Ray {
   public origin: Vector3;
   public direction: Vector3;
+  private static _missResult = (() => {
+    const point = Object.freeze(new Vector3()) as unknown as Vector3;
+    const normal = Object.freeze(new Vector3()) as unknown as Vector3;
+    return Object.freeze({ hasHit: false, distance: Infinity, point, normal });
+  })();
 
   constructor(origin: Vector3 | { x: number; y: number; z: number } = new Vector3(), direction: Vector3 | { x: number; y: number; z: number } = new Vector3(0, 0, -1)) {
     this.origin = origin instanceof Vector3 ? origin : new Vector3(origin.x, origin.y, origin.z);
@@ -440,8 +445,9 @@ export class Ray {
     let tymax = (box.max.y - this.origin.y) / dirY;
     if (tymin > tymax) [tymin, tymax] = [tymax, tymin];
 
+
     if (tmin > tymax || tymin > tmax) {
-      return { hasHit: false, distance: Infinity, point: new Vector3(), normal: new Vector3() };
+      return Ray._missResult;
     }
 
     if (tymin > tmin) tmin = tymin;
@@ -452,12 +458,17 @@ export class Ray {
     if (tzmin > tzmax) [tzmin, tzmax] = [tzmax, tzmin];
 
     if (tmin > tzmax || tzmin > tmax) {
-      return { hasHit: false, distance: Infinity, point: new Vector3(), normal: new Vector3() };
+      return Ray._missResult;
     }
 
     if (tzmin > tmin) tmin = tzmin;
 
-    const hitPoint = this.origin.clone().add(this.direction.clone().scale(tmin));
+
+    const hitPoint = new Vector3(
+      this.origin.x + this.direction.x * tmin,
+      this.origin.y + this.direction.y * tmin,
+      this.origin.z + this.direction.z * tmin
+    );
     const normal = new Vector3();
     const eps = 0.01;
     if (Math.abs(hitPoint.x - box.max.x) < eps) normal.x = 1;
