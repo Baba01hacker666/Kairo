@@ -56,9 +56,9 @@ export declare class KairoApp {
     private sceneObstacles;
     constructor(config?: KairoAppConfig);
     registerObstacle(object: THREE.Object3D): void;
-    createEntity(name?: string): number;
+    createEntity(name?: string): EntityHandle;
     createSharedContext(id: string, properties: Record<string, any>): import("@kairo/ecs").SharedEntityContext<Record<string, any>>;
-    createEntityWithSharedContext(contextId: string, name?: string): number;
+    createEntityWithSharedContext(contextId: string, name?: string): EntityHandle;
     query(q: any): number[];
     clearObstacles(): void;
     setLighting(options: {
@@ -255,4 +255,38 @@ export declare class KairoApp {
     seekVideo(timeSeconds: number): void;
     /** Export video timeline as WebM video file */
     exportVideo(filename?: string): Promise<void>;
+}
+/**
+ * Ergonomic Fluent Entity Handle Wrapper for KairoApp
+ * Allows chaining .addTransform(), .addMesh(), .addRigidBody(), and .getTransform()
+ */
+export declare class EntityHandle {
+    id: number;
+    app: KairoApp;
+    mesh?: THREE.Mesh;
+    rigidBody?: RigidBody;
+    collider?: Collider;
+    constructor(id: number, app: KairoApp);
+    addTransform(opts?: {
+        position?: [number, number, number];
+        rotation?: [number, number, number];
+        scale?: [number, number, number];
+    }): this;
+    addMesh(opts?: {
+        type?: 'box' | 'sphere' | 'plane' | 'cylinder';
+        color?: number | string;
+        size?: [number, number, number];
+        radius?: number;
+        shader?: string;
+    }): this;
+    addRigidBody(opts?: {
+        mass?: number;
+        type?: 'static' | 'dynamic';
+        useGravity?: boolean;
+    }): this;
+    getTransform(): {
+        position: THREE.Vector3;
+        rotation: THREE.Euler;
+        scale: THREE.Vector3;
+    };
 }
