@@ -245,18 +245,6 @@ export class KairoApp {
     }
   }
 
-  public onUpdate(callback: (dt: number) => void): void {
-    this.engine.onUpdate(callback);
-  }
-
-  public start(): void {
-    this.engine.start();
-  }
-
-  public stop(): void {
-    this.engine.stop();
-  }
-
   public registerObstacle(object: THREE.Object3D): void {
     this.sceneObstacles.push(object);
   }
