@@ -266,7 +266,7 @@ const app = new KairoApp({
 });
 
 // Create 3D Spinning Cube
-const cube = app.world.createEntity('spinning_cube');
+const cube = app.createEntity('spinning_cube');
 cube.addTransform({ position: [0, 1, 0] });
 cube.addMesh({ type: 'box', color: 0x6366f1, size: [1.5, 1.5, 1.5] });
 
@@ -278,14 +278,13 @@ app.onUpdate((dt) => {
 });
 
 app.start();`,
-
       'shared-context': `// Shared Entity Context Archetype Optimization
 import { KairoApp } from 'https://cdn.jsdelivr.net/gh/Baba01hacker666/Kairo@gh-pages/lib/kairo.mjs';
 
 const app = new KairoApp({ canvas: '#game-canvas' });
 
 // Create 1 Shared Context Record for Bouncing Balls
-const ballCtx = app.world.createSharedContext('bouncing_ball', {
+const ballCtx = app.createSharedContext('bouncing_ball', {
   radius: 0.4,
   restitution: 0.85,
   color: 0x10b981
@@ -293,7 +292,7 @@ const ballCtx = app.world.createSharedContext('bouncing_ball', {
 
 // Instantiate 500 entities sharing 1 archetype record
 for (let i = 0; i < 500; i++) {
-  const ball = app.world.createEntityWithSharedContext('bouncing_ball');
+  const ball = app.createEntityWithSharedContext('bouncing_ball');
   ball.addTransform({
     position: [(Math.random() - 0.5) * 20, Math.random() * 10 + 1, (Math.random() - 0.5) * 20]
   });
@@ -308,14 +307,14 @@ import { KairoApp } from 'https://cdn.jsdelivr.net/gh/Baba01hacker666/Kairo@gh-p
 const app = new KairoApp({ canvas: '#game-canvas' });
 
 // Floor RigidBody
-const floor = app.world.createEntity('floor');
+const floor = app.createEntity('floor');
 floor.addTransform({ position: [0, 0, 0] });
 floor.addMesh({ type: 'plane', size: [20, 20], color: 0x1f2937 });
 floor.addRigidBody({ mass: 0 }); // Static
 
 // Drop Physics Spheres
 for (let i = 0; i < 30; i++) {
-  const sphere = app.world.createEntity('sphere_' + i);
+  const sphere = app.createEntity('sphere_' + i);
   sphere.addTransform({ position: [(Math.random() - 0.5) * 4, 5 + i * 1.2, (Math.random() - 0.5) * 4] });
   sphere.addMesh({ type: 'sphere', radius: 0.5, color: 0xf59e0b });
   sphere.addRigidBody({ mass: 1, useGravity: true });
@@ -355,7 +354,7 @@ import { KairoApp, CustomShaderMaterial } from 'https://cdn.jsdelivr.net/gh/Baba
 
 const app = new KairoApp({ canvas: '#game-canvas' });
 
-const waterPlane = app.world.createEntity('water');
+const waterPlane = app.createEntity('water');
 waterPlane.addTransform({ position: [0, 0, 0] });
 waterPlane.addMesh({ type: 'plane', size: [15, 15], shader: 'water' });
 

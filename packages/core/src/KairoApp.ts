@@ -249,6 +249,22 @@ export class KairoApp {
     this.sceneObstacles.push(object);
   }
 
+  public createEntity(name?: string) {
+    return this.world.createEntity(name);
+  }
+
+  public createSharedContext(id: string, properties: Record<string, any>) {
+    return this.world.createSharedContext(id, properties);
+  }
+
+  public createEntityWithSharedContext(contextId: string, name?: string) {
+    return this.world.createEntityWithSharedContext(contextId, name);
+  }
+
+  public query(q: any) {
+    return this.world.query(q);
+  }
+
   public clearObstacles(): void {
     this.sceneObstacles = [];
   }
