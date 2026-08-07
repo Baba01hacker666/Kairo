@@ -1,10 +1,5 @@
 node_modules/
-dist/*
-!dist/lib/
-dist/lib/*
-!dist/lib/kairo.mjs
-!dist/lib/kairo.umd.js
-!dist/lib/kairo.cjs
+dist/
 .DS_Store
 
 .agents/
