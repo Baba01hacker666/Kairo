@@ -1016,7 +1016,7 @@ export class EntityHandle {
 
     let mat: THREE.Material;
     if (opts.shader === 'water') {
-      mat = ShaderPresets.water({ color: opts.color });
+      mat = ShaderPresets.createWaterShader();
     } else {
       mat = new THREE.MeshStandardMaterial({
         color: opts.color ?? 0x6366f1,
