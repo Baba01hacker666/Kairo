@@ -5,6 +5,9 @@ export default defineConfig({
   build: {
     outDir: 'dist/lib',
     emptyOutDir: true,
+    minify: 'esbuild',
+    target: 'es2022',
+    reportCompressedSize: true,
     lib: {
       entry: path.resolve(__dirname, 'packages/core/src/index.ts'),
       name: 'Kairo',
@@ -18,7 +21,8 @@ export default defineConfig({
           three: 'THREE',
           'cannon-es': 'CANNON',
           '@babylonjs/core': 'BABYLON'
-        }
+        },
+        compact: true
       }
     }
   },

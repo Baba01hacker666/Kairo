@@ -90,4 +90,53 @@ export class Serializer {
     }
     return hash;
   }
+
+  /**
+   * Fast XOR Cipher Payload Encryption/Obfuscation for Save State and Code Payload Security
+   */
+  public static encryptPayload(dataStr: string, secretKey: string = 'KairoSecureKey_2026'): string {
+    if (!dataStr) return '';
+    let result = '';
+    for (let i = 0; i < dataStr.length; i++) {
+      const charCode = dataStr.charCodeAt(i);
+      const keyChar = secretKey.charCodeAt(i % secretKey.length);
+      const encryptedChar = String.fromCharCode(charCode ^ keyChar);
+      result += encryptedChar;
+    }
+    return this.compressToBase64(result);
+  }
+
+  /**
+   * Fast XOR Cipher Payload Decryption/Deobfuscation
+   */
+  public static decryptPayload(encryptedStr: string, secretKey: string = 'KairoSecureKey_2026'): string {
+    if (!encryptedStr) return '';
+    const rawStr = this.decompressFromBase64(encryptedStr);
+    let result = '';
+    for (let i = 0; i < rawStr.length; i++) {
+      const charCode = rawStr.charCodeAt(i);
+      const keyChar = secretKey.charCodeAt(i % secretKey.length);
+      const decryptedChar = String.fromCharCode(charCode ^ keyChar);
+      result += decryptedChar;
+    }
+    return result;
+  }
+
+  /**
+   * Lightweight Run-Length Encoding (RLE) Payload Compression
+   */
+  public static compressRLE(str: string): string {
+    if (!str) return '';
+    let compressed = '';
+    let count = 1;
+    for (let i = 0; i < str.length; i++) {
+      if (str[i] === str[i + 1]) {
+        count++;
+      } else {
+        compressed += (count > 1 ? count : '') + str[i];
+        count = 1;
+      }
+    }
+    return compressed;
+  }
 }
