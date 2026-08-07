@@ -1,0 +1,1 @@
+import{p as e}from"./vendor-CiG8lhUG.js";export{e as gpuRenderParticlesVertexShaderWGSL};
