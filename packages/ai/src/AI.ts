@@ -494,3 +494,6 @@ export class PathfindingGrid {
     return neighbors;
   }
 }
+
+export { PathfindingGrid as NavGrid };
+

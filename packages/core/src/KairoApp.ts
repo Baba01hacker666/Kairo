@@ -4,7 +4,7 @@ import { World } from '@kairo/ecs';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
 import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
-import { deriveCollider } from '@kairo/geometry';
+import { deriveCollider, createTerrain, createGrassField } from '@kairo/geometry';
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
@@ -294,6 +294,16 @@ export class KairoApp {
 
   public onUpdate(callback: (dt: number) => void) {
     this.engine.events.on('update', callback);
+  }
+
+  public onRender(callback: () => void) {
+    this.engine.events.on('render', callback);
+  }
+
+  public createProceduralTerrain(options: any) {
+    const terrain = createTerrain(options);
+    this.scene.add(terrain);
+    return terrain;
   }
 
   public async start() {
