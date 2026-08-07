@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Engine } from './Engine.ts';
+import { World } from '@kairo/ecs';
 import { PhysicsWorld, RigidBody, Collider } from '@kairo/physics';
 import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
 import { InputManager } from '@kairo/input';
@@ -31,6 +32,7 @@ export interface KairoAppConfig {
  */
 export declare class KairoApp {
     engine: Engine;
+    world: World;
     physics: PhysicsWorld;
     scene: THREE.Scene;
     camera: THREE.Camera;
