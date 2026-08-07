@@ -962,7 +962,10 @@ function loadDemoScene(type) {
 
   onWindowResize();
   updateHierarchyTree();
-  // --- UNDO / REDO HISTORY MANAGER ---
+  selectEntity(state.entities[0] ? state.entities[0].id : null);
+}
+
+// --- UNDO / REDO HISTORY MANAGER ---
 const undoStack = [];
 const redoStack = [];
 
