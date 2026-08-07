@@ -60,3 +60,4 @@ export declare class PathfindingGrid {
     private nodeToVector3;
     private getNeighbors;
 }
+export { PathfindingGrid as NavGrid };

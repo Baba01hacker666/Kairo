@@ -75,6 +75,8 @@ export declare class KairoApp {
     isKeyDown(code: string): boolean;
     animate(target: any, keyframes: any, options?: any): any;
     onUpdate(callback: (dt: number) => void): void;
+    onRender(callback: () => void): void;
+    createProceduralTerrain(options: any): import("@kairo/geometry").TerrainResult;
     start(): Promise<void>;
     stop(): void;
     /**
