@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Engine } from './Engine.ts';
+import { World } from '@kairo/ecs';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
 import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
@@ -37,6 +38,7 @@ export interface KairoAppConfig {
  */
 export class KairoApp {
   public engine: Engine;
+  public world: World;
   public physics: PhysicsWorld;
   public scene: THREE.Scene;
   public camera: THREE.Camera;
@@ -70,6 +72,7 @@ export class KairoApp {
     this.videoTimeline = new VideoTimeline(this);
     this.debugRenderer = new DebugRenderer(this);
     this.engine = new Engine();
+    this.world = new World();
     
     // Setup physics
     this.physics = new PhysicsWorld();
@@ -240,6 +243,18 @@ export class KairoApp {
         }
       };
     }
+  }
+
+  public onUpdate(callback: (dt: number) => void): void {
+    this.engine.onUpdate(callback);
+  }
+
+  public start(): void {
+    this.engine.start();
+  }
+
+  public stop(): void {
+    this.engine.stop();
   }
 
   public registerObstacle(object: THREE.Object3D): void {
