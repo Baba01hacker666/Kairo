@@ -13,7 +13,7 @@ import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
 import { animate } from 'motion';
-import type * as BABYLON from '@babylonjs/core';
+import * as BABYLON from '@babylonjs/core';
 
 export interface KairoAppConfig {
   canvas?: HTMLCanvasElement | string;
