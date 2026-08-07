@@ -1,9 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import { FastSoAWorld } from '../packages/ecs/src/FastSoAWorld.ts';
 
+try {
+  const wasmPath = path.resolve('./public/wasm/kairo_soa_physics.wasm');
+  if (fs.existsSync(wasmPath)) {
+    const buffer = fs.readFileSync(wasmPath);
+    FastSoAWorld.initSyncWasm(buffer);
+  }
+} catch (_) {}
+
 function runSoABenchmark(entityCount, frameCount = 100) {
-  const world = new FastSoAWorld(entityCount + 1000, 4.0);
+  const world = new FastSoAWorld(entityCount + 1000, 20.0);
 
   // Spawn entities into contiguous ArrayBuffer
   for (let i = 0; i < entityCount; i++) {

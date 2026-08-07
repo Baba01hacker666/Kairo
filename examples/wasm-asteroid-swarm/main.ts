@@ -39,7 +39,8 @@ scene.add(shipGroup);
 
 // Initialize High-Performance WASM-Grade SoA ECS Engine
 let TARGET_ENTITIES = 5000;
-let world = new FastSoAWorld(12000, 6.0);
+await FastSoAWorld.loadWasm();
+let world = new FastSoAWorld(12000, 20.0);
 
 // Create Instanced Mesh for 10,000+ Asteroid Entities (1 Single Draw Call!)
 const asteroidGeo = new THREE.IcosahedronGeometry(0.5, 1);
@@ -47,8 +48,6 @@ const asteroidMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness:
 let instancedAsteroids = new THREE.InstancedMesh(asteroidGeo, asteroidMat, world.maxEntities);
 instancedAsteroids.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(instancedAsteroids);
-
-const dummy = new THREE.Object3D();
 
 function populateSwarm(count: number) {
   world.clear();
@@ -87,11 +86,15 @@ const elEntities = document.getElementById('stat-entities')!;
 const elFps = document.getElementById('stat-fps')!;
 const elMs = document.getElementById('stat-ms')!;
 const elThroughput = document.getElementById('stat-throughput')!;
+const elMatrix = document.getElementById('stat-matrix')!;
+const elMemory = document.getElementById('stat-memory')!;
+const elMode = document.getElementById('stat-mode')!;
 
 // Frame Loop Variables
 let lastTime = performance.now();
 let frameCount = 0;
 let fpsTimer = 0;
+let lastMatrixTimeMs = 0;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -117,17 +120,44 @@ function animate() {
   const simEnd = performance.now();
   const simTimeMs = simEnd - simStart;
 
-  // Update InstancedMesh Matrix Buffer for 1 Single Draw Call!
+  // High-Speed Direct Matrix Buffer Update (Zero Object3D / Matrix Composition Overhead!)
+  const matStart = performance.now();
   const count = world.activeCount;
+  const attr = instancedAsteroids.instanceMatrix;
+  const array = attr.array as Float32Array;
+  const px = world.posX;
+  const py = world.posY;
+  const pz = world.posZ;
+  const rad = world.radius;
+
+  let idx = 0;
   for (let i = 0; i < count; i++) {
-    dummy.position.set(world.posX[i], world.posY[i], world.posZ[i]);
-    const r = world.radius[i];
-    dummy.scale.set(r * 2, r * 2, r * 2);
-    dummy.updateMatrix();
-    instancedAsteroids.setMatrixAt(i, dummy.matrix);
+    const d = rad[i] * 2;
+    array[idx]      = d;
+    array[idx + 1]  = 0;
+    array[idx + 2]  = 0;
+    array[idx + 3]  = 0;
+
+    array[idx + 4]  = 0;
+    array[idx + 5]  = d;
+    array[idx + 6]  = 0;
+    array[idx + 7]  = 0;
+
+    array[idx + 8]  = 0;
+    array[idx + 9]  = 0;
+    array[idx + 10] = d;
+    array[idx + 11] = 0;
+
+    array[idx + 12] = px[i];
+    array[idx + 13] = py[i];
+    array[idx + 14] = pz[i];
+    array[idx + 15] = 1;
+    idx += 16;
   }
   instancedAsteroids.count = count;
-  instancedAsteroids.instanceMatrix.needsUpdate = true;
+  attr.needsUpdate = true;
+  const matEnd = performance.now();
+  lastMatrixTimeMs = matEnd - matStart;
 
   renderer.render(scene, camera);
 
@@ -137,11 +167,15 @@ function animate() {
   if (fpsTimer >= 0.2) {
     const fps = Math.round(frameCount / fpsTimer);
     const throughput = Math.round(count * fps);
+    const memMb = (world.getMemoryFootprintBytes() / (1024 * 1024)).toFixed(2);
 
     elEntities.textContent = count.toLocaleString();
     elFps.textContent = `${fps} FPS`;
     elMs.textContent = `${simTimeMs.toFixed(2)} ms / frame`;
     elThroughput.textContent = `${throughput.toLocaleString()} / sec`;
+    if (elMatrix) elMatrix.textContent = `${lastMatrixTimeMs.toFixed(2)} ms / frame`;
+    if (elMemory) elMemory.textContent = `${memMb} MB`;
+    if (elMode) elMode.textContent = world.isWasmMode ? 'FastSoA WASM SIMD Kernel' : 'FastSoA JS Vector Kernel';
 
     frameCount = 0;
     fpsTimer = 0;
