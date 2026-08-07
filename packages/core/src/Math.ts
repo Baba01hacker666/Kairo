@@ -421,7 +421,11 @@ export class Color {
 export class Ray {
   public origin: Vector3;
   public direction: Vector3;
-  private static _missResult = { hasHit: false, distance: Infinity, point: new Vector3(), normal: new Vector3() };
+  private static _missResult = (() => {
+    const point = Object.freeze(new Vector3()) as unknown as Vector3;
+    const normal = Object.freeze(new Vector3()) as unknown as Vector3;
+    return Object.freeze({ hasHit: false, distance: Infinity, point, normal });
+  })();
 
   constructor(origin: Vector3 | { x: number; y: number; z: number } = new Vector3(), direction: Vector3 | { x: number; y: number; z: number } = new Vector3(0, 0, -1)) {
     this.origin = origin instanceof Vector3 ? origin : new Vector3(origin.x, origin.y, origin.z);
@@ -441,7 +445,7 @@ export class Ray {
     let tymax = (box.max.y - this.origin.y) / dirY;
     if (tymin > tymax) [tymin, tymax] = [tymax, tymin];
 
-    // ⚡ Bolt Optimization: Avoid allocating objects on misses in high-frequency raycasts
+
     if (tmin > tymax || tymin > tmax) {
       return Ray._missResult;
     }
@@ -459,7 +463,7 @@ export class Ray {
 
     if (tzmin > tmin) tmin = tzmin;
 
-    // ⚡ Bolt Optimization: Avoid chained object allocations (.clone(), .add(), .scale())
+
     const hitPoint = new Vector3(
       this.origin.x + this.direction.x * tmin,
       this.origin.y + this.direction.y * tmin,
