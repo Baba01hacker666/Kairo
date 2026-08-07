@@ -33,6 +33,7 @@ export class CameraController {
   public enableCollisionAvoidance: boolean = true;
   
   private currentPosition: THREE.Vector3 = new THREE.Vector3();
+  private currentTarget: THREE.Vector3 = new THREE.Vector3();
   private shakeOffset: THREE.Vector3 = new THREE.Vector3();
   private shakeTimeRemaining: number = 0;
   private shakeIntensity: number = 0;
@@ -46,6 +47,7 @@ export class CameraController {
   constructor(camera: THREE.Camera) {
     this.camera = camera;
     this.currentPosition.copy(this.camera.position);
+    this.currentTarget.copy(this.target);
   }
 
   public setTargetPosition(pos: Vector3 | THREE.Vector3): void {
@@ -75,6 +77,7 @@ export class CameraController {
     this.camera.position.copy(pos);
     this.currentPosition.copy(pos);
     this.target.copy(lookAtTarget);
+    this.currentTarget.copy(lookAtTarget);
     this.camera.lookAt(lookAtTarget);
   }
 
@@ -91,6 +94,7 @@ export class CameraController {
     this.camera.position.copy(fromPos);
     this.currentPosition.copy(fromPos);
     this.target.copy(lookAtTarget);
+    this.currentTarget.copy(lookAtTarget);
   }
 
   /** 360° Cinematic Orbital Camera Shot around target */
@@ -104,6 +108,7 @@ export class CameraController {
     };
     this.shotTimer = 0;
     this.target.copy(centerTarget);
+    this.currentTarget.copy(centerTarget);
   }
 
   /** Hitchcock Vertigo Dolly Zoom Effect */
@@ -140,7 +145,10 @@ export class CameraController {
 
       if (this.activeShot.type === 'pan' && this.activeShot.fromPos && this.activeShot.toPos) {
         this.currentPosition.lerpVectors(this.activeShot.fromPos, this.activeShot.toPos, easeProgress);
-        if (this.activeShot.targetPos) this.target.copy(this.activeShot.targetPos);
+        if (this.activeShot.targetPos) {
+          this.target.copy(this.activeShot.targetPos);
+          this.currentTarget.copy(this.activeShot.targetPos);
+        }
       } else if (this.activeShot.type === 'orbit' && this.activeShot.targetPos) {
         const angle = this.shotTimer * (this.activeShot.speed || 1.0);
         const rad = this.activeShot.radius || 8.0;
@@ -148,6 +156,7 @@ export class CameraController {
         this.currentPosition.y = this.activeShot.targetPos.y + 3.0;
         this.currentPosition.z = this.activeShot.targetPos.z + Math.cos(angle) * rad;
         this.target.copy(this.activeShot.targetPos);
+        this.currentTarget.copy(this.activeShot.targetPos);
       } else if (this.activeShot.type === 'dolly' && (this.camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
         const pCam = this.camera as THREE.PerspectiveCamera;
         pCam.fov += ((this.activeShot.fov || 30) - pCam.fov) * Math.min(1.0, 4.0 * dt);
@@ -159,7 +168,7 @@ export class CameraController {
       }
 
       this.camera.position.copy(this.currentPosition);
-      this.camera.lookAt(this.target);
+      this.camera.lookAt(this.currentTarget);
       return;
     }
 
@@ -169,28 +178,35 @@ export class CameraController {
       this.setTargetPosition(pos);
     }
 
-    // 3. Compute ideal orbital camera position
-    const idealX = this.target.x + this.distance * Math.sin(this.yaw) * Math.cos(this.pitch);
-    const idealY = this.target.y + this.distance * Math.sin(this.pitch);
-    const idealZ = this.target.z + this.distance * Math.cos(this.yaw) * Math.cos(this.pitch);
+    // 3. Smooth Exponential Decay Lerp Factor for 60fps/120fps Lockstep Tracking
+    const clampDt = Math.min(0.1, Math.max(0.001, dt));
+    const lerpFactor = 1.0 - Math.exp(-this.lerpSpeed * clampDt);
+
+    // Smoothly lerp lookAt target position
+    this.currentTarget.lerp(this.target, lerpFactor);
+
+    // Compute ideal orbital camera position relative to current target
+    const idealX = this.currentTarget.x + this.distance * Math.sin(this.yaw) * Math.cos(this.pitch);
+    const idealY = this.currentTarget.y + this.distance * Math.sin(this.pitch);
+    const idealZ = this.currentTarget.z + this.distance * Math.cos(this.yaw) * Math.cos(this.pitch);
     
     let desiredPos = new THREE.Vector3(idealX, idealY, idealZ);
 
     // Collision avoidance raycast against environment obstacles
     if (this.enableCollisionAvoidance && sceneObstacles.length > 0) {
-      const dir = desiredPos.clone().sub(this.target).normalize();
-      const raycaster = new THREE.Raycaster(this.target, dir, 0.1, this.distance);
+      const dir = desiredPos.clone().sub(this.currentTarget).normalize();
+      const raycaster = new THREE.Raycaster(this.currentTarget, dir, 0.1, this.distance);
       const hits = raycaster.intersectObjects(sceneObstacles, true);
       if (hits.length > 0) {
         const hitDist = hits[0].distance - 0.3;
         if (hitDist < this.distance) {
-          desiredPos.copy(this.target).add(dir.multiplyScalar(Math.max(this.minDistance, hitDist)));
+          desiredPos.copy(this.currentTarget).add(dir.multiplyScalar(Math.max(this.minDistance, hitDist)));
         }
       }
     }
 
-    // Smooth position interpolation
-    this.currentPosition.lerp(desiredPos, Math.min(1.0, this.lerpSpeed * dt));
+    // Smooth camera position interpolation
+    this.currentPosition.lerp(desiredPos, lerpFactor);
 
     // Handle screen shake
     if (this.shakeTimeRemaining > 0) {
@@ -206,6 +222,6 @@ export class CameraController {
     }
 
     this.camera.position.copy(this.currentPosition).add(this.shakeOffset);
-    this.camera.lookAt(this.target);
+    this.camera.lookAt(this.currentTarget);
   }
 }
