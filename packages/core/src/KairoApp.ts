@@ -3,7 +3,7 @@ import { Engine } from './Engine.ts';
 import { World } from '@kairo/ecs';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
-import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
+import { CameraController, RenderPipeline, CpuProfileMap, ShaderPresets } from '@kairo/renderer';
 import { deriveCollider, createTerrain, createGrassField } from '@kairo/geometry';
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
@@ -249,16 +249,18 @@ export class KairoApp {
     this.sceneObstacles.push(object);
   }
 
-  public createEntity(name?: string) {
-    return this.world.createEntity(name);
+  public createEntity(name?: string): EntityHandle {
+    const id = this.world.createEntity(name);
+    return new EntityHandle(id, this);
   }
 
   public createSharedContext(id: string, properties: Record<string, any>) {
     return this.world.createSharedContext(id, properties);
   }
 
-  public createEntityWithSharedContext(contextId: string, name?: string) {
-    return this.world.createEntityWithSharedContext(contextId, name);
+  public createEntityWithSharedContext(contextId: string, name?: string): EntityHandle {
+    const id = this.world.createEntityWithSharedContext(contextId, name);
+    return new EntityHandle(id, this);
   }
 
   public query(q: any) {
@@ -954,5 +956,114 @@ export class KairoApp {
   /** Export video timeline as WebM video file */
   public async exportVideo(filename: string = 'kairo-video-edit.webm'): Promise<void> {
     return this.videoTimeline.exportVideo(filename);
+  }
+}
+
+/**
+ * Ergonomic Fluent Entity Handle Wrapper for KairoApp
+ * Allows chaining .addTransform(), .addMesh(), .addRigidBody(), and .getTransform()
+ */
+export class EntityHandle {
+  public id: number;
+  public app: KairoApp;
+  public mesh?: THREE.Mesh;
+  public rigidBody?: RigidBody;
+  public collider?: Collider;
+
+  constructor(id: number, app: KairoApp) {
+    this.id = id;
+    this.app = app;
+  }
+
+  public addTransform(opts: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } = {}) {
+    if (opts.position) {
+      if (!this.mesh) this.addMesh({});
+      this.mesh!.position.set(...opts.position);
+    }
+    if (opts.rotation && this.mesh) {
+      this.mesh.rotation.set(...opts.rotation);
+    }
+    if (opts.scale && this.mesh) {
+      this.mesh.scale.set(...opts.scale);
+    }
+    return this;
+  }
+
+  public addMesh(opts: {
+    type?: 'box' | 'sphere' | 'plane' | 'cylinder';
+    color?: number | string;
+    size?: [number, number, number];
+    radius?: number;
+    shader?: string;
+  } = {}) {
+    if (this.mesh) return this;
+    const type = opts.type ?? 'box';
+    let geom: THREE.BufferGeometry;
+    if (type === 'sphere') {
+      const r = opts.radius ?? (opts.size ? opts.size[0] / 2 : 0.5);
+      geom = new THREE.SphereGeometry(r, 32, 32);
+    } else if (type === 'plane') {
+      const s = opts.size ?? [10, 10];
+      geom = new THREE.PlaneGeometry(s[0], s[1]);
+    } else if (type === 'cylinder') {
+      const r = opts.radius ?? 0.5;
+      const s = opts.size ?? [1, 2, 1];
+      geom = new THREE.CylinderGeometry(r, r, s[1], 32);
+    } else {
+      const s = opts.size ?? [1, 1, 1];
+      geom = new THREE.BoxGeometry(s[0], s[1], s[2]);
+    }
+
+    let mat: THREE.Material;
+    if (opts.shader === 'water') {
+      mat = ShaderPresets.water({ color: opts.color });
+    } else {
+      mat = new THREE.MeshStandardMaterial({
+        color: opts.color ?? 0x6366f1,
+        roughness: 0.4,
+        metalness: 0.2
+      });
+    }
+
+    this.mesh = new THREE.Mesh(geom, mat);
+    if (type === 'plane') {
+      this.mesh.rotation.x = -Math.PI / 2;
+    }
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
+    this.app.scene.add(this.mesh);
+    return this;
+  }
+
+  public addRigidBody(opts: { mass?: number; type?: 'static' | 'dynamic'; useGravity?: boolean } = {}) {
+    if (!this.mesh) this.addMesh({});
+    const isStatic = opts.type === 'static' || opts.mass === 0;
+    this.rigidBody = new RigidBody();
+    this.rigidBody.type = isStatic ? RigidBodyType.Static : RigidBodyType.Dynamic;
+    this.rigidBody.mass = opts.mass ?? (isStatic ? 0 : 1);
+    
+    this.collider = new Collider();
+    this.collider.type = ColliderType.Box;
+    const pos = new Vector3(...this.mesh!.position.toArray());
+    this.app.physics.registerBody(this.rigidBody, this.collider, pos);
+
+    this.app.onUpdate(() => {
+      if (this.rigidBody?.cannonBody && this.mesh) {
+        this.mesh.position.set(this.rigidBody.cannonBody.position.x, this.rigidBody.cannonBody.position.y, this.rigidBody.cannonBody.position.z);
+        this.mesh.quaternion.set(this.rigidBody.cannonBody.quaternion.x, this.rigidBody.cannonBody.quaternion.y, this.rigidBody.cannonBody.quaternion.z, this.rigidBody.cannonBody.quaternion.w);
+      }
+    });
+    return this;
+  }
+
+  public getTransform() {
+    if (!this.mesh) {
+      this.addMesh({});
+    }
+    return {
+      position: this.mesh!.position,
+      rotation: this.mesh!.rotation,
+      scale: this.mesh!.scale
+    };
   }
 }
