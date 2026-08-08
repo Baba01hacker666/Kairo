@@ -952,7 +952,7 @@
       let dy = touch.clientY - centerY;
 
       const maxDist = rect.width / 2 - 10;
-      const dist = Math.hypot(dx, dy);
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist > maxDist) {
         dx = (dx / dist) * maxDist;
