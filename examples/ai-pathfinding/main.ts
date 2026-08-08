@@ -120,7 +120,9 @@ const blackboard = new Map<string, any>();
 const behaviorTree = new SelectorNode([
   new SequenceNode([
     new ActionNode((bb) => {
-      const dist = Math.hypot(botPos.x - endX, botPos.z - endZ);
+      const dx = botPos.x - endX;
+      const dz = botPos.z - endZ;
+      const dist = Math.sqrt(dx * dx + dz * dz);
       return dist === 0 ? NodeStatus.Success : NodeStatus.Failure;
     }),
     new ActionNode(() => {
@@ -151,7 +153,9 @@ stepAiBtn.onclick = () => {
 };
 
 function updateBtUI() {
-  const dist = Math.hypot(botPos.x - endX, botPos.z - endZ);
+  const dx = botPos.x - endX;
+  const dz = botPos.z - endZ;
+  const dist = Math.sqrt(dx * dx + dz * dz);
   const atGoal = dist === 0;
 
   btContainer.innerHTML = `

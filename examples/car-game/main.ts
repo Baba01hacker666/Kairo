@@ -629,7 +629,7 @@ const joyMax = 50;
 function updateJoystick(touch: Touch): void {
   let dx = touch.clientX - joyCenter.x;
   let dy = touch.clientY - joyCenter.y;
-  const dist = Math.hypot(dx, dy);
+  const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist > joyMax) {
     dx = (dx / dist) * joyMax;
     dy = (dy / dist) * joyMax;
@@ -758,7 +758,7 @@ app.onUpdate((dt) => {
   }
 
   // ---- Impact detection (wall / obstacle) ----
-  const actualSpeed = Math.hypot(cb.velocity.x, cb.velocity.z);
+  const actualSpeed = Math.sqrt(cb.velocity.x * cb.velocity.x + cb.velocity.z * cb.velocity.z);
   const impactSpeed = Math.max(0, Math.abs(speed) - actualSpeed - 4);
   if (impactSpeed > 10 && frame - lastCrashSound > 20) {
     lastCrashSound = frame;
