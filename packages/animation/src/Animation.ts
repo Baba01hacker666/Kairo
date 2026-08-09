@@ -173,28 +173,60 @@ export class InverseKinematicsSolver {
     l1: number,
     l2: number
   ): { jointPos: Vector3; endPos: Vector3 } {
-    const dir = targetPos.clone().sub(rootPos);
-    const dist = MathUtils.clamp(dir.length(), 0.001, l1 + l2 - 0.001);
-    
+    const dirX = targetPos.x - rootPos.x;
+    const dirY = targetPos.y - rootPos.y;
+    const dirZ = targetPos.z - rootPos.z;
+    const dirLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+    const dist = MathUtils.clamp(dirLen, 0.001, l1 + l2 - 0.001);
+
     const cosAngle = (l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist);
     const angle = Math.acos(MathUtils.clamp(cosAngle, -1, 1));
-    
-    const normal = new Vector3(0, 1, 0);
-    const forward = dir.clone().normalize();
-    let up = forward.cross(normal).cross(forward).normalize();
-    // Degenerate case: target directly above/below root makes `up` a zero
-    // vector, which would turn the joint position into NaN.
-    if (up.lengthSq() < 1e-6) {
-      up = forward.clone().cross(new Vector3(1, 0, 0));
-      if (up.lengthSq() < 1e-6) up = forward.clone().cross(new Vector3(0, 0, 1));
-      up.normalize();
+
+    const fInv = dirLen > 0 ? 1.0 / dirLen : 0;
+    const fx = dirX * fInv;
+    const fy = dirY * fInv;
+    const fz = dirZ * fInv;
+
+    let upX = 0;
+    let upY = 0;
+    let upZ = 0;
+
+    const uLengthSq = fx * fx + fz * fz;
+    if (uLengthSq >= 1e-6) {
+      const uLen = Math.sqrt(uLengthSq);
+      upX = (-fx * fy) / uLen;
+      upY = uLen;
+      upZ = (-fy * fz) / uLen;
+    } else {
+      const u1LengthSq = fz * fz + fy * fy;
+      if (u1LengthSq >= 1e-6) {
+        const uLen = Math.sqrt(u1LengthSq);
+        upX = 0;
+        upY = fz / uLen;
+        upZ = -fy / uLen;
+      } else {
+        const u2LengthSq = fy * fy + fx * fx;
+        const uLen = Math.sqrt(u2LengthSq);
+        const invLen = uLen > 0 ? 1.0 / uLen : 0;
+        upX = fy * invLen;
+        upY = -fx * invLen;
+        upZ = 0;
+      }
     }
-    
-    const newJoint = rootPos.clone()
-      .add(forward.clone().scale(Math.cos(angle) * l1))
-      .add(up.clone().scale(Math.sin(angle) * l1));
-      
-    return { jointPos: newJoint, endPos: targetPos.clone() };
+
+    const cosL1 = Math.cos(angle) * l1;
+    const sinL1 = Math.sin(angle) * l1;
+
+    const newJoint = new Vector3(
+      rootPos.x + fx * cosL1 + upX * sinL1,
+      rootPos.y + fy * cosL1 + upY * sinL1,
+      rootPos.z + fz * cosL1 + upZ * sinL1
+    );
+
+    return {
+      jointPos: newJoint,
+      endPos: new Vector3(targetPos.x, targetPos.y, targetPos.z)
+    };
   }
 }
 
