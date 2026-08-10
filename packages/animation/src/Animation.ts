@@ -34,7 +34,12 @@ export class AnimationClip {
   sampleRotation(time: number, target?: Quaternion): Quaternion {
     const out = target || new Quaternion();
     if (this.rotationKeys.length === 0) return out.set(0, 0, 0, 1);
-    time = MathUtils.clamp(time % this.duration, 0, this.duration);
+    if (this.duration > 0) {
+      time = MathUtils.clamp(time % this.duration, 0, this.duration);
+    } else {
+      const lastTime = this.rotationKeys[this.rotationKeys.length - 1].time || 0;
+      time = MathUtils.clamp(time, 0, lastTime);
+    }
 
     for (let i = 0; i < this.rotationKeys.length - 1; i++) {
       const k1 = this.rotationKeys[i];
