@@ -23,6 +23,74 @@ test('Animation BlendTree1D interpolation', () => {
   assert.ok(Math.abs(sampleMid.position.z - 2.5) < 0.1);
 });
 
+test('AnimationClip target reuse and zero-allocation sampling', () => {
+  const clip = new AnimationClip('Walk', 1.0, [
+    { time: 0, value: new Vector3(0, 0, 0) },
+    { time: 1, value: new Vector3(10, 0, 0) }
+  ], [
+    { time: 0, value: new Quaternion(0, 0, 0, 1) },
+    { time: 1, value: new Quaternion(0, 1, 0, 0) }
+  ], [
+    { time: 0, value: new Vector3(1, 1, 1) },
+    { time: 1, value: new Vector3(2, 2, 2) }
+  ]);
+
+  const targetVec = new Vector3();
+  const resVec = clip.samplePosition(0.5, targetVec);
+  assert.strictEqual(resVec, targetVec);
+  assert.strictEqual(resVec.x, 5);
+
+  const targetQuat = new Quaternion();
+  const resQuat = clip.sampleRotation(0.5, targetQuat);
+  assert.strictEqual(resQuat, targetQuat);
+
+  const targetScale = new Vector3();
+  const resScale = clip.sampleScale(0.5, targetScale);
+  assert.strictEqual(resScale, targetScale);
+  assert.strictEqual(resScale.x, 1.5);
+});
+
+test('AnimationClip zero-duration sampling', () => {
+  const clipZero = new AnimationClip('Pose', 0, [
+    { time: 0, value: new Vector3(3, 4, 5) }
+  ], [
+    { time: 0, value: new Quaternion(0, 0, 0, 1) }
+  ], [
+    { time: 0, value: new Vector3(1, 1, 1) }
+  ]);
+
+  const pos = clipZero.samplePosition(0.5);
+  assert.strictEqual(pos.x, 3);
+  assert.strictEqual(pos.y, 4);
+  assert.strictEqual(pos.z, 5);
+
+  const rot = clipZero.sampleRotation(0.5);
+  assert.strictEqual(rot.w, 1);
+});
+
+test('BlendTree1D target evaluation (zero-allocation)', () => {
+  const clipIdle = new AnimationClip('Idle', 1.0, [
+    { time: 0, value: new Vector3(0, 0, 0) },
+    { time: 1, value: new Vector3(0, 0, 0) }
+  ]);
+  const clipRun = new AnimationClip('Run', 1.0, [
+    { time: 0, value: new Vector3(0, 0, 0) },
+    { time: 1, value: new Vector3(0, 0, 10) }
+  ]);
+
+  const tree = new BlendTree1D();
+  tree.addClip(clipIdle, 0.0);
+  tree.addClip(clipRun, 1.0);
+
+  const outPos = new Vector3();
+  const outRot = new Quaternion();
+  const res = tree.evaluate(0.5, 0.5, outPos, outRot);
+
+  assert.strictEqual(res.position, outPos);
+  assert.strictEqual(res.rotation, outRot);
+  assert.ok(Math.abs(res.position.z - 2.5) < 0.1);
+});
+
 test('AnimationStateMachine state transitions', () => {
   const dummyMesh = new THREE.Mesh();
   const stateMachine = new AnimationStateMachine(dummyMesh);

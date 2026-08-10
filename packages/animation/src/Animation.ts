@@ -15,53 +15,109 @@ export class AnimationClip {
     public scaleKeys: Keyframe<Vector3>[] = []
   ) {}
 
-  samplePosition(time: number): Vector3 {
-    if (this.positionKeys.length === 0) return new Vector3(0, 0, 0);
-    time = MathUtils.clamp(time % this.duration, 0, this.duration);
-    
+  samplePosition(time: number, target?: Vector3): Vector3 {
+    const out = target || new Vector3();
+    if (this.positionKeys.length === 0) return out.set(0, 0, 0);
+
+    if (this.duration > 0) {
+      time = MathUtils.clamp(time % this.duration, 0, this.duration);
+    } else {
+      const lastTime = this.positionKeys[this.positionKeys.length - 1].time || 0;
+      time = MathUtils.clamp(time, 0, lastTime);
+    }
+
     for (let i = 0; i < this.positionKeys.length - 1; i++) {
       const k1 = this.positionKeys[i];
       const k2 = this.positionKeys[i + 1];
       if (time >= k1.time && time <= k2.time) {
-        const t = (time - k1.time) / (k2.time - k1.time);
-        return k1.value.clone().lerp(k2.value, t);
+        const dt = k2.time - k1.time;
+        const t = dt > 0 ? (time - k1.time) / dt : 0;
+        return out.copy(k1.value).lerp(k2.value, t);
       }
     }
-    return this.positionKeys[this.positionKeys.length - 1].value.clone();
+    return out.copy(this.positionKeys[this.positionKeys.length - 1].value);
   }
 
-  sampleRotation(time: number): Quaternion {
-    if (this.rotationKeys.length === 0) return new Quaternion(0, 0, 0, 1);
-    time = MathUtils.clamp(time % this.duration, 0, this.duration);
+  sampleRotation(time: number, target?: Quaternion): Quaternion {
+    const out = target || new Quaternion();
+    if (this.rotationKeys.length === 0) return out.set(0, 0, 0, 1);
+
+    if (this.duration > 0) {
+      time = MathUtils.clamp(time % this.duration, 0, this.duration);
+    } else {
+      const lastTime = this.rotationKeys[this.rotationKeys.length - 1].time || 0;
+      time = MathUtils.clamp(time, 0, lastTime);
+    }
 
     for (let i = 0; i < this.rotationKeys.length - 1; i++) {
       const k1 = this.rotationKeys[i];
       const k2 = this.rotationKeys[i + 1];
       if (time >= k1.time && time <= k2.time) {
-        const t = (time - k1.time) / (k2.time - k1.time);
-        return k1.value.clone().slerp(k2.value, t);
+        const dt = k2.time - k1.time;
+        const t = dt > 0 ? (time - k1.time) / dt : 0;
+        return out.copy(k1.value).slerp(k2.value, t);
       }
     }
-    return this.rotationKeys[this.rotationKeys.length - 1].value.clone();
+    return out.copy(this.rotationKeys[this.rotationKeys.length - 1].value);
+  }
+
+  sampleScale(time: number, target?: Vector3): Vector3 {
+    const out = target || new Vector3(1, 1, 1);
+    if (this.scaleKeys.length === 0) return out.set(1, 1, 1);
+
+    if (this.duration > 0) {
+      time = MathUtils.clamp(time % this.duration, 0, this.duration);
+    } else {
+      const lastTime = this.scaleKeys[this.scaleKeys.length - 1].time || 0;
+      time = MathUtils.clamp(time, 0, lastTime);
+    }
+
+    for (let i = 0; i < this.scaleKeys.length - 1; i++) {
+      const k1 = this.scaleKeys[i];
+      const k2 = this.scaleKeys[i + 1];
+      if (time >= k1.time && time <= k2.time) {
+        const dt = k2.time - k1.time;
+        const t = dt > 0 ? (time - k1.time) / dt : 0;
+        return out.copy(k1.value).lerp(k2.value, t);
+      }
+    }
+    return out.copy(this.scaleKeys[this.scaleKeys.length - 1].value);
   }
 }
 
 export class BlendTree1D {
   private clips: { clip: AnimationClip; threshold: number }[] = [];
 
+  // Pre-allocated targets for evaluating blends without intermediate allocations
+  private _p1 = new Vector3();
+  private _p2 = new Vector3();
+  private _r1 = new Quaternion();
+  private _r2 = new Quaternion();
+
   addClip(clip: AnimationClip, threshold: number): void {
     this.clips.push({ clip, threshold });
     this.clips.sort((a, b) => a.threshold - b.threshold);
   }
 
-  evaluate(parameter: number, time: number): { position: Vector3; rotation: Quaternion } {
+  evaluate(
+    parameter: number,
+    time: number,
+    targetPos?: Vector3,
+    targetRot?: Quaternion
+  ): { position: Vector3; rotation: Quaternion } {
+    const outPos = targetPos || new Vector3();
+    const outRot = targetRot || new Quaternion();
+
     if (this.clips.length === 0) {
-      return { position: new Vector3(), rotation: new Quaternion() };
+      return {
+        position: outPos.set(0, 0, 0),
+        rotation: outRot.set(0, 0, 0, 1)
+      };
     }
     if (this.clips.length === 1 || parameter <= this.clips[0].threshold) {
       return {
-        position: this.clips[0].clip.samplePosition(time),
-        rotation: this.clips[0].clip.sampleRotation(time)
+        position: this.clips[0].clip.samplePosition(time, outPos),
+        rotation: this.clips[0].clip.sampleRotation(time, outRot)
       };
     }
 
@@ -69,23 +125,29 @@ export class BlendTree1D {
       const c1 = this.clips[i];
       const c2 = this.clips[i + 1];
       if (parameter >= c1.threshold && parameter <= c2.threshold) {
-        const weight = (parameter - c1.threshold) / (c2.threshold - c1.threshold);
-        const p1 = c1.clip.samplePosition(time);
-        const p2 = c2.clip.samplePosition(time);
-        const r1 = c1.clip.sampleRotation(time);
-        const r2 = c2.clip.sampleRotation(time);
+        const range = c2.threshold - c1.threshold;
+        const weight = range > 0 ? (parameter - c1.threshold) / range : 0;
+
+        // Use pre-allocated targets
+        c1.clip.samplePosition(time, this._p1);
+        c2.clip.samplePosition(time, this._p2);
+        c1.clip.sampleRotation(time, this._r1);
+        c2.clip.sampleRotation(time, this._r2);
+
+        outPos.copy(this._p1).lerp(this._p2, weight);
+        outRot.copy(this._r1).slerp(this._r2, weight);
 
         return {
-          position: p1.lerp(p2, weight),
-          rotation: r1.slerp(r2, weight)
+          position: outPos,
+          rotation: outRot
         };
       }
     }
 
     const last = this.clips[this.clips.length - 1];
     return {
-      position: last.clip.samplePosition(time),
-      rotation: last.clip.sampleRotation(time)
+      position: last.clip.samplePosition(time, outPos),
+      rotation: last.clip.sampleRotation(time, outRot)
     };
   }
 }
