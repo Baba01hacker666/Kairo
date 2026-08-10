@@ -11,13 +11,18 @@ export declare class AnimationClip {
     rotationKeys: Keyframe<Quaternion>[];
     scaleKeys: Keyframe<Vector3>[];
     constructor(name: string, duration: number, positionKeys?: Keyframe<Vector3>[], rotationKeys?: Keyframe<Quaternion>[], scaleKeys?: Keyframe<Vector3>[]);
-    samplePosition(time: number): Vector3;
-    sampleRotation(time: number): Quaternion;
+    samplePosition(time: number, target?: Vector3): Vector3;
+    sampleRotation(time: number, target?: Quaternion): Quaternion;
+    sampleScale(time: number, target?: Vector3): Vector3;
 }
 export declare class BlendTree1D {
     private clips;
+    private _p1;
+    private _p2;
+    private _r1;
+    private _r2;
     addClip(clip: AnimationClip, threshold: number): void;
-    evaluate(parameter: number, time: number): {
+    evaluate(parameter: number, time: number, targetPos?: Vector3, targetRot?: Quaternion): {
         position: Vector3;
         rotation: Quaternion;
     };
