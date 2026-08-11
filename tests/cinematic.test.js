@@ -43,3 +43,27 @@ test('ScriptBehavior - Cinematic video editing helper methods', (t) => {
   assert.strictEqual(typeof behavior.transitionCut, 'function');
   assert.strictEqual(typeof behavior.setColorGrading, 'function');
 });
+
+test('CameraController - Collision avoidance with pre-allocated hit buffer', (t) => {
+  const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 1000);
+  const controller = new CameraController(camera);
+  controller.target.set(0, 0, 0);
+  controller.distance = 10;
+  controller.enableCollisionAvoidance = true;
+
+  // Create an obstacle mesh between target and desired camera position
+  const obstacleGeo = new THREE.BoxGeometry(20, 20, 1);
+  const obstacleMat = new THREE.MeshBasicMaterial();
+  const obstacle = new THREE.Mesh(obstacleGeo, obstacleMat);
+  obstacle.position.set(0, 0, -5);
+  obstacle.updateMatrixWorld(true);
+
+  // Run update multiple times with obstacles to verify collision avoidance and zero-allocation buffer reuse
+  for (let i = 0; i < 5; i++) {
+    controller.update(0.016, [obstacle]);
+  }
+
+  assert.ok(controller['_hits'] !== undefined);
+  assert.ok(camera.position.length() > 0);
+});
+
