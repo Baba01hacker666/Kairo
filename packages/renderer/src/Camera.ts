@@ -44,6 +44,15 @@ export class CameraController {
   private shotTimer: number = 0;
   private trackingTarget: THREE.Object3D | THREE.Vector3 | null = null;
 
+  // Pre-allocated variables for update loop to avoid GC spikes
+  private _desiredPos: THREE.Vector3 = new THREE.Vector3();
+  private _dir: THREE.Vector3 = new THREE.Vector3();
+  private _raycaster: THREE.Raycaster = new THREE.Raycaster();
+  private _hits: THREE.Intersection[] = [];
+  private _shotFromPos: THREE.Vector3 = new THREE.Vector3();
+  private _shotToPos: THREE.Vector3 = new THREE.Vector3();
+  private _shotTargetPos: THREE.Vector3 = new THREE.Vector3();
+
   constructor(camera: THREE.Camera) {
     this.camera = camera;
     this.currentPosition.copy(this.camera.position);
@@ -83,11 +92,14 @@ export class CameraController {
 
   /** Smooth 3D panning camera shot */
   public panTo(fromPos: THREE.Vector3, toPos: THREE.Vector3, lookAtTarget: THREE.Vector3, durationSeconds: number = 3.0): void {
+    this._shotFromPos.copy(fromPos);
+    this._shotToPos.copy(toPos);
+    this._shotTargetPos.copy(lookAtTarget);
     this.activeShot = {
       type: 'pan',
-      fromPos: fromPos.clone(),
-      toPos: toPos.clone(),
-      targetPos: lookAtTarget.clone(),
+      fromPos: this._shotFromPos,
+      toPos: this._shotToPos,
+      targetPos: this._shotTargetPos,
       duration: durationSeconds
     };
     this.shotTimer = 0;
@@ -99,9 +111,10 @@ export class CameraController {
 
   /** 360° Cinematic Orbital Camera Shot around target */
   public orbitShot(centerTarget: THREE.Vector3, radius: number = 8.0, speed: number = 1.0, durationSeconds: number = 5.0): void {
+    this._shotTargetPos.copy(centerTarget);
     this.activeShot = {
       type: 'orbit',
-      targetPos: centerTarget.clone(),
+      targetPos: this._shotTargetPos,
       radius,
       speed,
       duration: durationSeconds
@@ -115,10 +128,11 @@ export class CameraController {
   public dollyZoom(targetFov: number = 30, durationSeconds: number = 2.5): void {
     if ((this.camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
       const pCam = this.camera as THREE.PerspectiveCamera;
+      this._shotFromPos.copy(pCam.position);
       this.activeShot = {
         type: 'dolly',
         fov: targetFov,
-        fromPos: pCam.position.clone(),
+        fromPos: this._shotFromPos,
         duration: durationSeconds
       };
       this.shotTimer = 0;
@@ -174,7 +188,7 @@ export class CameraController {
 
     // 2. Process Tracking Target
     if (this.trackingTarget) {
-      const pos = 'position' in this.trackingTarget ? (this.trackingTarget as THREE.Object3D).position : this.trackingTarget;
+      const pos = (this.trackingTarget as THREE.Object3D).position ?? (this.trackingTarget as THREE.Vector3);
       this.setTargetPosition(pos);
     }
 
@@ -186,27 +200,36 @@ export class CameraController {
     this.currentTarget.lerp(this.target, lerpFactor);
 
     // Compute ideal orbital camera position relative to current target
-    const idealX = this.currentTarget.x + this.distance * Math.sin(this.yaw) * Math.cos(this.pitch);
-    const idealY = this.currentTarget.y + this.distance * Math.sin(this.pitch);
-    const idealZ = this.currentTarget.z + this.distance * Math.cos(this.yaw) * Math.cos(this.pitch);
+    const sinPitch = Math.sin(this.pitch);
+    const cosPitch = Math.cos(this.pitch);
+    const sinYaw = Math.sin(this.yaw);
+    const cosYaw = Math.cos(this.yaw);
+
+    const idealX = this.currentTarget.x + this.distance * sinYaw * cosPitch;
+    const idealY = this.currentTarget.y + this.distance * sinPitch;
+    const idealZ = this.currentTarget.z + this.distance * cosYaw * cosPitch;
     
-    let desiredPos = new THREE.Vector3(idealX, idealY, idealZ);
+    this._desiredPos.set(idealX, idealY, idealZ);
 
     // Collision avoidance raycast against environment obstacles
     if (this.enableCollisionAvoidance && sceneObstacles.length > 0) {
-      const dir = desiredPos.clone().sub(this.currentTarget).normalize();
-      const raycaster = new THREE.Raycaster(this.currentTarget, dir, 0.1, this.distance);
-      const hits = raycaster.intersectObjects(sceneObstacles, true);
-      if (hits.length > 0) {
-        const hitDist = hits[0].distance - 0.3;
+      this._dir.copy(this._desiredPos).sub(this.currentTarget).normalize();
+      this._raycaster.set(this.currentTarget, this._dir);
+      this._raycaster.near = 0.1;
+      this._raycaster.far = this.distance;
+
+      this._hits.length = 0;
+      this._raycaster.intersectObjects(sceneObstacles, true, this._hits);
+      if (this._hits.length > 0) {
+        const hitDist = this._hits[0].distance - 0.3;
         if (hitDist < this.distance) {
-          desiredPos.copy(this.currentTarget).add(dir.multiplyScalar(Math.max(this.minDistance, hitDist)));
+          this._desiredPos.copy(this.currentTarget).addScaledVector(this._dir, Math.max(this.minDistance, hitDist));
         }
       }
     }
 
     // Smooth camera position interpolation
-    this.currentPosition.lerp(desiredPos, lerpFactor);
+    this.currentPosition.lerp(this._desiredPos, lerpFactor);
 
     // Handle screen shake
     if (this.shakeTimeRemaining > 0) {
