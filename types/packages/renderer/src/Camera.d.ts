@@ -35,6 +35,13 @@ export declare class CameraController {
     private activeShot;
     private shotTimer;
     private trackingTarget;
+    private _desiredPos;
+    private _dir;
+    private _raycaster;
+    private _hits;
+    private _shotFromPos;
+    private _shotToPos;
+    private _shotTargetPos;
     constructor(camera: THREE.Camera);
     setTargetPosition(pos: Vector3 | THREE.Vector3): void;
     rotate(deltaYaw: number, deltaPitch: number): void;
