@@ -44,6 +44,11 @@ export class CameraController {
   private shotTimer: number = 0;
   private trackingTarget: THREE.Object3D | THREE.Vector3 | null = null;
 
+  // Pre-allocated variables for update loop to avoid GC spikes
+  private _desiredPos: THREE.Vector3 = new THREE.Vector3();
+  private _dir: THREE.Vector3 = new THREE.Vector3();
+  private _raycaster: THREE.Raycaster = new THREE.Raycaster();
+
   constructor(camera: THREE.Camera) {
     this.camera = camera;
     this.currentPosition.copy(this.camera.position);
@@ -190,23 +195,26 @@ export class CameraController {
     const idealY = this.currentTarget.y + this.distance * Math.sin(this.pitch);
     const idealZ = this.currentTarget.z + this.distance * Math.cos(this.yaw) * Math.cos(this.pitch);
     
-    let desiredPos = new THREE.Vector3(idealX, idealY, idealZ);
+    this._desiredPos.set(idealX, idealY, idealZ);
 
     // Collision avoidance raycast against environment obstacles
     if (this.enableCollisionAvoidance && sceneObstacles.length > 0) {
-      const dir = desiredPos.clone().sub(this.currentTarget).normalize();
-      const raycaster = new THREE.Raycaster(this.currentTarget, dir, 0.1, this.distance);
-      const hits = raycaster.intersectObjects(sceneObstacles, true);
+      this._dir.copy(this._desiredPos).sub(this.currentTarget).normalize();
+      this._raycaster.set(this.currentTarget, this._dir);
+      this._raycaster.near = 0.1;
+      this._raycaster.far = this.distance;
+
+      const hits = this._raycaster.intersectObjects(sceneObstacles, true);
       if (hits.length > 0) {
         const hitDist = hits[0].distance - 0.3;
         if (hitDist < this.distance) {
-          desiredPos.copy(this.currentTarget).add(dir.multiplyScalar(Math.max(this.minDistance, hitDist)));
+          this._desiredPos.copy(this.currentTarget).add(this._dir.multiplyScalar(Math.max(this.minDistance, hitDist)));
         }
       }
     }
 
     // Smooth camera position interpolation
-    this.currentPosition.lerp(desiredPos, lerpFactor);
+    this.currentPosition.lerp(this._desiredPos, lerpFactor);
 
     // Handle screen shake
     if (this.shakeTimeRemaining > 0) {

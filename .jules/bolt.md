@@ -10,3 +10,6 @@
 **Learning:** High-frequency skeletal animation blend trees evaluating clips every frame caused substantial GC spikes by implicitly invoking `.clone()` and allocating intermediate `Vector3` and `Quaternion` instances during interpolation (`lerp`/`slerp`).
 **Action:** Pass optional `target` objects to mathematical query and sampling functions on hot paths (e.g., `AnimationClip.samplePosition(time, target)`). Pre-allocate these intermediate targets on classes that orchestrate evaluation (like `BlendTree1D`) to reuse memory buffers continuously rather than churning new objects.
 
+## 2026-08-11 - [Eliminate GC Allocations in Rendering Loops]
+**Learning:** High-frequency functions like camera update loops that run every frame can cause significant garbage collection pauses if they allocate new objects (like `new THREE.Vector3()` or `new THREE.Raycaster()`) or use methods that implicitly allocate objects (like `.clone()`).
+**Action:** Avoid instantiating new objects in hot paths like the rendering loop. Pre-allocate objects as private instance variables on the class (e.g., `_desiredPos: THREE.Vector3 = new THREE.Vector3()`) and reuse them every frame (e.g., `this._desiredPos.set(...)` and `this._desiredPos.copy(...)`).
