@@ -6,6 +6,10 @@
 
 import type { EntityId } from './ECS.js';
 
+const OFF_X = new Int8Array([0, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, 1]);
+const OFF_Y = new Int8Array([0, -1, -1, -1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0]);
+const OFF_Z = new Int8Array([0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]);
+
 export type FastSoAEntityId = EntityId;
 
 export interface FastSoAWorldOptions {
@@ -258,10 +262,6 @@ export class FastSoAWorld {
 
     // Step 2: Zero-Allocation Spatial Collision Resolution
     let collisionCount = 0;
-
-    const OFF_X = [0, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, 1];
-    const OFF_Y = [0, -1,-1,-1,  0, 0, 0,  1, 1, 1,  1, 1, 1, 0];
-    const OFF_Z = [0,  1, 1, 1,  1, 1, 1,  1, 1, 1,  0, 0, 0, 0];
 
     for (let a = 0; a < count; a++) {
       if (act[a] === 0) continue;

@@ -193,7 +193,7 @@ export class PhysicsWorld {
   private bodyLookup: Map<CANNON.Body, BodyEntry> = new Map();
   private collisionListeners: Array<(event: CollisionEvent) => void> = [];
   private triggerListeners: Array<(event: CollisionEvent) => void> = [];
-  private activePairs: Map<string, [BodyEntry, BodyEntry]> = new Map();
+  private activePairs: Map<number, [BodyEntry, BodyEntry]> = new Map();
   private collisionEvents: CollisionEvent[] = [];
 
   private static readonly FIXED_TIMESTEP = 1 / 60;
@@ -458,7 +458,7 @@ export class PhysicsWorld {
   }
 
   private collectCollisionEvents(): void {
-    const nextPairs = new Map<string, [BodyEntry, BodyEntry]>();
+    const nextPairs = new Map<number, [BodyEntry, BodyEntry]>();
     this.collisionEvents = [];
     for (const contact of this.cannonWorld.contacts) {
       const a = this.bodyLookup.get(contact.bi);
@@ -502,7 +502,7 @@ export class PhysicsWorld {
 
 function toCannonVec3(v: Vector3): CANNON.Vec3 { return new CANNON.Vec3(v.x, v.y, v.z); }
 function fromCannonVec3(v: CANNON.Vec3): Vector3 { return new Vector3(v.x, v.y, v.z); }
-function pairKey(a: number, b: number): string { return a < b ? `${a}:${b}` : `${b}:${a}`; }
+function pairKey(a: number, b: number): number { return a < b ? (a * 1000003 + b) : (b * 1000003 + a); }
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
 

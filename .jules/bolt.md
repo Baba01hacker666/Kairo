@@ -22,3 +22,16 @@
 **Learning:** When hot-path evaluation loops receive position or direction props that may be passed either as `THREE.Vector3` objects or arrays (`[x,y,z]`), index-based access (`prop[0]`) returns `undefined` on `Vector3` instances (propagating `NaN`), while `new THREE.Vector3(...prop)` creates GC pressure.
 **Action:** Use zero-allocation normalization helper methods (`_setVector3`) that check `'x' in prop` vs `Array.isArray(prop)` and copy coordinates directly into pre-allocated `Vector3` buffers.
 
+## 2026-08-12 - [Engine-Wide FPS Optimization & GC Elimination]
+**Learning:** High-frequency per-frame systems often introduce subtle bottlenecks that cause FPS drops:
+1. Particle systems setting `needsUpdate = true` every frame when idle force unnecessary WebGL buffer sub-data uploads to the GPU.
+2. Spatial grid collision passes allocating array literal offsets `[0, -1, ...]` inside frame loops generate constant GC pressure for large entity counts.
+3. Physics contact pair tracking allocating string key templates (`${a}:${b}`) on every frame tick causes string heap churn.
+4. Unbounded fixed update accumulators cause "spiral of death" frame drop cascades during temporary frame hitches.
+**Action:**
+- Only flag `needsUpdate = true` on `InstancedMesh` attributes when active count > 0 or when clearing active instances.
+- Extract loop neighbor offset arrays to module-level `Int8Array` static constants.
+- Replace string template keys in high-frequency physics lookup maps with numeric bit-hashed integer keys.
+- Clamp `fixedUpdateAccumulator` to a maximum budget (e.g. 5 steps max per frame) to maintain smooth frame rates during spikes.
+
+
