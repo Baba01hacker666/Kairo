@@ -167,6 +167,131 @@ export class InputManager {
     return vec;
   }
 
+  /**
+   * Inject native mobile touch joystick & action buttons into DOM
+   */
+  public setupMobileControls(container?: HTMLElement): void {
+    if (typeof document === 'undefined') return;
+
+    if (document.getElementById('kairo-touch-joystick-container')) return;
+
+    const parent = container || document.body;
+
+    // Create Virtual Joystick Base
+    const joystickContainer = document.createElement('div');
+    joystickContainer.id = 'kairo-touch-joystick-container';
+    joystickContainer.style.cssText = `
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      touch-action: none;
+      user-select: none;
+      z-index: 9999;
+    `;
+
+    const joystickStick = document.createElement('div');
+    joystickStick.id = 'kairo-touch-joystick-knob';
+    joystickStick.style.cssText = `
+      position: absolute;
+      top: 35px;
+      left: 35px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.6);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: none;
+      user-select: none;
+      transition: transform 0.05s ease-out;
+    `;
+    joystickContainer.appendChild(joystickStick);
+
+    // Create Jump Button (Bottom Right)
+    const jumpBtn = document.createElement('button');
+    jumpBtn.id = 'kairo-touch-jump-btn';
+    jumpBtn.innerText = 'JUMP';
+    jumpBtn.style.cssText = `
+      position: absolute;
+      bottom: 40px;
+      right: 30px;
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.7);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      color: white;
+      font-weight: bold;
+      font-family: sans-serif;
+      font-size: 14px;
+      touch-action: none;
+      user-select: none;
+      z-index: 9999;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    `;
+
+    parent.appendChild(joystickContainer);
+    parent.appendChild(jumpBtn);
+
+    // Touch Event Handling for Joystick
+    let touchId: number | null = null;
+    const center = { x: 60, y: 60 };
+    const maxRadius = 45;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touchId === null || touch.identifier === touchId) {
+          touchId = touch.identifier;
+          const rect = joystickContainer.getBoundingClientRect();
+          const dx = touch.clientX - (rect.left + center.x);
+          const dy = touch.clientY - (rect.top + center.y);
+          const dist = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+          const clampedRadius = Math.min(dist, maxRadius);
+          const knobX = Math.cos(angle) * clampedRadius;
+          const knobY = Math.sin(angle) * clampedRadius;
+
+          joystickStick.style.transform = `translate(${knobX}px, ${knobY}px)`;
+          this.touchJoystickActive = true;
+          this.touchJoystickVector.set(knobX / maxRadius, knobY / maxRadius);
+        }
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchId) {
+          touchId = null;
+          joystickStick.style.transform = 'translate(0px, 0px)';
+          this.touchJoystickActive = false;
+          this.touchJoystickVector.set(0, 0);
+        }
+      }
+    };
+
+    joystickContainer.addEventListener('touchstart', handleTouchMove, { passive: false });
+    joystickContainer.addEventListener('touchmove', handleTouchMove, { passive: false });
+    joystickContainer.addEventListener('touchend', handleTouchEnd);
+    joystickContainer.addEventListener('touchcancel', handleTouchEnd);
+
+    // Jump button listener
+    jumpBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.keysJustPressed.add('Space');
+      this.keysPressed.add('Space');
+    }, { passive: false });
+
+    jumpBtn.addEventListener('touchend', (e) => {
+      this.keysPressed.delete('Space');
+    });
+  }
+
   public endFrame(): void {
     this.keysJustPressed.clear();
     this.keysJustReleased.clear();
@@ -176,3 +301,4 @@ export class InputManager {
 }
 
 export const GlobalInput = new InputManager();
+

@@ -64,15 +64,17 @@ export class KairoApp {
   public videoTimeline: VideoTimeline;
   private sceneObstacles: THREE.Object3D[] = [];
 
-  constructor(config: KairoAppConfig = {}) {
-    this.config = config;
-    this.save = new SaveSystem(config.gameId || 'default');
+  constructor(config: KairoAppConfig | string = {}) {
+    const opts: KairoAppConfig = typeof config === 'string' ? { canvas: config } : config;
+    this.config = opts;
+    this.save = new SaveSystem(opts.gameId || 'default');
     this.scenes = new SceneManager(this);
     this.cutscene = new CutsceneManager(this);
     this.videoTimeline = new VideoTimeline(this);
     this.debugRenderer = new DebugRenderer(this);
     this.engine = new Engine();
     this.world = new World();
+    this.world.setApp(this);
     
     // Setup physics
     this.physics = new PhysicsWorld();
@@ -243,6 +245,14 @@ export class KairoApp {
         }
       };
     }
+  }
+
+  /** Native mobile touch joystick & action buttons helper */
+  public mobileControls(): this {
+    if (this.input) {
+      this.input.setupMobileControls();
+    }
+    return this;
   }
 
   public registerObstacle(object: THREE.Object3D): void {
