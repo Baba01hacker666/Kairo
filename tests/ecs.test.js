@@ -291,6 +291,33 @@ test('PR #21 Fixes - Physics error logging and World.assets fallback', async () 
   }
 });
 
+test('Entity destruction cleans up Three.js mesh & Physics body', () => {
+  const world = new World();
+  let meshRemoved = false;
+  let bodyUnregistered = false;
+
+  const mockApp = {
+    scene: {
+      add: () => {},
+      remove: () => { meshRemoved = true; }
+    },
+    physics: {
+      registerBody: () => {},
+      unregisterBody: () => { bodyUnregistered = true; }
+    }
+  };
+  world.setApp(mockApp);
+
+  const entity = world.add('TestBox').box().physics();
+  assert.strictEqual(world.entityCount, 1);
+
+  entity.destroy();
+
+  assert.strictEqual(world.entityCount, 0);
+  assert.strictEqual(meshRemoved, true);
+  assert.strictEqual(bodyUnregistered, true);
+});
+
 
 
 

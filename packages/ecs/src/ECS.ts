@@ -185,30 +185,30 @@ export class World {
       this.parents.delete(entity);
     }
 
-    // Clean up Three.js scene object and Physics body if attached
-    const meshComp = this.getComponent(entity, MeshComponent);
-    if (meshComp && (meshComp as any).threeMesh) {
-      const mesh = (meshComp as any).threeMesh as THREE.Mesh;
-      if (this.app?.scene) {
-        this.app.scene.remove(mesh);
-      }
-      if (mesh.geometry) mesh.geometry.dispose();
-      if (mesh.material) {
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach(m => m.dispose());
-        } else {
-          mesh.material.dispose();
+    // Clean up Three.js scene object and Physics body if attached to any components
+    const comps = this.getAllComponents(entity);
+    for (const comp of comps) {
+      if (comp && (comp as any).threeMesh) {
+        const mesh = (comp as any).threeMesh as THREE.Mesh;
+        if (this.app?.scene) {
+          this.app.scene.remove(mesh);
         }
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) {
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(m => m.dispose());
+          } else {
+            mesh.material.dispose();
+          }
+        }
+        delete (comp as any).threeMesh;
       }
-      delete (meshComp as any).threeMesh;
-    }
-
-    const physComp = this.getComponent(entity, PhysicsComponent);
-    if (physComp && (physComp as any).rigidBody && this.app?.physics) {
-      if (typeof this.app.physics.unregisterBody === 'function') {
-        this.app.physics.unregisterBody((physComp as any).rigidBody);
+      if (comp && (comp as any).rigidBody && this.app?.physics) {
+        if (typeof this.app.physics.unregisterBody === 'function') {
+          this.app.physics.unregisterBody((comp as any).rigidBody);
+        }
+        delete (comp as any).rigidBody;
       }
-      delete (physComp as any).rigidBody;
     }
 
     // Fast O(1) component cleanup for attached components only
@@ -823,7 +823,7 @@ export class EntityBuilder {
     this._world.addComponent(this._entity, existing);
 
     // Materialize Three.js Mesh in KairoApp Scene
-    if (this._world.app?.scene && typeof document !== 'undefined') {
+    if (this._world.app?.scene) {
       let threeMesh = (existing as any).threeMesh as THREE.Mesh;
       if (!threeMesh) {
         const type = existing.type || 'box';
