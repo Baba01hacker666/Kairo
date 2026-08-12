@@ -13,3 +13,25 @@
 ## 2026-08-11 - [Eliminate GC Allocations in Rendering Loops]
 **Learning:** High-frequency functions like camera update loops that run every frame can cause significant garbage collection pauses if they allocate new objects (like `new THREE.Vector3()` or `new THREE.Raycaster()`) or use methods that implicitly allocate objects (like `.clone()`).
 **Action:** Avoid instantiating new objects in hot paths like the rendering loop. Pre-allocate objects as private instance variables on the class (e.g., `_desiredPos: THREE.Vector3 = new THREE.Vector3()`) and reuse them every frame (e.g., `this._desiredPos.set(...)` and `this._desiredPos.copy(...)`).
+
+## 2024-12-07 - [Eliminate GC Allocations in Evaluation and Update Loops]
+**Learning:** During video timeline evaluations and behavior updates (like pathfinding in ScriptBehavior), allocating new `THREE.Vector3` or implicitly allocating them using methods like `.clone().sub().normalize()` creates unnecessary garbage collection pauses that impact frame rate.
+**Action:** Use pre-allocated `THREE.Vector3` instances in class fields or module-scoped variables. Update their values using in-place operations (`.set()`, `.copy()`, `.fromArray()`) or static mathematical logic instead of allocating new objects repeatedly on each tick.
+
+## 2026-08-12 - [Robust Vector/Array Property Normalization Without Allocation]
+**Learning:** When hot-path evaluation loops receive position or direction props that may be passed either as `THREE.Vector3` objects or arrays (`[x,y,z]`), index-based access (`prop[0]`) returns `undefined` on `Vector3` instances (propagating `NaN`), while `new THREE.Vector3(...prop)` creates GC pressure.
+**Action:** Use zero-allocation normalization helper methods (`_setVector3`) that check `'x' in prop` vs `Array.isArray(prop)` and copy coordinates directly into pre-allocated `Vector3` buffers.
+
+## 2026-08-12 - [Engine-Wide FPS Optimization & GC Elimination]
+**Learning:** High-frequency per-frame systems often introduce subtle bottlenecks that cause FPS drops:
+1. Particle systems setting `needsUpdate = true` every frame when idle force unnecessary WebGL buffer sub-data uploads to the GPU.
+2. Spatial grid collision passes allocating array literal offsets `[0, -1, ...]` inside frame loops generate constant GC pressure for large entity counts.
+3. Physics contact pair tracking allocating string key templates (`${a}:${b}`) on every frame tick causes string heap churn.
+4. Unbounded fixed update accumulators cause "spiral of death" frame drop cascades during temporary frame hitches.
+**Action:**
+- Only flag `needsUpdate = true` on `InstancedMesh` attributes when active count > 0 or when clearing active instances.
+- Extract loop neighbor offset arrays to module-level `Int8Array` static constants.
+- Replace string template keys in high-frequency physics lookup maps with numeric bit-hashed integer keys.
+- Clamp `fixedUpdateAccumulator` to a maximum budget (e.g. 5 steps max per frame) to maintain smooth frame rates during spikes.
+
+

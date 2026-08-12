@@ -55,7 +55,13 @@ export class Engine {
     if (this.state !== EngineState.Running) return;
 
     Time.update(timestamp);
-    this.fixedUpdateAccumulator += Time.deltaTime;
+    this.fixedUpdateAccumulator += Math.min(Time.deltaTime, 0.1);
+
+    // Cap fixed update accumulator to max 5 steps to prevent spiral of death
+    const maxAccumulator = Time.fixedDeltaTime * 5;
+    if (this.fixedUpdateAccumulator > maxAccumulator) {
+      this.fixedUpdateAccumulator = maxAccumulator;
+    }
 
     while (this.fixedUpdateAccumulator >= Time.fixedDeltaTime) {
       this.fixedUpdate(Time.fixedDeltaTime);

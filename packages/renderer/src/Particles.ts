@@ -217,9 +217,13 @@ export class ParticleSystem {
       aliveCount++;
     }
 
+    const prevCount = this.mesh.count;
     this.activeCount = aliveCount;
     this.mesh.count = aliveCount;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+
+    if (aliveCount > 0 || prevCount > 0) {
+      this.mesh.instanceMatrix.needsUpdate = true;
+      if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+    }
   }
 }

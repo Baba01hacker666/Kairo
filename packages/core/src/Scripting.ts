@@ -40,13 +40,18 @@ export class ScriptBehavior {
 
   private _customData: Record<string, any> = {};
 
+  // Pre-allocated vectors for frame evaluation to prevent GC spikes
+  private _tempDir: THREE.Vector3 = new THREE.Vector3();
+
   public attach(object: THREE.Object3D, app?: any): void {
     this.object = object;
     this.app = app;
     if (this.object) {
-      this._baseY = this.object.position.y;
-      this._startX = this.object.position.x;
-      this._baseScale.copy(this.object.scale);
+      this._baseY = this.object.position?.y ?? 0;
+      this._startX = this.object.position?.x ?? 0;
+      if (this.object.scale) {
+        this._baseScale.copy(this.object.scale);
+      }
     }
     this.onStart();
   }
@@ -220,12 +225,23 @@ export class ScriptBehavior {
   }
 
   /** Smoothly chase / move towards a target 3D position */
-  public chase(targetPos: THREE.Vector3 | [number, number, number], speed: number = 3.0, dt: number = 0.016): this {
-    if (!this.object) return this;
-    const target = Array.isArray(targetPos) ? new THREE.Vector3(...targetPos) : targetPos;
-    const dir = target.clone().sub(this.object.position).normalize();
-    this.object.position.add(dir.multiplyScalar(speed * dt));
-    this.object.lookAt(target);
+  public chase(targetPos: THREE.Vector3 | [number, number, number] | any, speed: number = 3.0, dt: number = 0.016): this {
+    if (!this.object || !targetPos) return this;
+    let tx = 0, ty = 0, tz = 0;
+    if (Array.isArray(targetPos)) {
+      tx = targetPos[0]; ty = targetPos[1]; tz = targetPos[2];
+    } else if (typeof targetPos === 'object') {
+      if ('x' in targetPos && typeof targetPos.x === 'number') {
+        tx = targetPos.x; ty = targetPos.y ?? 0; tz = targetPos.z ?? 0;
+      } else if (typeof targetPos[0] === 'number') {
+        tx = targetPos[0]; ty = targetPos[1] ?? 0; tz = targetPos[2] ?? 0;
+      }
+    }
+
+    this._tempDir.set(tx, ty, tz).sub(this.object.position).normalize();
+    this.object.position.add(this._tempDir.multiplyScalar(speed * dt));
+    this.object.lookAt(tx, ty, tz);
+
     return this;
   }
 
