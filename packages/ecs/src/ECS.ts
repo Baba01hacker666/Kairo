@@ -604,6 +604,8 @@ export interface MeshConfig {
   roughness: number;
   metalness: number;
   scale: [number, number, number];
+  size?: [number, number, number];
+  radius?: number;
 }
 
 export interface PhysicsConfig {
@@ -644,6 +646,8 @@ export class MeshComponent implements MeshConfig {
   public roughness: number;
   public metalness: number;
   public scale: [number, number, number];
+  public size?: [number, number, number];
+  public radius?: number;
 
   constructor(config: Partial<MeshConfig> = {}) {
     this.type = config.type ?? 'box';
@@ -651,6 +655,8 @@ export class MeshComponent implements MeshConfig {
     this.roughness = config.roughness ?? 0.5;
     this.metalness = config.metalness ?? 0.0;
     this.scale = config.scale ?? [1, 1, 1];
+    this.size = config.size;
+    this.radius = config.radius;
   }
 }
 
