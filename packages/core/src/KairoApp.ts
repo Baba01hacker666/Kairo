@@ -96,12 +96,21 @@ export class KairoApp {
     // Setup Canvas & Renderer
     let canvasObj: HTMLCanvasElement;
     if (typeof opts.canvas === 'string') {
-      canvasObj = document.getElementById(opts.canvas.replace('#', '')) as HTMLCanvasElement;
+      const el = typeof document !== 'undefined' ? document.getElementById(opts.canvas.replace('#', '')) : null;
+      if (!el && typeof document !== 'undefined') {
+        throw new Error(`Canvas element with id "${opts.canvas}" was not found in DOM`);
+      }
+      if (el && !(el instanceof HTMLCanvasElement)) {
+        throw new Error(`Element with id "${opts.canvas}" is not an HTMLCanvasElement`);
+      }
+      canvasObj = (el as HTMLCanvasElement) || (typeof document !== 'undefined' ? document.createElement('canvas') : {} as any);
     } else if (opts.canvas) {
       canvasObj = opts.canvas;
     } else {
-      canvasObj = document.createElement('canvas');
-      document.body.appendChild(canvasObj);
+      canvasObj = typeof document !== 'undefined' ? document.createElement('canvas') : {} as any;
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.appendChild(canvasObj);
+      }
     }
 
     this.renderer = new THREE.WebGLRenderer({
