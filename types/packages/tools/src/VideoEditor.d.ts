@@ -34,6 +34,11 @@ export declare class VideoTimeline {
     fps: number;
     private app;
     private playbackTimer;
+    private _evalPos1;
+    private _evalPos2;
+    private _evalTarget;
+    private _evalCurrent;
+    private _setVector3;
     constructor(app?: any, duration?: number);
     addTrack(name: string, type: TrackType): TimelineTrack;
     addClip(trackId: string, clipData: Omit<TimelineClip, 'id'>): TimelineClip;

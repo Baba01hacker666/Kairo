@@ -30,6 +30,7 @@ export declare class ScriptBehavior {
     private _jumpVelocity;
     private _groundY;
     private _customData;
+    private _tempDir;
     attach(object: THREE.Object3D, app?: any): void;
     onStart(): void;
     onUpdate(dt: number): void;
@@ -70,7 +71,7 @@ export declare class ScriptBehavior {
     /** Rotate by radians (rx, ry, rz) */
     rotate(rx: number, ry: number, rz: number): this;
     /** Smoothly chase / move towards a target 3D position */
-    chase(targetPos: THREE.Vector3 | [number, number, number], speed?: number, dt?: number): this;
+    chase(targetPos: THREE.Vector3 | [number, number, number] | any, speed?: number, dt?: number): this;
     /** AI Pathfinding Navigation towards target */
     navigateTo(targetPos: THREE.Vector3 | [number, number, number], speed?: number, dt?: number): this;
     /** Change object position */
