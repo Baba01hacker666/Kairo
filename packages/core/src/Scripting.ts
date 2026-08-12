@@ -47,9 +47,11 @@ export class ScriptBehavior {
     this.object = object;
     this.app = app;
     if (this.object) {
-      this._baseY = this.object.position.y;
-      this._startX = this.object.position.x;
-      this._baseScale.copy(this.object.scale);
+      this._baseY = this.object.position?.y ?? 0;
+      this._startX = this.object.position?.x ?? 0;
+      if (this.object.scale) {
+        this._baseScale.copy(this.object.scale);
+      }
     }
     this.onStart();
   }
@@ -223,22 +225,22 @@ export class ScriptBehavior {
   }
 
   /** Smoothly chase / move towards a target 3D position */
-  public chase(targetPos: THREE.Vector3 | [number, number, number], speed: number = 3.0, dt: number = 0.016): this {
-    if (!this.object) return this;
+  public chase(targetPos: THREE.Vector3 | [number, number, number] | any, speed: number = 3.0, dt: number = 0.016): this {
+    if (!this.object || !targetPos) return this;
+    let tx = 0, ty = 0, tz = 0;
     if (Array.isArray(targetPos)) {
-      this._tempDir.set(targetPos[0], targetPos[1], targetPos[2]);
-    } else {
-      this._tempDir.copy(targetPos);
+      tx = targetPos[0]; ty = targetPos[1]; tz = targetPos[2];
+    } else if (typeof targetPos === 'object') {
+      if ('x' in targetPos && typeof targetPos.x === 'number') {
+        tx = targetPos.x; ty = targetPos.y ?? 0; tz = targetPos.z ?? 0;
+      } else if (typeof targetPos[0] === 'number') {
+        tx = targetPos[0]; ty = targetPos[1] ?? 0; tz = targetPos[2] ?? 0;
+      }
     }
 
-    this._tempDir.sub(this.object.position).normalize();
+    this._tempDir.set(tx, ty, tz).sub(this.object.position).normalize();
     this.object.position.add(this._tempDir.multiplyScalar(speed * dt));
-
-    if (Array.isArray(targetPos)) {
-       this.object.lookAt(targetPos[0], targetPos[1], targetPos[2]);
-    } else {
-       this.object.lookAt(targetPos.x, targetPos.y, targetPos.z);
-    }
+    this.object.lookAt(tx, ty, tz);
 
     return this;
   }

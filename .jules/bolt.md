@@ -17,3 +17,8 @@
 ## 2024-12-07 - [Eliminate GC Allocations in Evaluation and Update Loops]
 **Learning:** During video timeline evaluations and behavior updates (like pathfinding in ScriptBehavior), allocating new `THREE.Vector3` or implicitly allocating them using methods like `.clone().sub().normalize()` creates unnecessary garbage collection pauses that impact frame rate.
 **Action:** Use pre-allocated `THREE.Vector3` instances in class fields or module-scoped variables. Update their values using in-place operations (`.set()`, `.copy()`, `.fromArray()`) or static mathematical logic instead of allocating new objects repeatedly on each tick.
+
+## 2026-08-12 - [Robust Vector/Array Property Normalization Without Allocation]
+**Learning:** When hot-path evaluation loops receive position or direction props that may be passed either as `THREE.Vector3` objects or arrays (`[x,y,z]`), index-based access (`prop[0]`) returns `undefined` on `Vector3` instances (propagating `NaN`), while `new THREE.Vector3(...prop)` creates GC pressure.
+**Action:** Use zero-allocation normalization helper methods (`_setVector3`) that check `'x' in prop` vs `Array.isArray(prop)` and copy coordinates directly into pre-allocated `Vector3` buffers.
+
