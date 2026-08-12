@@ -131,3 +131,24 @@ test('ScriptBehavior - chase handles both array and THREE.Vector3 targets withou
   assert.ok(!Number.isNaN(obj.position.y));
 });
 
+test('VideoTimeline - Zero and negative clip duration evaluation (Corgea safeguard)', (t) => {
+  const mockCamera = { position: { set: function() {}, copy: function() {} }, lookAt: function() {} };
+  const mockApp = { cameraController: { camera: mockCamera } };
+  const timeline = new VideoTimeline(mockApp, 10.0);
+  const cameraTrack = timeline.tracks.find(tr => tr.type === 'camera');
+
+  timeline.addClip(cameraTrack.id, {
+    name: 'Zero Duration Clip',
+    type: 'camera',
+    startTime: 1.0,
+    duration: 0.0,
+    props: { shotType: 'pan', fromPos: [0, 0, 0], toPos: [10, 10, 10], target: [0, 0, 0] }
+  });
+
+  // Should evaluate safely without NaN or throw
+  assert.doesNotThrow(() => {
+    timeline.evaluateAt(1.0);
+  });
+});
+
+

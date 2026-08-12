@@ -172,8 +172,9 @@ export class VideoTimeline {
 
         if (!isActive) continue;
 
+        if (clip.duration <= 0) continue;
         const localTime = time - clip.startTime;
-        const progress = localTime / clip.duration;
+        const progress = THREE.MathUtils.clamp(localTime / clip.duration, 0, 1);
 
         // Process Track Behaviors
         if (track.type === 'camera' && this.app?.cameraController) {
