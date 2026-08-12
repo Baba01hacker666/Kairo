@@ -1,4 +1,4 @@
-import { Vector3 } from '@kairo/core';
+import { Vector3 } from '../../core/src/Math.ts';
 
 export type SynthesizedSFXType =
   | 'jump'

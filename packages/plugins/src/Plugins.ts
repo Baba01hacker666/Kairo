@@ -1,4 +1,4 @@
-import { Engine } from '@kairo/core';
+import { Engine } from '../../core/src/Engine.ts';
 
 export interface PluginMeta {
   id: string;

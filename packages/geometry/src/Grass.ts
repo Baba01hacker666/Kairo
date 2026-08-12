@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PRNG } from '@kairo/core';
+import { PRNG } from '../../core/src/Procedural.ts';
 
 /**
  * @kairo/geometry — Instanced grass field.

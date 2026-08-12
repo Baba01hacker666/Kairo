@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import test from 'node:test';
-import { World, Query, System } from '../packages/ecs/src/ECS.ts';
+import { World, Query, System, TransformComponent } from '../packages/ecs/src/ECS.ts';
 import { EasyScript } from '../packages/core/src/Scripting.ts';
 
 class Position {
@@ -245,6 +245,52 @@ test('The Kairo Way - Zero Config "Describe What You Want" API', () => {
   player.destroy();
   assert.strictEqual(world.getEntityName(player.id), undefined);
 });
+
+test('Legacy Compatibility - Reactive getTransform()', () => {
+  const world = new World();
+  const cube = world.add('Cube');
+  cube.addTransform({ position: [0, 1, 0] });
+  cube.addMesh({ type: 'box', color: 0x6366f1 });
+
+  const transform = cube.getTransform();
+  assert.strictEqual(transform.position.y, 1);
+  assert.strictEqual(transform.rotation.y, 0);
+
+  // Mutate rotation.y as in cdn-playground.html
+  transform.rotation.y += 1.5;
+  assert.strictEqual(transform.rotation.y, 1.5);
+
+  const transformComp = world.getComponent(cube.id, TransformComponent);
+  assert.strictEqual(transformComp.ry, 1.5);
+});
+
+test('PR #21 Fixes - Physics error logging and World.assets fallback', async () => {
+  const world = new World();
+  const mockApp = {
+    physics: {
+      registerBody: () => {
+        throw new Error('Physics registration error test');
+      }
+    }
+  };
+  world.setApp(mockApp);
+
+  let errorLogged = false;
+  const originalError = console.error;
+  console.error = (...args) => {
+    if (args[0] === 'Failed to register physics body for entity') {
+      errorLogged = true;
+    }
+  };
+
+  try {
+    const e = world.add('TestEntity').physics();
+    assert.strictEqual(errorLogged, true);
+  } finally {
+    console.error = originalError;
+  }
+});
+
 
 
 

@@ -97,16 +97,21 @@ export class KairoApp {
     }
 
     // Setup Canvas & Renderer
+    // Setup Canvas & Renderer
     let canvasObj: HTMLCanvasElement;
     if (typeof opts.canvas === 'string') {
-      const el = typeof document !== 'undefined' ? document.getElementById(opts.canvas.replace('#', '')) : null;
-      if (!el && typeof document !== 'undefined') {
-        throw new Error(`Canvas element with id "${opts.canvas}" was not found in DOM`);
+      if (typeof document === 'undefined') {
+        canvasObj = {} as any;
+      } else {
+        const el = document.getElementById(opts.canvas.replace('#', ''));
+        if (!el) {
+          throw new Error(`Canvas element with id "${opts.canvas}" was not found`);
+        }
+        if (!(el instanceof HTMLCanvasElement)) {
+          throw new Error(`Element with id "${opts.canvas}" is not an HTMLCanvasElement`);
+        }
+        canvasObj = el;
       }
-      if (el && !(el instanceof HTMLCanvasElement)) {
-        throw new Error(`Element with id "${opts.canvas}" is not an HTMLCanvasElement`);
-      }
-      canvasObj = (el as HTMLCanvasElement) || (typeof document !== 'undefined' ? document.createElement('canvas') : {} as any);
     } else if (opts.canvas) {
       canvasObj = opts.canvas;
     } else {
@@ -127,13 +132,18 @@ export class KairoApp {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
     // Set Three.js canvas CSS for layering
-    canvasObj.style.position = 'absolute';
-    canvasObj.style.top = '0';
-    canvasObj.style.left = '0';
-    canvasObj.style.zIndex = '1';
+    if (canvasObj.style) {
+      canvasObj.style.position = 'absolute';
+      canvasObj.style.top = '0';
+      canvasObj.style.left = '0';
+      canvasObj.style.zIndex = '1';
+    }
 
     // Experimental Babylon.js Dual-Engine Mode
     if (opts.enableBabylon) {
+      if (typeof document === 'undefined' || !document?.body) {
+        throw new Error('Babylon dual-engine requires a DOM environment (document/body is undefined). Set enableBabylon=false for SSR.');
+      }
       this.babylonCanvas = document.createElement('canvas');
       this.babylonCanvas.id = 'babylon-canvas';
       this.babylonCanvas.style.position = 'absolute';

@@ -1,5 +1,5 @@
 import { CustomShaderMaterial } from './ShaderMaterial.ts';
-import { Color } from '@kairo/core';
+import { Color } from '../../core/src/Math.ts';
 
 export type ShaderPresetName = 'water' | 'dissolve' | 'hologram' | 'toon' | 'fresnel';
 

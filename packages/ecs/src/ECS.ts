@@ -468,9 +468,19 @@ export class World {
   }
 
   public app?: any;
+  private _assets?: any;
 
   public setApp(app: any): void {
     this.app = app;
+  }
+
+  public get assets(): any {
+    if (this.app?.assets) return this.app.assets;
+    return this._assets;
+  }
+
+  public setAssets(assets: any): void {
+    this._assets = assets;
   }
 
   /**
@@ -863,7 +873,9 @@ export class EntityBuilder {
           (existing as any).rigidBody = bodyObj;
           try {
             this._world.app.physics.registerBody(bodyObj, colliderObj, posObj);
-          } catch (_) {}
+          } catch (err) {
+            console.error('Failed to register physics body for entity', this._entity, err);
+          }
         }
       }
     }
@@ -891,11 +903,43 @@ export class EntityBuilder {
 
   /** Backward compatibility helper for legacy playground/app callers */
   public getTransform() {
-    const transformComp = this._world.getComponent(this._entity, TransformComponent);
+    let transformComp = this._world.getComponent(this._entity, TransformComponent);
+    if (!transformComp) {
+      transformComp = new TransformComponent();
+      this._world.addComponent(this._entity, transformComp);
+    }
+    const self = this;
     return {
-      position: { x: transformComp?.x || 0, y: transformComp?.y || 0, z: transformComp?.z || 0 },
-      rotation: { x: transformComp?.rx || 0, y: transformComp?.ry || 0, z: transformComp?.rz || 0 },
-      scale: { x: transformComp?.sx || 1, y: transformComp?.sy || 1, z: transformComp?.sz || 1 }
+      get position() {
+        return {
+          get x() { return transformComp!.x; },
+          set x(v: number) { transformComp!.x = v; self.at(transformComp!.x, transformComp!.y, transformComp!.z); },
+          get y() { return transformComp!.y; },
+          set y(v: number) { transformComp!.y = v; self.at(transformComp!.x, transformComp!.y, transformComp!.z); },
+          get z() { return transformComp!.z; },
+          set z(v: number) { transformComp!.z = v; self.at(transformComp!.x, transformComp!.y, transformComp!.z); }
+        };
+      },
+      get rotation() {
+        return {
+          get x() { return transformComp!.rx; },
+          set x(v: number) { transformComp!.rx = v; self.rotate(transformComp!.rx, transformComp!.ry, transformComp!.rz); },
+          get y() { return transformComp!.ry; },
+          set y(v: number) { transformComp!.ry = v; self.rotate(transformComp!.rx, transformComp!.ry, transformComp!.rz); },
+          get z() { return transformComp!.rz; },
+          set z(v: number) { transformComp!.rz = v; self.rotate(transformComp!.rx, transformComp!.ry, transformComp!.rz); }
+        };
+      },
+      get scale() {
+        return {
+          get x() { return transformComp!.sx; },
+          set x(v: number) { transformComp!.sx = v; self.scale(transformComp!.sx, transformComp!.sy, transformComp!.sz); },
+          get y() { return transformComp!.sy; },
+          set y(v: number) { transformComp!.sy = v; self.scale(transformComp!.sx, transformComp!.sy, transformComp!.sz); },
+          get z() { return transformComp!.sz; },
+          set z(v: number) { transformComp!.sz = v; self.scale(transformComp!.sx, transformComp!.sy, transformComp!.sz); }
+        };
+      }
     };
   }
 
@@ -1041,14 +1085,21 @@ export class EntityHandle extends EntityBuilder {
   public model(url: string): this {
     const task = (async () => {
       const world = (this as any)._world as World;
-      if (world.app?.assets) {
-        const loadedMesh = await world.app.assets.loadModel(url);
-        if (loadedMesh) {
-          this.with(loadedMesh);
-          if (world.app.scene) {
-            world.app.scene.add(loadedMesh);
+      const assets = world.assets || world.app?.assets;
+      if (assets && typeof assets.loadModel === 'function') {
+        try {
+          const loadedMesh = await assets.loadModel(url);
+          if (loadedMesh) {
+            this.with(loadedMesh);
+            if (world.app?.scene) {
+              world.app.scene.add(loadedMesh);
+            }
           }
+        } catch (err) {
+          console.error(`[ECS] Error loading model "${url}":`, err);
         }
+      } else {
+        console.warn(`[ECS] Cannot load model "${url}": AssetManager is not available.`);
       }
     })();
     this._pendingAsyncTasks.push(task);
@@ -1062,14 +1113,21 @@ export class EntityHandle extends EntityBuilder {
   public sketchfab(urlOrUid: string): this {
     const task = (async () => {
       const world = (this as any)._world as World;
-      if (world.app?.assets) {
-        const streamedMesh = await world.app.assets.streamSketchfabModel(urlOrUid);
-        if (streamedMesh) {
-          this.with(streamedMesh);
-          if (world.app.scene) {
-            world.app.scene.add(streamedMesh);
+      const assets = world.assets || world.app?.assets;
+      if (assets && typeof assets.streamSketchfabModel === 'function') {
+        try {
+          const streamedMesh = await assets.streamSketchfabModel(urlOrUid);
+          if (streamedMesh) {
+            this.with(streamedMesh);
+            if (world.app?.scene) {
+              world.app.scene.add(streamedMesh);
+            }
           }
+        } catch (err) {
+          console.error(`[ECS] Error streaming Sketchfab model "${urlOrUid}":`, err);
         }
+      } else {
+        console.warn(`[ECS] Cannot stream Sketchfab model "${urlOrUid}": AssetManager is not available.`);
       }
     })();
     this._pendingAsyncTasks.push(task);

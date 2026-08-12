@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Vector3, Color } from '@kairo/core';
+import { Vector3, Color } from '../../core/src/Math.ts';
 
 export interface Particle {
   position: THREE.Vector3;

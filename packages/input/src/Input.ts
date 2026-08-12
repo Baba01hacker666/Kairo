@@ -1,4 +1,4 @@
-import { Vector2 } from '@kairo/core';
+import { Vector2 } from '../../core/src/Math.ts';
 
 export enum MouseButton {
   Left = 0,

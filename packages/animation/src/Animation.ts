@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Vector3, Quaternion, MathUtils } from '@kairo/core';
+import { Vector3, Quaternion, MathUtils } from '../../core/src/Math.ts';
 
 export interface Keyframe<T> {
   time: number;

@@ -1,4 +1,4 @@
-import { Serializer } from '@kairo/core';
+import { Serializer } from '../../core/src/Serializer.ts';
 
 export interface CompilationOptions {
   minifyShaders?: boolean;
