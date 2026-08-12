@@ -1,4 +1,4 @@
-import { Color } from '@kairo/core';
+import { Color } from '../../core/src/Math.ts';
 import { CustomShaderMaterial } from './ShaderMaterial.ts';
 import { ShaderPresetName } from './ShaderPresets.ts';
 export declare const RenderQueue: {

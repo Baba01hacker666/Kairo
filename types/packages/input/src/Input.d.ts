@@ -1,4 +1,4 @@
-import { Vector2 } from '@kairo/core';
+import { Vector2 } from '../../core/src/Math.ts';
 export declare enum MouseButton {
     Left = 0,
     Middle = 1,
@@ -26,6 +26,10 @@ export declare class InputManager {
     isActionActive(actionName: InputAction): boolean;
     isActionJustPressed(actionName: InputAction): boolean;
     getMovementVector(): Vector2;
+    /**
+     * Inject native mobile touch joystick & action buttons into DOM
+     */
+    setupMobileControls(container?: HTMLElement): void;
     endFrame(): void;
 }
 export declare const GlobalInput: InputManager;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Engine } from './Engine.ts';
-import { World } from '@kairo/ecs';
+import { World, EntityHandle } from '@kairo/ecs';
 import { PhysicsWorld, RigidBody, Collider } from '@kairo/physics';
 import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
 import { InputManager } from '@kairo/input';
@@ -10,6 +10,7 @@ import { DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline } from '@k
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
+import { AssetManager } from '@kairo/assets';
 import * as BABYLON from '@babylonjs/core';
 export interface KairoAppConfig {
     canvas?: HTMLCanvasElement | string;
@@ -44,6 +45,7 @@ export declare class KairoApp {
     save: SaveSystem;
     scenes: SceneManager;
     cutscene: CutsceneManager;
+    assets: AssetManager;
     babylonEngine?: any;
     babylonScene?: BABYLON.Scene;
     babylonCanvas?: HTMLCanvasElement;
@@ -54,7 +56,9 @@ export declare class KairoApp {
     debugRenderer: DebugRenderer;
     videoTimeline: VideoTimeline;
     private sceneObstacles;
-    constructor(config?: KairoAppConfig);
+    constructor(config?: KairoAppConfig | string);
+    /** Native mobile touch joystick & action buttons helper */
+    mobileControls(): this;
     registerObstacle(object: THREE.Object3D): void;
     createEntity(name?: string): EntityHandle;
     createSharedContext(id: string, properties: Record<string, any>): import("@kairo/ecs").SharedEntityContext<Record<string, any>>;
@@ -255,38 +259,4 @@ export declare class KairoApp {
     seekVideo(timeSeconds: number): void;
     /** Export video timeline as WebM video file */
     exportVideo(filename?: string): Promise<void>;
-}
-/**
- * Ergonomic Fluent Entity Handle Wrapper for KairoApp
- * Allows chaining .addTransform(), .addMesh(), .addRigidBody(), and .getTransform()
- */
-export declare class EntityHandle {
-    id: number;
-    app: KairoApp;
-    mesh?: THREE.Mesh;
-    rigidBody?: RigidBody;
-    collider?: Collider;
-    constructor(id: number, app: KairoApp);
-    addTransform(opts?: {
-        position?: [number, number, number];
-        rotation?: [number, number, number];
-        scale?: [number, number, number];
-    }): this;
-    addMesh(opts?: {
-        type?: 'box' | 'sphere' | 'plane' | 'cylinder';
-        color?: number | string;
-        size?: [number, number, number];
-        radius?: number;
-        shader?: string;
-    }): this;
-    addRigidBody(opts?: {
-        mass?: number;
-        type?: 'static' | 'dynamic';
-        useGravity?: boolean;
-    }): this;
-    getTransform(): {
-        position: THREE.Vector3;
-        rotation: THREE.Euler;
-        scale: THREE.Vector3;
-    };
 }

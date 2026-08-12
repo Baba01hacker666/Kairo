@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { World, EntityBuilder, EntityId } from '@kairo/ecs';
 export interface ScriptContext {
     object: THREE.Object3D;
     scene?: THREE.Scene;
@@ -185,4 +186,9 @@ export declare const EasyScript: {
         onInteract?: (this: ScriptBehavior) => void;
         onCollision?: (this: ScriptBehavior, other: THREE.Object3D) => void;
     }) => ScriptBehavior;
+    /**
+     * One-line EasyScript entity creation helper!
+     * Example: EasyScript.spawnObject(world, 'Hero', b => b.at(0, 2, 0).color('#3b82f6').spin());
+     */
+    spawnObject: (world: World, name?: string, configurator?: (builder: EntityBuilder) => void) => EntityId;
 };

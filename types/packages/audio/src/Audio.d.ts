@@ -1,4 +1,4 @@
-import { Vector3 } from '@kairo/core';
+import { Vector3 } from '../../core/src/Math.ts';
 export type SynthesizedSFXType = 'jump' | 'laser' | 'explosion' | 'coin' | 'click' | 'switch' | 'gate' | 'key' | 'teleport' | 'push' | 'fanfare' | 'undo' | 'hint';
 export declare class AudioManager {
     private ctx;

@@ -1,4 +1,4 @@
-import { Vector3 } from '../../core/src/index.ts';
+import { Vector3 } from '../../core/src/Math.ts';
 export declare const NodeStatus: {
     readonly Success: "SUCCESS";
     readonly Failure: "FAILURE";

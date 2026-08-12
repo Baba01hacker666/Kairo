@@ -1,4 +1,4 @@
-import { Color, Vector3 } from '@kairo/core';
+import { Color, Vector3 } from '../../core/src/Math.ts';
 export declare const LightType: {
     readonly Directional: "DIRECTIONAL";
     readonly Point: "POINT";
