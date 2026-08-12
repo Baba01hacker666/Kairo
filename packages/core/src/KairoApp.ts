@@ -13,6 +13,7 @@ import { Serializer } from './Serializer.ts';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
+import { AssetManager } from '@kairo/assets';
 import { animate } from 'motion';
 import * as BABYLON from '@babylonjs/core';
 
@@ -50,6 +51,7 @@ export class KairoApp {
   public save: SaveSystem;
   public scenes: SceneManager;
   public cutscene: CutsceneManager;
+  public assets: AssetManager;
   
   // Babylon.js Dual-Engine Integration
   public babylonEngine?: any; // Engine | WebGPUEngine
@@ -70,6 +72,7 @@ export class KairoApp {
     this.save = new SaveSystem(opts.gameId || 'default');
     this.scenes = new SceneManager(this);
     this.cutscene = new CutsceneManager(this);
+    this.assets = new AssetManager();
     this.videoTimeline = new VideoTimeline(this);
     this.debugRenderer = new DebugRenderer(this);
     this.engine = new Engine();

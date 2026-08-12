@@ -9,6 +9,7 @@
  * - Full Entity & Component Serialization
  */
 
+import * as THREE from 'three';
 import { SharedEntityContextManager, SharedEntityContext } from './SharedEntityContext.ts';
 
 export type EntityId = number;
@@ -737,6 +738,20 @@ export class EntityBuilder {
     }
     Object.assign(existing, updated);
     this._world.addComponent(this._entity, existing);
+
+    // Sync transform to materialized Three.js mesh if attached
+    const meshComp = this._world.getComponent(this._entity, MeshComponent);
+    if (meshComp && (meshComp as any).threeMesh) {
+      const threeMesh = (meshComp as any).threeMesh as THREE.Mesh;
+      threeMesh.position.set(existing.x, existing.y, existing.z);
+      threeMesh.rotation.set(
+        (existing.rx || 0) * (Math.PI / 180),
+        (existing.ry || 0) * (Math.PI / 180),
+        (existing.rz || 0) * (Math.PI / 180)
+      );
+      threeMesh.scale.set(existing.sx, existing.sy, existing.sz);
+    }
+
     return this;
   }
 
@@ -764,6 +779,44 @@ export class EntityBuilder {
     }
     Object.assign(existing, updated);
     this._world.addComponent(this._entity, existing);
+
+    // Materialize Three.js Mesh in KairoApp Scene
+    if (this._world.app?.scene && typeof document !== 'undefined') {
+      let threeMesh = (existing as any).threeMesh as THREE.Mesh;
+      if (!threeMesh) {
+        const type = existing.type || 'box';
+        const s = existing.size || [1, 1, 1];
+        let geom: THREE.BufferGeometry;
+        if (type === 'sphere') {
+          geom = new THREE.SphereGeometry(existing.radius || 0.5, 32, 32);
+        } else if (type === 'plane') {
+          geom = new THREE.PlaneGeometry(s[0] || 10, s[1] || 10);
+        } else if (type === 'cylinder') {
+          geom = new THREE.CylinderGeometry(existing.radius || 0.5, existing.radius || 0.5, s[1] || 2, 32);
+        } else {
+          geom = new THREE.BoxGeometry(s[0], s[1], s[2]);
+        }
+        const mat = new THREE.MeshStandardMaterial({
+          color: existing.color ?? 0x3b82f6,
+          roughness: existing.roughness ?? 0.4,
+          metalness: existing.metalness ?? 0.2
+        });
+        threeMesh = new THREE.Mesh(geom, mat);
+        if (type === 'plane') threeMesh.rotation.x = -Math.PI / 2;
+        threeMesh.castShadow = true;
+        threeMesh.receiveShadow = true;
+        (existing as any).threeMesh = threeMesh;
+        this._world.app.scene.add(threeMesh);
+      } else if (existing.color !== undefined && threeMesh.material) {
+        (threeMesh.material as THREE.MeshStandardMaterial).color = new THREE.Color(existing.color as any);
+      }
+      const transformComp = this._world.getComponent(this._entity, TransformComponent);
+      if (transformComp) {
+        threeMesh.position.set(transformComp.x, transformComp.y, transformComp.z);
+        threeMesh.scale.set(transformComp.sx, transformComp.sy, transformComp.sz);
+      }
+    }
+
     return this;
   }
 
@@ -783,7 +836,61 @@ export class EntityBuilder {
     }
     Object.assign(existing, updated);
     this._world.addComponent(this._entity, existing);
+
+    // Materialize RigidBody & Collider in KairoApp PhysicsWorld
+    if (this._world.app?.physics) {
+      let body = (existing as any).rigidBody;
+      if (!body) {
+        const isStatic = existing.bodyType === 'static' || existing.mass === 0;
+        const mass = existing.mass ?? (isStatic ? 0 : 1);
+        const transformComp = this._world.getComponent(this._entity, TransformComponent);
+        const posX = transformComp ? transformComp.x : 0;
+        const posY = transformComp ? transformComp.y : 0;
+        const posZ = transformComp ? transformComp.z : 0;
+
+        if (typeof this._world.app.physics.addBody === 'function') {
+          (existing as any).rigidBody = this._world.app.physics.addBody({ mass, position: [posX, posY, posZ] });
+        } else if (typeof this._world.app.physics.registerBody === 'function') {
+          const bodyObj = { mass, type: isStatic ? 'static' : 'dynamic' };
+          const colliderObj = { type: 'box' };
+          const posObj = { x: posX, y: posY, z: posZ };
+          (existing as any).rigidBody = bodyObj;
+          try {
+            this._world.app.physics.registerBody(bodyObj, colliderObj, posObj);
+          } catch (_) {}
+        }
+      }
+    }
+
     return this;
+  }
+
+  /** Backward compatibility helper for legacy playground/app callers */
+  public addTransform(opts: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } = {}): this {
+    if (opts.position) this.at(opts.position[0], opts.position[1], opts.position[2]);
+    if (opts.rotation) this.rotate(opts.rotation[0], opts.rotation[1], opts.rotation[2]);
+    if (opts.scale) this.scale(opts.scale[0], opts.scale[1], opts.scale[2]);
+    return this;
+  }
+
+  /** Backward compatibility helper for legacy playground/app callers */
+  public addMesh(opts: { type?: 'box' | 'sphere' | 'plane' | 'cylinder'; color?: number | string; size?: [number, number, number]; radius?: number } = {}): this {
+    return this.mesh(opts.type || 'box', opts);
+  }
+
+  /** Backward compatibility helper for legacy playground/app callers */
+  public addRigidBody(opts: { mass?: number; type?: 'static' | 'dynamic'; useGravity?: boolean } = {}): this {
+    return this.physics(opts);
+  }
+
+  /** Backward compatibility helper for legacy playground/app callers */
+  public getTransform() {
+    const transformComp = this._world.getComponent(this._entity, TransformComponent);
+    return {
+      position: { x: transformComp?.x || 0, y: transformComp?.y || 0, z: transformComp?.z || 0 },
+      rotation: { x: transformComp?.rx || 0, y: transformComp?.ry || 0, z: transformComp?.rz || 0 },
+      scale: { x: transformComp?.sx || 1, y: transformComp?.sy || 1, z: transformComp?.sz || 1 }
+    };
   }
 
   /** One-line color setter: .color('#ff0000') or .color(0x00ff00) */
