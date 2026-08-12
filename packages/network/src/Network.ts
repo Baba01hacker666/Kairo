@@ -3,7 +3,7 @@
  * Client Prediction, Entity State Interpolation, RPC, WebSocket Transport & Snapshot Reconciliation
  */
 
-import { Vector3 } from '@kairo/core';
+import { Vector3 } from '../../core/src/Math.ts';
 
 export interface NetworkPacket {
   type: 'state' | 'rpc' | 'connect' | 'disconnect' | 'ping' | 'pong';
@@ -96,7 +96,9 @@ export class WebSocketClient {
             } else {
               this.onMessageCallbacks.forEach(cb => cb(packet));
             }
-          } catch (e) {}
+          } catch (err) {
+            console.error('[NetworkManager] Error processing network packet:', err);
+          }
         };
       } catch (e) {
         resolve(false);

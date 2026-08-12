@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PRNG } from '@kairo/core';
+import { PRNG } from '../../core/src/Procedural.ts';
 
 /**
  * @kairo/geometry — Small composite scenery helpers (trees, rocks, clouds).

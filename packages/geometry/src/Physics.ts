@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Collider, ColliderType } from '@kairo/physics';
-import { Vector3 } from '@kairo/core';
+import { Vector3 } from '../../core/src/Math.ts';
 
 /**
  * @kairo/geometry — Collider derivation.

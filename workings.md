@@ -31,7 +31,7 @@ Everything runs in the browser. There is no server code. Deployment is static â†
 | `scripts/` | Local helper scripts (screenshots, video generation). |
 | `.github/workflows/` | CI, deploy, and QA video/screenshot automation. |
 | `public/wasm/` | Pre-compiled WASM for Go demos (`wasm_exec.js` runtime must live here). |
-| `docs/` | `EASY_SCRIPT.md`, `API.md`, `ARCHITECTURE.md`, `EDITOR_GUIDE.md`, `PLUGIN_GUIDE.md`. |
+| `docs/` | `GAME_GUIDE.md`, `EASY_SCRIPT.md`, `API.md`, `ARCHITECTURE.md`, `EDITOR_GUIDE.md`, `PLUGIN_GUIDE.md`, `SHADERS.md`. |
 | `dist/` | Build output â€” **gitignored**, generated fresh by `npm run build` each time, then published to `gh-pages` by CI (`deploy.yml`). |
 
 ---

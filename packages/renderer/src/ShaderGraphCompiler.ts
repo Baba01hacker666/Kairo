@@ -1,5 +1,5 @@
 import { CustomShaderMaterial, UniformDefinition } from './ShaderMaterial.ts';
-import { Color } from '@kairo/core';
+import { Color } from '../../core/src/Math.ts';
 
 export type ShaderNodeType =
   | 'input_time'

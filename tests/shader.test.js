@@ -7,7 +7,7 @@ import {
   Material,
   SHADER_PRESETS
 } from '../packages/renderer/src/index.ts';
-import { Color } from '../packages/core/src/index.ts';
+import { Color } from '../packages/core/src/Math.ts';
 
 test('CustomShaderMaterial uniform management and updating', () => {
   const mat = new CustomShaderMaterial('Test Shader', {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Engine } from './Engine.ts';
-import { World } from '@kairo/ecs';
+import { World, EntityHandle } from '@kairo/ecs';
 import { PhysicsWorld, RigidBody, Collider, RigidBodyType, ColliderType } from '@kairo/physics';
 import { Vector3 } from './Math.ts';
 import { CameraController, RenderPipeline, CpuProfileMap, ShaderPresets } from '@kairo/renderer';
@@ -13,6 +13,7 @@ import { Serializer } from './Serializer.ts';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
+import { AssetManager } from '@kairo/assets';
 import { animate } from 'motion';
 import * as BABYLON from '@babylonjs/core';
 
@@ -50,6 +51,7 @@ export class KairoApp {
   public save: SaveSystem;
   public scenes: SceneManager;
   public cutscene: CutsceneManager;
+  public assets: AssetManager;
   
   // Babylon.js Dual-Engine Integration
   public babylonEngine?: any; // Engine | WebGPUEngine
@@ -64,42 +66,59 @@ export class KairoApp {
   public videoTimeline: VideoTimeline;
   private sceneObstacles: THREE.Object3D[] = [];
 
-  constructor(config: KairoAppConfig = {}) {
-    this.config = config;
-    this.save = new SaveSystem(config.gameId || 'default');
+  constructor(config: KairoAppConfig | string = {}) {
+    const opts: KairoAppConfig = typeof config === 'string' ? { canvas: config } : config;
+    this.config = opts;
+    this.save = new SaveSystem(opts.gameId || 'default');
     this.scenes = new SceneManager(this);
     this.cutscene = new CutsceneManager(this);
+    this.assets = new AssetManager();
     this.videoTimeline = new VideoTimeline(this);
     this.debugRenderer = new DebugRenderer(this);
     this.engine = new Engine();
     this.world = new World();
+    this.world.setApp(this);
     
     // Setup physics
     this.physics = new PhysicsWorld();
-    this.physics.gravity = config.gravity ? new Vector3(...config.gravity) : new Vector3(0, -9.81, 0);
+    this.physics.gravity = opts.gravity ? new Vector3(...opts.gravity) : new Vector3(0, -9.81, 0);
 
     // Setup scene & environment
     this.scene = new THREE.Scene();
-    const bgColor = config.background ?? 0x09090b;
+    const bgColor = opts.background ?? 0x09090b;
     this.scene.background = new THREE.Color(bgColor);
 
-    if (config.fogColor) {
+    if (opts.fogColor) {
       this.scene.fog = new THREE.Fog(
-        new THREE.Color(config.fogColor),
-        config.fogNear ?? 15,
-        config.fogFar ?? 65
+        new THREE.Color(opts.fogColor),
+        opts.fogNear ?? 15,
+        opts.fogFar ?? 65
       );
     }
 
     // Setup Canvas & Renderer
+    // Setup Canvas & Renderer
     let canvasObj: HTMLCanvasElement;
-    if (typeof config.canvas === 'string') {
-      canvasObj = document.getElementById(config.canvas.replace('#', '')) as HTMLCanvasElement;
-    } else if (config.canvas) {
-      canvasObj = config.canvas;
+    if (typeof opts.canvas === 'string') {
+      if (typeof document === 'undefined') {
+        canvasObj = {} as any;
+      } else {
+        const el = document.getElementById(opts.canvas.replace('#', ''));
+        if (!el) {
+          throw new Error(`Canvas element with id "${opts.canvas}" was not found`);
+        }
+        if (!(el instanceof HTMLCanvasElement)) {
+          throw new Error(`Element with id "${opts.canvas}" is not an HTMLCanvasElement`);
+        }
+        canvasObj = el;
+      }
+    } else if (opts.canvas) {
+      canvasObj = opts.canvas;
     } else {
-      canvasObj = document.createElement('canvas');
-      document.body.appendChild(canvasObj);
+      canvasObj = typeof document !== 'undefined' ? document.createElement('canvas') : {} as any;
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.appendChild(canvasObj);
+      }
     }
 
     this.renderer = new THREE.WebGLRenderer({
@@ -113,13 +132,18 @@ export class KairoApp {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
     // Set Three.js canvas CSS for layering
-    canvasObj.style.position = 'absolute';
-    canvasObj.style.top = '0';
-    canvasObj.style.left = '0';
-    canvasObj.style.zIndex = '1';
+    if (canvasObj.style) {
+      canvasObj.style.position = 'absolute';
+      canvasObj.style.top = '0';
+      canvasObj.style.left = '0';
+      canvasObj.style.zIndex = '1';
+    }
 
     // Experimental Babylon.js Dual-Engine Mode
-    if (config.enableBabylon) {
+    if (opts.enableBabylon) {
+      if (typeof document === 'undefined' || !document?.body) {
+        throw new Error('Babylon dual-engine requires a DOM environment (document/body is undefined). Set enableBabylon=false for SSR.');
+      }
       this.babylonCanvas = document.createElement('canvas');
       this.babylonCanvas.id = 'babylon-canvas';
       this.babylonCanvas.style.position = 'absolute';
@@ -133,7 +157,7 @@ export class KairoApp {
       
       // Note: Babylon WebGPU requires async initialization. 
       // If WebGPU is requested, it will be initialized asynchronously in start().
-      if (config.rendererBackend !== 'webgpu') {
+      if (opts.rendererBackend !== 'webgpu') {
         try {
           this.babylonEngine = new BABYLON.Engine(this.babylonCanvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true });
           this.babylonScene = new BABYLON.Scene(this.babylonEngine);
@@ -167,7 +191,7 @@ export class KairoApp {
 
     // Setup Render Pipeline
     this.pipeline = new RenderPipeline(this.renderer, this.scene, this.camera);
-    if (config.shadows !== false) {
+    if (opts.shadows !== false) {
       this.pipeline.setupLighting({});
     }
 
@@ -245,13 +269,20 @@ export class KairoApp {
     }
   }
 
+  /** Native mobile touch joystick & action buttons helper */
+  public mobileControls(): this {
+    if (this.input) {
+      this.input.setupMobileControls();
+    }
+    return this;
+  }
+
   public registerObstacle(object: THREE.Object3D): void {
     this.sceneObstacles.push(object);
   }
 
   public createEntity(name?: string): EntityHandle {
-    const id = this.world.createEntity(name);
-    return new EntityHandle(id, this);
+    return this.world.add(name);
   }
 
   public createSharedContext(id: string, properties: Record<string, any>) {
@@ -259,8 +290,7 @@ export class KairoApp {
   }
 
   public createEntityWithSharedContext(contextId: string, name?: string): EntityHandle {
-    const id = this.world.createEntityWithSharedContext(contextId, name);
-    return new EntityHandle(id, this);
+    return this.world.entity(name).sharedContext(contextId);
   }
 
   public query(q: any) {
@@ -959,111 +989,4 @@ export class KairoApp {
   }
 }
 
-/**
- * Ergonomic Fluent Entity Handle Wrapper for KairoApp
- * Allows chaining .addTransform(), .addMesh(), .addRigidBody(), and .getTransform()
- */
-export class EntityHandle {
-  public id: number;
-  public app: KairoApp;
-  public mesh?: THREE.Mesh;
-  public rigidBody?: RigidBody;
-  public collider?: Collider;
 
-  constructor(id: number, app: KairoApp) {
-    this.id = id;
-    this.app = app;
-  }
-
-  public addTransform(opts: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } = {}) {
-    if (opts.position) {
-      if (!this.mesh) this.addMesh({});
-      this.mesh!.position.set(...opts.position);
-    }
-    if (opts.rotation && this.mesh) {
-      this.mesh.rotation.set(...opts.rotation);
-    }
-    if (opts.scale && this.mesh) {
-      this.mesh.scale.set(...opts.scale);
-    }
-    return this;
-  }
-
-  public addMesh(opts: {
-    type?: 'box' | 'sphere' | 'plane' | 'cylinder';
-    color?: number | string;
-    size?: [number, number, number];
-    radius?: number;
-    shader?: string;
-  } = {}) {
-    if (this.mesh) return this;
-    const type = opts.type ?? 'box';
-    let geom: THREE.BufferGeometry;
-    if (type === 'sphere') {
-      const r = opts.radius ?? (opts.size ? opts.size[0] / 2 : 0.5);
-      geom = new THREE.SphereGeometry(r, 32, 32);
-    } else if (type === 'plane') {
-      const s = opts.size ?? [10, 10];
-      geom = new THREE.PlaneGeometry(s[0], s[1]);
-    } else if (type === 'cylinder') {
-      const r = opts.radius ?? 0.5;
-      const s = opts.size ?? [1, 2, 1];
-      geom = new THREE.CylinderGeometry(r, r, s[1], 32);
-    } else {
-      const s = opts.size ?? [1, 1, 1];
-      geom = new THREE.BoxGeometry(s[0], s[1], s[2]);
-    }
-
-    let mat: THREE.Material;
-    if (opts.shader === 'water') {
-      mat = ShaderPresets.createWaterShader().toThreeMaterial();
-    } else {
-      mat = new THREE.MeshStandardMaterial({
-        color: opts.color ?? 0x6366f1,
-        roughness: 0.4,
-        metalness: 0.2
-      });
-    }
-
-    this.mesh = new THREE.Mesh(geom, mat);
-    if (type === 'plane') {
-      this.mesh.rotation.x = -Math.PI / 2;
-    }
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
-    this.app.scene.add(this.mesh);
-    return this;
-  }
-
-  public addRigidBody(opts: { mass?: number; type?: 'static' | 'dynamic'; useGravity?: boolean } = {}) {
-    if (!this.mesh) this.addMesh({});
-    const isStatic = opts.type === 'static' || opts.mass === 0;
-    this.rigidBody = new RigidBody();
-    this.rigidBody.type = isStatic ? RigidBodyType.Static : RigidBodyType.Dynamic;
-    this.rigidBody.mass = opts.mass ?? (isStatic ? 0 : 1);
-    
-    this.collider = new Collider();
-    this.collider.type = ColliderType.Box;
-    const pos = new Vector3(...this.mesh!.position.toArray());
-    this.app.physics.registerBody(this.rigidBody, this.collider, pos);
-
-    this.app.onUpdate(() => {
-      if (this.rigidBody?.cannonBody && this.mesh) {
-        this.mesh.position.set(this.rigidBody.cannonBody.position.x, this.rigidBody.cannonBody.position.y, this.rigidBody.cannonBody.position.z);
-        this.mesh.quaternion.set(this.rigidBody.cannonBody.quaternion.x, this.rigidBody.cannonBody.quaternion.y, this.rigidBody.cannonBody.quaternion.z, this.rigidBody.cannonBody.quaternion.w);
-      }
-    });
-    return this;
-  }
-
-  public getTransform() {
-    if (!this.mesh) {
-      this.addMesh({});
-    }
-    return {
-      position: this.mesh!.position,
-      rotation: this.mesh!.rotation,
-      scale: this.mesh!.scale
-    };
-  }
-}

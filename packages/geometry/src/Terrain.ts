@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SimplexNoise } from '@kairo/core';
+import { SimplexNoise } from '../../core/src/Procedural.ts';
 
 /**
  * @kairo/geometry — Heightmap terrain built from SimplexNoise (reuses the

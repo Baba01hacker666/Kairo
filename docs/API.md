@@ -96,12 +96,37 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 ## 5. `@kairo/ecs`
 
 ### `World`
+- `world.add(name?)` / `world.entity(name?)`: Primary entry point returning an `EntityHandle` for English-like 1-line creation (`app.world.add('Player').sphere('blue').at(0, 2, 0).physics().spin()`).
+- `world.load(assetUrl, name?)`: High-level asset & level loader (`await world.load('assets/dungeon.blend')`).
 - `world.createEntity(name?)`: Instantiate a new entity ID.
+- `world.buildEntity(name?)`: Returns an `EntityBuilder` instance for fluent, minimal-code entity composition.
+- `world.spawnBatch(count, initializer)`: High-performance batch spawner for creating $N$ entities in contiguous memory with 0 dynamic allocations.
 - `world.createSharedContext(id, properties)`: Register a flyweight `SharedEntityContext` record holding shared invariant properties (`radius`, `color`, `meshTemplate`, `restitution`).
 - `world.createEntityWithSharedContext(contextId, name?)`: Instantiate an entity attached to a shared context archetype.
 - `world.destroyEntity(entity)`: Destroy entity and clean up component storages & shared context attachments.
 - `world.query(query)`: Query matching active entities (returns a defensive copy to prevent cache mutation).
 - `world.sharedContexts`: Instance of `SharedEntityContextManager`.
+
+### `EntityHandle` & `EntityBuilder`
+Fluent, chainable builder for concise, single-line entity creation with two-tier default & function value overrides:
+- `.sphere(colorOrConfig)` / `.box(colorOrConfig)` / `.cylinder(colorOrConfig)` / `.capsule(colorOrConfig)` / `.plane(colorOrConfig)`: Primitive mesh helpers supporting color strings (`.sphere('blue')`).
+- `.model(url)`: One-line 3D model loader (`.model('models/Fox.glb')`).
+- `.sketchfab(urlOrUid)`: One-line Sketchfab model streamer.
+- `.at(x, y, z)`: Position shorthand setting 3D coordinates.
+- `.scale(x, y?, z?)`: Scale shorthand (`.scale(20, 1, 20)`).
+- `.rotate(rx, ry, rz)`: Rotation shorthand (`.rotate(0, 45, 0)`).
+- `.physics(configOrFn?)`: Zero-config physics (`.physics()`) or custom options override.
+- `.move(speed?)`: Character WASD / Arrow Keys steering trait.
+- `.jump(force?)`: Character jump trait.
+- `.destroy()`: Destroys entity from world.
+- `.color(colorHex)`: Set mesh material color (`'#ff0000'` or `0x00ff00`).
+- `.behavior(nameOrFn, options)`: Attach behavior trait.
+- `.spin(speed?)` / `.bob(amount?, speed?)` / `.pulse(min?, max?, speed?)` / `.patrol(dist?, speed?)`: Built-in 1-line motion behavior helpers.
+- `.with(component)`: Attach custom component.
+- `.tag(tagName)`: Add search tag.
+- `.parent(parentId)`: Attach entity to parent entity hierarchy.
+- `.sharedContext(contextId)`: Attach entity to shared flyweight context archetype.
+- `.build()`: Returns final `EntityId`.
 
 ### `SharedEntityContext` & `SharedEntityContextManager`
 - `new SharedEntityContext(id, properties)`: Immutable shared archetype record.
@@ -109,4 +134,5 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `sharedContexts.attachEntityToContext(entity, contextId)`: Associate entity with shared context.
 - `sharedContexts.forEachInContext(contextId, callback)`: High-speed batch iteration over all entities sharing context (5.56x faster execution, 18.1% heap memory savings).
 - `sharedContexts.getStats()`: Compute memory savings bytes and shared entity counts.
+
 

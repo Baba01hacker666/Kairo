@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Color } from '@kairo/core';
+import { Color } from '../../core/src/Math.ts';
 
 export type UniformType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'color' | 'texture' | 'int';
 

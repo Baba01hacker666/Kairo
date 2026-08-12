@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Vector3 } from '@kairo/core';
+import { Vector3 } from '../../core/src/Math.ts';
 
 export interface CameraShakeConfig {
   intensity: number;

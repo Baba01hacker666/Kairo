@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { World, EntityBuilder, EntityId } from '@kairo/ecs';
 
 export interface ScriptContext {
   object: THREE.Object3D;
@@ -673,5 +674,22 @@ export const EasyScript = {
     if (hooks.onInteract) instance.onInteract = hooks.onInteract.bind(instance);
     if (hooks.onCollision) instance.onCollision = hooks.onCollision.bind(instance);
     return instance;
+  },
+
+  /**
+   * One-line EasyScript entity creation helper!
+   * Example: EasyScript.spawnObject(world, 'Hero', b => b.at(0, 2, 0).color('#3b82f6').spin());
+   */
+  spawnObject: (
+    world: World,
+    name: string = 'GameObject',
+    configurator?: (builder: EntityBuilder) => void
+  ): EntityId => {
+    const builder = world.buildEntity(name);
+    if (configurator) {
+      configurator(builder);
+    }
+    return builder.build();
   }
 };
+
