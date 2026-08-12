@@ -43,6 +43,12 @@ export class VideoTimeline {
   private app: any;
   private playbackTimer: any = null;
 
+  // Pre-allocated vectors for frame evaluation to prevent GC spikes
+  private _evalPos1: THREE.Vector3 = new THREE.Vector3();
+  private _evalPos2: THREE.Vector3 = new THREE.Vector3();
+  private _evalTarget: THREE.Vector3 = new THREE.Vector3();
+  private _evalCurrent: THREE.Vector3 = new THREE.Vector3();
+
   constructor(app?: any, duration: number = 10.0) {
     this.app = app;
     this.totalDuration = duration;
@@ -159,23 +165,23 @@ export class VideoTimeline {
         // Process Track Behaviors
         if (track.type === 'camera' && this.app?.cameraController) {
           if (clip.props.shotType === 'pan' && clip.props.fromPos && clip.props.toPos && clip.props.target) {
-            const currentPos = new THREE.Vector3().lerpVectors(
-              new THREE.Vector3(...clip.props.fromPos),
-              new THREE.Vector3(...clip.props.toPos),
-              progress
-            );
-            this.app.cameraController.camera.position.copy(currentPos);
-            this.app.cameraController.camera.lookAt(new THREE.Vector3(...clip.props.target));
+            this._evalPos1.set(clip.props.fromPos[0], clip.props.fromPos[1], clip.props.fromPos[2]);
+            this._evalPos2.set(clip.props.toPos[0], clip.props.toPos[1], clip.props.toPos[2]);
+            this._evalCurrent.lerpVectors(this._evalPos1, this._evalPos2, progress);
+
+            this.app.cameraController.camera.position.copy(this._evalCurrent);
+            this._evalTarget.set(clip.props.target[0], clip.props.target[1], clip.props.target[2]);
+            this.app.cameraController.camera.lookAt(this._evalTarget);
           } else if (clip.props.shotType === 'orbit' && clip.props.target) {
             const angle = localTime * (clip.props.speed || 1.0);
             const radius = clip.props.radius || 8.0;
-            const target = new THREE.Vector3(...clip.props.target);
+            this._evalTarget.set(clip.props.target[0], clip.props.target[1], clip.props.target[2]);
             this.app.cameraController.camera.position.set(
-              target.x + Math.sin(angle) * radius,
-              target.y + 3.0,
-              target.z + Math.cos(angle) * radius
+              this._evalTarget.x + Math.sin(angle) * radius,
+              this._evalTarget.y + 3.0,
+              this._evalTarget.z + Math.cos(angle) * radius
             );
-            this.app.cameraController.camera.lookAt(target);
+            this.app.cameraController.camera.lookAt(this._evalTarget);
           }
         }
 

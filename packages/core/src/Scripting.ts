@@ -40,6 +40,9 @@ export class ScriptBehavior {
 
   private _customData: Record<string, any> = {};
 
+  // Pre-allocated vectors for frame evaluation to prevent GC spikes
+  private _tempDir: THREE.Vector3 = new THREE.Vector3();
+
   public attach(object: THREE.Object3D, app?: any): void {
     this.object = object;
     this.app = app;
@@ -222,10 +225,21 @@ export class ScriptBehavior {
   /** Smoothly chase / move towards a target 3D position */
   public chase(targetPos: THREE.Vector3 | [number, number, number], speed: number = 3.0, dt: number = 0.016): this {
     if (!this.object) return this;
-    const target = Array.isArray(targetPos) ? new THREE.Vector3(...targetPos) : targetPos;
-    const dir = target.clone().sub(this.object.position).normalize();
-    this.object.position.add(dir.multiplyScalar(speed * dt));
-    this.object.lookAt(target);
+    if (Array.isArray(targetPos)) {
+      this._tempDir.set(targetPos[0], targetPos[1], targetPos[2]);
+    } else {
+      this._tempDir.copy(targetPos);
+    }
+
+    this._tempDir.sub(this.object.position).normalize();
+    this.object.position.add(this._tempDir.multiplyScalar(speed * dt));
+
+    if (Array.isArray(targetPos)) {
+       this.object.lookAt(targetPos[0], targetPos[1], targetPos[2]);
+    } else {
+       this.object.lookAt(targetPos.x, targetPos.y, targetPos.z);
+    }
+
     return this;
   }
 
