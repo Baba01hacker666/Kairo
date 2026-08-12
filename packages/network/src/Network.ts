@@ -96,7 +96,9 @@ export class WebSocketClient {
             } else {
               this.onMessageCallbacks.forEach(cb => cb(packet));
             }
-          } catch (e) {}
+          } catch (err) {
+            console.error('[NetworkManager] Error processing network packet:', err);
+          }
         };
       } catch (e) {
         resolve(false);

@@ -185,6 +185,32 @@ export class World {
       this.parents.delete(entity);
     }
 
+    // Clean up Three.js scene object and Physics body if attached
+    const meshComp = this.getComponent(entity, MeshComponent);
+    if (meshComp && (meshComp as any).threeMesh) {
+      const mesh = (meshComp as any).threeMesh as THREE.Mesh;
+      if (this.app?.scene) {
+        this.app.scene.remove(mesh);
+      }
+      if (mesh.geometry) mesh.geometry.dispose();
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(m => m.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      }
+      delete (meshComp as any).threeMesh;
+    }
+
+    const physComp = this.getComponent(entity, PhysicsComponent);
+    if (physComp && (physComp as any).rigidBody && this.app?.physics) {
+      if (typeof this.app.physics.unregisterBody === 'function') {
+        this.app.physics.unregisterBody((physComp as any).rigidBody);
+      }
+      delete (physComp as any).rigidBody;
+    }
+
     // Fast O(1) component cleanup for attached components only
     const compTypes = this.entityComponentTypes.get(entity);
     if (compTypes) {
