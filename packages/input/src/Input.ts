@@ -250,7 +250,10 @@ export class InputManager {
           const rect = joystickContainer.getBoundingClientRect();
           const dx = touch.clientX - (rect.left + center.x);
           const dy = touch.clientY - (rect.top + center.y);
-          const dist = Math.hypot(dx, dy);
+          // ⚡ Bolt: Math.hypot has measurable overhead in V8 due to internal overflow handling.
+          // Using explicit arithmetic (Math.sqrt(dx*dx + dy*dy)) in this hot path avoids that overhead
+          // and improves touch tracking performance without sacrificing readability or safety.
+          const dist = Math.sqrt(dx * dx + dy * dy);
           const angle = Math.atan2(dy, dx);
           const clampedRadius = Math.min(dist, maxRadius);
           const knobX = Math.cos(angle) * clampedRadius;
