@@ -190,6 +190,7 @@ export class PhysicsWorld {
   private bodies: BodyEntry[] = [];
   private cannonWorld: CANNON.World;
   private static _raycastTempBox = new BoundingBox();
+  private static _raycastTempResult = { hasHit: false, distance: Infinity, point: new Vector3(), normal: new Vector3() };
   private bodyLookup: Map<CANNON.Body, BodyEntry> = new Map();
   private collisionListeners: Array<(event: CollisionEvent) => void> = [];
   private triggerListeners: Array<(event: CollisionEvent) => void> = [];
@@ -349,21 +350,19 @@ export class PhysicsWorld {
 
       if (collider.type === ColliderType.Sphere) {
         const sphereRadius = collider.radius || (collider.size.x * 0.5);
-        hit = ray.intersectSphere(position, sphereRadius);
+        hit = ray.intersectSphere(position, sphereRadius, PhysicsWorld._raycastTempResult);
       } else {
         const bounds = collider.getBoundingBox(position, PhysicsWorld._raycastTempBox);
-        hit = ray.intersectBox(bounds);
+        hit = ray.intersectBox(bounds, PhysicsWorld._raycastTempResult);
       }
 
       if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestHit.distance) {
-        closestHit = {
-          hasHit: true,
-          body,
-          collider,
-          point: hit.point,
-          normal: hit.normal,
-          distance: hit.distance
-        };
+        closestHit.hasHit = true;
+        closestHit.distance = hit.distance;
+        closestHit.point.copy(hit.point);
+        closestHit.normal.copy(hit.normal);
+        closestHit.body = body;
+        closestHit.collider = collider;
       }
     }
     return closestHit;

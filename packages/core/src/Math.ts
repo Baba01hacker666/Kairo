@@ -432,7 +432,7 @@ export class Ray {
     this.direction = direction instanceof Vector3 ? direction : new Vector3(direction.x, direction.y, direction.z);
   }
 
-  intersectBox(box: BoundingBox): { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 } {
+  intersectBox(box: BoundingBox, targetResult?: { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 }): { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 } {
     const dirX = Math.abs(this.direction.x) < 0.00001 ? 0.00001 : this.direction.x;
     const dirY = Math.abs(this.direction.y) < 0.00001 ? 0.00001 : this.direction.y;
     const dirZ = Math.abs(this.direction.z) < 0.00001 ? 0.00001 : this.direction.z;
@@ -447,6 +447,11 @@ export class Ray {
 
 
     if (tmin > tymax || tymin > tmax) {
+      if (targetResult) {
+        targetResult.hasHit = false;
+        targetResult.distance = Infinity;
+        return targetResult;
+      }
       return Ray._missResult;
     }
 
@@ -458,36 +463,48 @@ export class Ray {
     if (tzmin > tzmax) [tzmin, tzmax] = [tzmax, tzmin];
 
     if (tmin > tzmax || tzmin > tmax) {
+      if (targetResult) {
+        targetResult.hasHit = false;
+        targetResult.distance = Infinity;
+        return targetResult;
+      }
       return Ray._missResult;
     }
 
     if (tzmin > tmin) tmin = tzmin;
 
 
-    const hitPoint = new Vector3(
-      this.origin.x + this.direction.x * tmin,
-      this.origin.y + this.direction.y * tmin,
-      this.origin.z + this.direction.z * tmin
-    );
-    const normal = new Vector3();
+    const hx = this.origin.x + this.direction.x * tmin;
+    const hy = this.origin.y + this.direction.y * tmin;
+    const hz = this.origin.z + this.direction.z * tmin;
+
+    let nx = 0, ny = 0, nz = 0;
     const eps = 0.01;
-    if (Math.abs(hitPoint.x - box.max.x) < eps) normal.x = 1;
-    else if (Math.abs(hitPoint.x - box.min.x) < eps) normal.x = -1;
-    else if (Math.abs(hitPoint.y - box.max.y) < eps) normal.y = 1;
-    else if (Math.abs(hitPoint.y - box.min.y) < eps) normal.y = -1;
-    else if (Math.abs(hitPoint.z - box.max.z) < eps) normal.z = 1;
-    else if (Math.abs(hitPoint.z - box.min.z) < eps) normal.z = -1;
-    else normal.z = 1;
+    if (Math.abs(hx - box.max.x) < eps) nx = 1;
+    else if (Math.abs(hx - box.min.x) < eps) nx = -1;
+    else if (Math.abs(hy - box.max.y) < eps) ny = 1;
+    else if (Math.abs(hy - box.min.y) < eps) ny = -1;
+    else if (Math.abs(hz - box.max.z) < eps) nz = 1;
+    else if (Math.abs(hz - box.min.z) < eps) nz = -1;
+    else nz = 1;
+
+    if (targetResult) {
+      targetResult.hasHit = tmin >= 0;
+      targetResult.distance = tmin;
+      targetResult.point.set(hx, hy, hz);
+      targetResult.normal.set(nx, ny, nz);
+      return targetResult;
+    }
 
     return {
       hasHit: tmin >= 0,
       distance: tmin,
-      point: hitPoint,
-      normal
+      point: new Vector3(hx, hy, hz),
+      normal: new Vector3(nx, ny, nz)
     };
   }
 
-  intersectSphere(center: Vector3, radius: number): { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 } {
+  intersectSphere(center: Vector3, radius: number, targetResult?: { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 }): { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 } {
     const lx = center.x - this.origin.x;
     const ly = center.y - this.origin.y;
     const lz = center.z - this.origin.z;
@@ -502,6 +519,11 @@ export class Ray {
     const r2 = radius * radius;
 
     if (d2 > r2) {
+      if (targetResult) {
+        targetResult.hasHit = false;
+        targetResult.distance = Infinity;
+        return targetResult;
+      }
       return Ray._missResult;
     }
 
@@ -510,21 +532,37 @@ export class Ray {
     let t1 = tca + thc;
 
     if (t0 < 0) t0 = t1;
-    if (t0 < 0) return Ray._missResult;
+    if (t0 < 0) {
+      if (targetResult) {
+        targetResult.hasHit = false;
+        targetResult.distance = Infinity;
+        return targetResult;
+      }
+      return Ray._missResult;
+    }
 
-    const hitPoint = new Vector3(
-      this.origin.x + dx * t0,
-      this.origin.y + dy * t0,
-      this.origin.z + dz * t0
-    );
+    const hx = this.origin.x + dx * t0;
+    const hy = this.origin.y + dy * t0;
+    const hz = this.origin.z + dz * t0;
 
-    const normal = new Vector3(
-      (hitPoint.x - center.x) / radius,
-      (hitPoint.y - center.y) / radius,
-      (hitPoint.z - center.z) / radius
-    );
+    const nx = (hx - center.x) / radius;
+    const ny = (hy - center.y) / radius;
+    const nz = (hz - center.z) / radius;
 
-    return { hasHit: true, distance: t0, point: hitPoint, normal };
+    if (targetResult) {
+      targetResult.hasHit = true;
+      targetResult.distance = t0;
+      targetResult.point.set(hx, hy, hz);
+      targetResult.normal.set(nx, ny, nz);
+      return targetResult;
+    }
+
+    return {
+      hasHit: true,
+      distance: t0,
+      point: new Vector3(hx, hy, hz),
+      normal: new Vector3(nx, ny, nz)
+    };
   }
 }
 
