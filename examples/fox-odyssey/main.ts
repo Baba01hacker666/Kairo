@@ -154,6 +154,7 @@ const _portalPosL1 = new THREE.Vector3(0, 2.6, -34);
 const _portalPosL2 = new THREE.Vector3(0, 2.6, 34);
 const _portalPosL3North = new THREE.Vector3(0, 2.6, -32);
 const _portalPosL3South = new THREE.Vector3(0, 2.6, 32);
+const _groveCenter = new THREE.Vector3(0, 0, 0);
 
 // Initial Camera Placement
 app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + currentDistance);
@@ -405,7 +406,7 @@ input.onSpiritCall = () => {
   });
 
   // Celestial Sky Harmonization at Ancient Life Tree in Golden Form
-  if (GameState.instance.isGoldenForm && player.position.distanceTo(new THREE.Vector3(0, 0, 0)) < 8.0) {
+  if (GameState.instance.isGoldenForm && player.position.distanceTo(_groveCenter) < 8.0) {
     if (endgameShrine.skyState === 'noon') {
       endgameShrine.skyState = 'sunset';
       app.scene.background = new THREE.Color(0x311b28);

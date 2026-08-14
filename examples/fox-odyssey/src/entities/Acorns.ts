@@ -16,10 +16,17 @@ export class AcornManager {
   public acorns: SunAcorn[] = [];
   private sparkleParticles: ParticleSystem;
   private audio: ForestAudio;
+  private getTerrainHeight?: (x: number, z: number) => number;
 
-  constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem, audio: ForestAudio) {
+  constructor(
+    scene: THREE.Scene,
+    sparkleParticles: ParticleSystem,
+    audio: ForestAudio,
+    getTerrainHeight?: (x: number, z: number) => number
+  ) {
     this.sparkleParticles = sparkleParticles;
     this.audio = audio;
+    this.getTerrainHeight = getTerrainHeight;
 
     const acornPositions = [
       [3, 0.4, 4], [8, 0.4, 2], [14, 0.4, 6], [22, 0.4, 12],
@@ -49,8 +56,12 @@ export class AcornManager {
       g.add(nut);
       g.add(cap);
 
+      // Sit the acorn on the actual terrain surface so it is never buried
+      // inside a hill or floating high above a valley.
+      const surfaceY = this.getTerrainHeight ? this.getTerrainHeight(ax, az) : 0;
+      const restY = surfaceY + 0.45;
       const isCollected = GameState.instance.collectedAcornIds.has(i);
-      g.position.set(ax, ay, az);
+      g.position.set(ax, restY, az);
       g.castShadow = false;
       if (isCollected) g.visible = false;
       scene.add(g);
@@ -58,9 +69,9 @@ export class AcornManager {
       this.acorns.push({
         id: i,
         mesh: g,
-        position: new THREE.Vector3(ax, ay, az),
+        position: new THREE.Vector3(ax, restY, az),
         collected: isCollected,
-        baseY: ay,
+        baseY: restY,
         spinSpeed: 2.0 + Math.random() * 1.5
       });
     }

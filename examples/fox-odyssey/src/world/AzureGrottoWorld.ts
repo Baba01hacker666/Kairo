@@ -152,7 +152,10 @@ export class AzureGrottoWorld {
 
   public getTerrainHeight(x: number, z: number): number {
     const dist = Math.sqrt(x * x + z * z);
-    let h = Math.sin(x * 0.08) * Math.sin(z * 0.08) * 2.2;
+    // The terrain plane is rotated -90deg about X, so its local Y maps to world -Z.
+    // The mesh uses Math.sin(localY) which is -Math.sin(worldZ) — mirror the sign
+    // so collision heights match the rendered geometry instead of being flipped.
+    let h = Math.sin(x * 0.08) * Math.sin(-z * 0.08) * 2.2;
     if (dist > 28) {
       h += (dist - 28) * 0.4 + Math.sin(x * 0.2) * 1.5;
     }

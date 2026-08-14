@@ -45,17 +45,17 @@ interface BodyEntry {
 
 export class SpatialHashGrid3D {
   private cellSize: number;
-  private grid: Map<string, Array<{ id: number; pos: Vector3; radius: number }>> = new Map();
+  private invCellSize: number;
+  private grid: Map<number, Array<{ id: number; pos: Vector3; radius: number }>> = new Map();
 
   constructor(cellSize: number = 2.0) {
-    this.cellSize = cellSize;
+    this.cellSize = Math.max(0.001, cellSize);
+    this.invCellSize = 1.0 / this.cellSize;
   }
 
-  private getKey(x: number, y: number, z: number): string {
-    const cx = Math.floor(x / this.cellSize);
-    const cy = Math.floor(y / this.cellSize);
-    const cz = Math.floor(z / this.cellSize);
-    return `${cx},${cy},${cz}`;
+  // Fast 32-bit integer spatial hash with zero GC string allocations
+  private getHash(cx: number, cy: number, cz: number): number {
+    return ((cx * 73856093) ^ (cy * 19349663) ^ (cz * 83492791)) | 0;
   }
 
   public clear(): void {
@@ -63,26 +63,30 @@ export class SpatialHashGrid3D {
   }
 
   public insert(id: number, pos: Vector3, radius: number = 0.5): void {
-    const key = this.getKey(pos.x, pos.y, pos.z);
-    let cell = this.grid.get(key);
+    const cx = Math.floor(pos.x * this.invCellSize);
+    const cy = Math.floor(pos.y * this.invCellSize);
+    const cz = Math.floor(pos.z * this.invCellSize);
+    const hash = this.getHash(cx, cy, cz);
+    let cell = this.grid.get(hash);
     if (!cell) {
       cell = [];
-      this.grid.set(key, cell);
+      this.grid.set(hash, cell);
     }
     cell.push({ id, pos, radius });
   }
 
-  public getNearby(pos: Vector3): Array<{ id: number; pos: Vector3; radius: number }> {
-    const cx = Math.floor(pos.x / this.cellSize);
-    const cy = Math.floor(pos.y / this.cellSize);
-    const cz = Math.floor(pos.z / this.cellSize);
-    const nearby: Array<{ id: number; pos: Vector3; radius: number }> = [];
+  public getNearby(pos: Vector3, outBuffer?: Array<{ id: number; pos: Vector3; radius: number }>): Array<{ id: number; pos: Vector3; radius: number }> {
+    const cx = Math.floor(pos.x * this.invCellSize);
+    const cy = Math.floor(pos.y * this.invCellSize);
+    const cz = Math.floor(pos.z * this.invCellSize);
+    const nearby: Array<{ id: number; pos: Vector3; radius: number }> = outBuffer || [];
+    nearby.length = 0;
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         for (let dz = -1; dz <= 1; dz++) {
-          const key = `${cx + dx},${cy + dy},${cz + dz}`;
-          const cell = this.grid.get(key);
+          const hash = this.getHash(cx + dx, cy + dy, cz + dz);
+          const cell = this.grid.get(hash);
           if (cell) {
             for (let i = 0; i < cell.length; i++) {
               nearby.push(cell[i]);

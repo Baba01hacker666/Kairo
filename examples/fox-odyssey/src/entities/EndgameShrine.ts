@@ -131,6 +131,18 @@ export class EndgameShrineManager {
     onRingPassed: (current: number, total: number) => void,
     onFinish: (elapsedSeconds: number, isNewBest: boolean) => void
   ) {
+    // The shrine & time trial belong to the Ancient Grove only — hide the altar
+    // in the other realms instead of leaving it floating in the Peaks/Grotto.
+    const isLevelOne = GameState.instance.currentLevel === 1;
+    this.timeTrialAltar.visible = isLevelOne;
+
+    if (this.isSprintActive && !isLevelOne) {
+      // Abort the trial if the fox leaves the grove mid-sprint
+      this.isSprintActive = false;
+      this.sprintRings.forEach(r => { r.mesh.visible = false; });
+      return;
+    }
+
     // Rotate center altar core
     if (this.timeTrialAltar.children[1]) {
       this.timeTrialAltar.children[1].rotation.y += dt * 1.5;
@@ -139,9 +151,9 @@ export class EndgameShrineManager {
     }
 
     if (!this.isSprintActive) {
-      // Check if player steps on central altar to start trial
+      // Check if player steps on central altar to start trial (Grove only)
       const d = playerPos.distanceTo(EndgameShrineManager._altarCenter);
-      if (d < 2.8 && GameState.instance.isGoldenForm) {
+      if (d < 2.8 && GameState.instance.isGoldenForm && isLevelOne) {
         this.startSprint(() => {});
       }
       return;

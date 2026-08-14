@@ -42,6 +42,7 @@ export class ParticleSystem {
   private maxLives: Float32Array;
 
   private activeCount: number = 0;
+  private instanceColorDirty: boolean = false;
 
   constructor(maxParticles: number = 1000, color: number = 0xffffff) {
     this.maxParticles = maxParticles;
@@ -99,49 +100,57 @@ export class ParticleSystem {
 
       let color = 0xfacc15;
 
-      if (preset === 'collect_burst') {
-        this.maxLives[idx] = 0.6 + Math.random() * 0.4;
-        this.velocitiesX[idx] = (Math.random() - 0.5) * 6;
+      if (preset === 'sparkle') {
+        this.maxLives[idx] = 0.5 + Math.random() * 0.4;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 4;
         this.velocitiesY[idx] = Math.random() * 5 + 2;
-        this.velocitiesZ[idx] = (Math.random() - 0.5) * 6;
-        color = 0x10b981;
-        this.sizes[idx] = 0.2 + Math.random() * 0.2;
-      } else if (preset === 'explosion') {
-        this.maxLives[idx] = 0.5 + Math.random() * 0.5;
-        this.velocitiesX[idx] = (Math.random() - 0.5) * 12;
-        this.velocitiesY[idx] = Math.random() * 8 + 3;
-        this.velocitiesZ[idx] = (Math.random() - 0.5) * 12;
-        color = Math.random() > 0.5 ? 0xef4444 : 0xf59e0b;
-        this.sizes[idx] = 0.3 + Math.random() * 0.3;
-      } else if (preset === 'teleport_flash') {
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 4;
+        color = 0xfef08a;
+        this.sizes[idx] = 0.15 + Math.random() * 0.15;
+      } else if (preset === 'fire') {
+        this.maxLives[idx] = 0.4 + Math.random() * 0.3;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 1.5;
+        this.velocitiesY[idx] = Math.random() * 4 + 1;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 1.5;
+        color = Math.random() > 0.5 ? 0xef4444 : 0xf97316;
+        this.sizes[idx] = 0.25;
+      } else if (preset === 'smoke') {
+        this.maxLives[idx] = 1.0 + Math.random() * 0.5;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 0.8;
+        this.velocitiesY[idx] = Math.random() * 1.5 + 0.5;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 0.8;
+        color = 0x64748b;
+        this.sizes[idx] = 0.3;
+      } else if (preset === 'dust_footstep') {
+        this.maxLives[idx] = 0.35 + Math.random() * 0.2;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 2;
+        this.velocitiesY[idx] = Math.random() * 1.5;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 2;
+        color = 0xd1fae5;
+        this.sizes[idx] = 0.12;
+      } else if (preset === 'portal_swirl') {
         this.maxLives[idx] = 0.8;
         const angle = Math.random() * Math.PI * 2;
-        const rad = Math.random() * 1.5;
-        this.velocitiesX[idx] = Math.cos(angle) * rad;
-        this.velocitiesY[idx] = Math.random() * 6 + 2;
-        this.velocitiesZ[idx] = Math.sin(angle) * rad;
-        color = 0xa855f7;
-        this.sizes[idx] = 0.25;
-      } else if (preset === 'dust_footstep') {
-        this.maxLives[idx] = 0.4;
-        this.velocitiesX[idx] = (Math.random() - 0.5) * 1.5;
-        this.velocitiesY[idx] = Math.random() * 1.0;
-        this.velocitiesZ[idx] = (Math.random() - 0.5) * 1.5;
-        color = 0xd4d4d8;
-        this.sizes[idx] = 0.15;
-      } else if (preset === 'portal_swirl') {
-        this.maxLives[idx] = 1.2;
-        const angle = Math.random() * Math.PI * 2;
-        this.velocitiesX[idx] = Math.cos(angle) * 2;
-        this.velocitiesY[idx] = Math.random() * 3 + 1;
-        this.velocitiesZ[idx] = Math.sin(angle) * 2;
-        color = 0x3b82f6;
+        this.velocitiesX[idx] = Math.cos(angle) * 3;
+        this.velocitiesY[idx] = (Math.random() - 0.5) * 2;
+        this.velocitiesZ[idx] = Math.sin(angle) * 3;
+        color = 0x38bdf8;
         this.sizes[idx] = 0.2;
+      } else if (preset === 'collect_burst') {
+        this.maxLives[idx] = 0.6;
+        const phi = Math.random() * Math.PI * 2;
+        const costheta = Math.random() * 2 - 1;
+        const theta = Math.acos(costheta);
+        const speed = Math.random() * 6 + 2;
+        this.velocitiesX[idx] = speed * Math.sin(theta) * Math.cos(phi);
+        this.velocitiesY[idx] = speed * Math.sin(theta) * Math.sin(phi);
+        this.velocitiesZ[idx] = speed * Math.cos(theta);
+        color = 0xfde047;
+        this.sizes[idx] = 0.22;
       } else {
-        // Default Sparkle
-        this.maxLives[idx] = 0.7;
+        this.maxLives[idx] = 0.5;
         this.velocitiesX[idx] = (Math.random() - 0.5) * 3;
-        this.velocitiesY[idx] = Math.random() * 4;
+        this.velocitiesY[idx] = Math.random() * 3;
         this.velocitiesZ[idx] = (Math.random() - 0.5) * 3;
         color = 0xfacc15;
         this.sizes[idx] = 0.2;
@@ -149,6 +158,7 @@ export class ParticleSystem {
 
       this.colors[idx] = color;
       this.writeInstanceColor(idx, color);
+      this.instanceColorDirty = true;
     }
   }
 
@@ -212,6 +222,7 @@ export class ParticleSystem {
           ic.array[aliveCount * 3 + 1] = ic.array[i * 3 + 1];
           ic.array[aliveCount * 3 + 2] = ic.array[i * 3 + 2];
         }
+        this.instanceColorDirty = true;
       }
 
       aliveCount++;
@@ -223,7 +234,10 @@ export class ParticleSystem {
 
     if (aliveCount > 0 || prevCount > 0) {
       this.mesh.instanceMatrix.needsUpdate = true;
-      if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+      if (this.mesh.instanceColor && this.instanceColorDirty) {
+        this.mesh.instanceColor.needsUpdate = true;
+        this.instanceColorDirty = false;
+      }
     }
   }
 }

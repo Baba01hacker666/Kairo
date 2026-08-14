@@ -77,6 +77,9 @@ export class GameBugDetector {
   // Track runtime console and unhandled errors
   private originalOnError: any = null;
   private originalOnUnhandledRejection: any = null;
+  private onUnhandledRejection: any = null;
+  private onKeydown: any = null;
+  private disposed: boolean = false;
 
   constructor() {
     this.hookGlobalErrors();
@@ -102,7 +105,7 @@ export class GameBugDetector {
       };
 
       this.originalOnUnhandledRejection = (window as any).onunhandledrejection;
-      window.addEventListener('unhandledrejection', (event) => {
+      this.onUnhandledRejection = (event: PromiseRejectionEvent) => {
         this.addBug({
           category: 'runtime_error',
           severity: 'critical',
@@ -112,15 +115,35 @@ export class GameBugDetector {
           details: { reason: event.reason },
           suggestedFix: 'Add .catch() error handler or wrap async calls with try/catch.'
         });
-      });
+      };
+      window.addEventListener('unhandledrejection', this.onUnhandledRejection);
 
       // Hotkey to toggle QA Bug Detector Overlay (F4 or Alt+B)
-      window.addEventListener('keydown', (e) => {
+      this.onKeydown = (e: KeyboardEvent) => {
         if (e.code === 'F4' || (e.altKey && e.code === 'KeyB')) {
           this.toggleOverlay();
         }
-      });
+      };
+      window.addEventListener('keydown', this.onKeydown);
     }
+  }
+
+  /** Remove all global error listeners and restore the original handlers. */
+  public dispose(): void {
+    if (this.disposed || typeof window === 'undefined') return;
+    this.disposed = true;
+    if (this.onUnhandledRejection) {
+      window.removeEventListener('unhandledrejection', this.onUnhandledRejection);
+      this.onUnhandledRejection = null;
+    }
+    if (this.onKeydown) {
+      window.removeEventListener('keydown', this.onKeydown);
+      this.onKeydown = null;
+    }
+    if (this.originalOnError) {
+      window.onerror = this.originalOnError;
+    }
+    this.disableLiveWatchdog();
   }
 
   public addBug(bug: Omit<GameBug, 'id' | 'timestamp'>): GameBug {
@@ -425,10 +448,9 @@ export class GameBugDetector {
     };
 
     if (app.onUpdate) {
-      app.onUpdate(onUpdate);
-      this.watchdogUnsubscribe = () => {
-        // Unsubscribe if engine supports it
-      };
+      // onUpdate returns an unsubscribe function — capture it so the watchdog
+      // can actually be stopped instead of running forever.
+      this.watchdogUnsubscribe = app.onUpdate(onUpdate);
     }
   }
 

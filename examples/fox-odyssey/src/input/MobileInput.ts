@@ -15,6 +15,7 @@ export class MobileInput {
   // 3D Camera Look & Orbit Drag
   public lookDelta: { x: number; y: number } = { x: 0, y: 0 };
   public zoomDelta: number = 0;
+  private _consumedLook: { x: number; y: number; zoom: number } = { x: 0, y: 0, zoom: 0 }; // Reused to avoid per-frame allocation
   private cameraTouchId: number | null = null;
   private lastCameraTouch = { x: 0, y: 0 };
   private isMouseDraggingCamera: boolean = false;
@@ -37,6 +38,8 @@ export class MobileInput {
 
   private initKeyboard() {
     window.addEventListener('keydown', e => {
+      // Ignore auto-repeat so holding Space/Shift doesn't spam jumps/pounces
+      if (e.repeat) return;
       this.keys[e.code] = true;
       if (e.code === 'Space') {
         e.preventDefault();
@@ -329,14 +332,17 @@ export class MobileInput {
   }
 
   /**
-   * Consume and reset camera look deltas for smooth frame rotation
+   * Consume and reset camera look deltas for smooth frame rotation.
+   * Writes into a reused object so no garbage is produced at 60fps.
    */
   public consumeLookDelta(): { x: number; y: number; zoom: number } {
-    const res = { x: this.lookDelta.x, y: this.lookDelta.y, zoom: this.zoomDelta };
+    this._consumedLook.x = this.lookDelta.x;
+    this._consumedLook.y = this.lookDelta.y;
+    this._consumedLook.zoom = this.zoomDelta;
     this.lookDelta.x = 0;
     this.lookDelta.y = 0;
     this.zoomDelta = 0;
-    return res;
+    return this._consumedLook;
   }
 
   public update(): InputVector {

@@ -168,9 +168,14 @@ export class ElderOwl {
     this.wingLeft.rotation.z = 0.2 + Math.sin(this.animTime * 4) * 0.08;
     this.wingRight.rotation.z = -0.2 - Math.sin(this.animTime * 4) * 0.08;
 
-    // Head tracks player smoothly (Owl 180-degree neck turn)
+    // Head tracks player smoothly (Owl 180-degree neck turn).
+    // Wrap the angle difference so the head never spins the long way around
+    // when the player crosses the +/-PI boundary.
     ElderOwl._toPlayer.subVectors(playerPos, this.group.position);
     const targetAngle = Math.atan2(ElderOwl._toPlayer.x, ElderOwl._toPlayer.z);
-    this.headMesh.rotation.y = THREE.MathUtils.lerp(this.headMesh.rotation.y, targetAngle, dt * 4.0);
+    let diff = targetAngle - this.headMesh.rotation.y;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    this.headMesh.rotation.y += diff * Math.min(1.0, dt * 4.0);
   }
 }
