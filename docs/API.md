@@ -47,13 +47,11 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `app.toggleBugInspector()` / `bugDetector.toggleOverlay()`: Visual in-game diagnostic panel displaying live alerts, health score, and export button.
 - `bugDetector.enableLiveWatchdog(app, options)`: Lightweight background assertion monitor running frame checks.
 - `bugDetector.exportReportMarkdown()` / `downloadReportMarkdown()`: Exports diagnostic bug report for CI/CD and debugging.
-- **Bug Detection Vectors**:
-  - `nan_infinity`: Catches NaN or Infinity in positions, Euler rotations, velocities, and audio parameters.
-  - `physics_anomaly`: Detects extreme velocities (>500 u/s) risking tunneling and out-of-bounds fallen objects ($y < -150$).
-  - `memory_leak`: Detects unreleased Three.js geometries/materials, runaway entity counts, and orphaned entities.
-  - `rendering_glitch`: Catches degenerate/negative scales ($s \le 0$), missing materials, and missing geometries.
-  - `performance_spike`: Identifies severe frame rate drops (<22 FPS) and draw call spikes (>350 calls).
-  - `runtime_error`: Intercepts unhandled JS exceptions and promise rejections with stack traces and suggested fixes.
+
+### `Kairo CLI` (`kairo` / `CodeBugAuditor`)
+- `kairo test [path]` / `kairo audit [path]`: Scans game source files for GC churn in 60fps loops, NaN division by zero risks, asset 404s, shader uniform type mismatches, and dual camera controller fighting.
+- `kairo doctor`: Diagnoses runtime platform, Node.js version, and Kairo packages environment.
+- `kairo report [--md]`: Exports structured Markdown QA reports for CI/CD pipelines.
 
 ---
 

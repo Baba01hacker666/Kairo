@@ -4,3 +4,4 @@ export * from './ScreenRecorder.ts';
 export * from './DebugRenderer.ts';
 export * from './VideoEditor.ts';
 export * from './GameBugDetector.ts';
+export * from './cli.ts';
