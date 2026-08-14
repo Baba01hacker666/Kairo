@@ -23,6 +23,7 @@ export declare class BrambleGolem {
     private shockwaveRadius;
     private vulnerableTimer;
     private static readonly _scratchDist;
+    private static readonly _dustPos;
     constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem, dustParticles: ParticleSystem, audio: ForestAudio);
     takeDamage(damage: number, onDefeated: () => void): void;
     update(dt: number, timeSeconds: number, playerPos: THREE.Vector3, isPlayerGrounded: boolean, onDamagePlayer: () => void): void;
