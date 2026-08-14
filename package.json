@@ -39,6 +39,7 @@
     "test:fox-movement": "node --import tsx --test tests/fox-movement.test.js"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "@types/stats.js": "^0.17.4",
     "@types/three": "^0.185.1",
     "@types/webxr": "^0.5.24",
