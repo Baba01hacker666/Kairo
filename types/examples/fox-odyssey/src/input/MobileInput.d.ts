@@ -5,6 +5,7 @@ export interface InputVector {
 export declare class MobileInput {
     moveVector: InputVector;
     isPouncing: boolean;
+    private _outVector;
     onJump: (() => void) | null;
     onPounce: (() => void) | null;
     onSpiritCall: (() => void) | null;

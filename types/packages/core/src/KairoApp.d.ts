@@ -26,6 +26,8 @@ export interface KairoAppConfig {
     orthoScale?: number;
     enableBabylon?: boolean;
     rendererBackend?: 'webgl' | 'webgpu';
+    /** Auto-tune resolution & shadow quality to hold a smooth frame rate (default: true). */
+    adaptiveQuality?: boolean;
 }
 /**
  * Modern High-Level Production Game Engine Wrapper

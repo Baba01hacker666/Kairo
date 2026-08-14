@@ -26,6 +26,8 @@ export declare class GameState {
     soundEnabled: boolean;
     isPhotoMode: boolean;
     gameStartTime: number;
+    /** Last known player position, used as default when saving without an explicit position. */
+    private lastPlayerPos;
     private listeners;
     private static readonly SAVE_KEY;
     on(event: string, callback: (data?: any) => void): void;

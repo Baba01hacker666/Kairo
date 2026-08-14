@@ -7,5 +7,7 @@ export declare class AcornManager {
     private sparkleParticles;
     private audio;
     constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem, audio: ForestAudio);
+    /** Restore collected state from the save so already-collected acorns are hidden. */
+    syncWithSave(): void;
     update(dt: number, timeSeconds: number, playerPos: THREE.Vector3, onCollect: (count: number) => void): void;
 }

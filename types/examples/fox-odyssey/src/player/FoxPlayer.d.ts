@@ -15,7 +15,6 @@ export declare class FoxPlayer {
     walkSpeed: number;
     pounceSpeed: number;
     jumpForce: number;
-    private pounceTimer;
     private barkTimer;
     private auraRing;
     private auraMaterial;

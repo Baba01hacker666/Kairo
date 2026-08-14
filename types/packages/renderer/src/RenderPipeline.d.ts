@@ -43,7 +43,22 @@ export declare class RenderPipeline {
     private lastTime;
     private frameCount;
     private fpsTimer;
+    private adaptiveEnabled;
+    private adaptiveLevel;
+    private adaptiveMaxLevel;
+    private adaptiveTimer;
+    private lowFpsStreak;
+    private highFpsStreak;
+    private readonly PIXEL_RATIO_STEPS;
+    private readonly SHADOW_MAP_STEPS;
+    private basePixelRatio;
+    private baseShadowSize;
+    private adaptiveBaseCaptured;
     constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera);
+    /** Enable/disable automatic resolution scaling when FPS drops. */
+    setAdaptiveQuality(enabled: boolean): void;
+    private evaluateAdaptiveQuality;
+    private applyAdaptiveLevel;
     private setupRendererDefaults;
     setToneMappingExposure(exposure: number): void;
     private currentSun;
