@@ -1,5 +1,13 @@
 import { GameState } from '../state.ts';
 
+export interface ObjectiveItem {
+  id: string;
+  text: string;
+  isCompleted: boolean;
+  currentCount?: number;
+  totalCount?: number;
+}
+
 export class GameHUD {
   // Start Screen Elements
   private startScreenEl = document.getElementById('start-screen')!;
@@ -13,7 +21,10 @@ export class GameHUD {
   // HUD Elements
   private acornValEl = document.getElementById('acorn-val')!;
   private staminaFillEl = document.getElementById('stamina-fill')!;
+  private realmPillEl = document.getElementById('realm-pill')!;
+  private questChapterTagEl = document.getElementById('quest-chapter-tag')!;
   private questTextEl = document.getElementById('quest-text')!;
+  private questObjectivesListEl = document.getElementById('quest-objectives-list')!;
   private spiritRankBadgeEl = document.getElementById('spirit-rank-badge')!;
   private actionToastEl = document.getElementById('action-toast')!;
   private toastIconEl = document.getElementById('toast-icon')!;
@@ -35,6 +46,7 @@ export class GameHUD {
   private dialogueCloseBtnEl = document.getElementById('dialogue-close-btn')!;
 
   private toastTimeout: any = null;
+  private hasTalkedToOwl: boolean = false;
 
   constructor(
     onStartGame: (isContinue: boolean) => void,
@@ -90,6 +102,8 @@ export class GameHUD {
     // Dialogue Close
     this.dialogueCloseBtnEl.addEventListener('click', () => {
       this.dialogueBoxEl.classList.remove('active');
+      this.hasTalkedToOwl = true;
+      this.renderQuestObjectives();
       onPlayClickSound();
     });
 
@@ -100,12 +114,18 @@ export class GameHUD {
 
     // Reactive State Subscriptions
     GameState.instance.on('acorn_collected', (count: number) => {
-      this.acornValEl.innerText = `${count} / ${GameState.instance.totalAcorns}`;
+      if (this.acornValEl) {
+        this.acornValEl.innerText = `${count} / ${GameState.instance.totalAcorns}`;
+      }
+      this.renderQuestObjectives();
     });
 
-    GameState.instance.on('wisp_collected', ({ id }: { id: number }) => {
-      const dotEl = document.getElementById(`wisp-dot-${id}`);
-      if (dotEl) dotEl.classList.add('collected');
+    GameState.instance.on('wisp_collected', () => {
+      this.renderQuestObjectives();
+    });
+
+    GameState.instance.on('beast_defeated', () => {
+      this.renderQuestObjectives();
     });
 
     GameState.instance.on('player_damaged', (hearts: number) => {
@@ -118,8 +138,13 @@ export class GameHUD {
       this.showToast(`Restored Heart! (${hearts}/${GameState.instance.maxHearts} ❤️)`, '💖');
     });
 
-    GameState.instance.on('chapter_changed', (chapter: number) => {
-      this.updateChapterQuestText(chapter);
+    GameState.instance.on('chapter_changed', () => {
+      this.renderQuestObjectives();
+    });
+
+    GameState.instance.on('level_changed', (level: number) => {
+      this.updateRealm(level);
+      this.renderQuestObjectives();
     });
 
     GameState.instance.on('game_won', () => {
@@ -146,19 +171,17 @@ export class GameHUD {
   }
 
   public syncSavedUI() {
-    this.acornValEl.innerText = `${GameState.instance.acornsCollected} / ${GameState.instance.totalAcorns}`;
+    if (this.acornValEl) {
+      this.acornValEl.innerText = `${GameState.instance.acornsCollected} / ${GameState.instance.totalAcorns}`;
+    }
     this.updateHearts(GameState.instance.hearts, GameState.instance.maxHearts);
-    this.updateChapterQuestText(GameState.instance.currentChapter);
+    this.updateRealm(GameState.instance.currentLevel);
+    this.renderQuestObjectives();
+  }
 
-    for (let i = 0; i < 5; i++) {
-      const dotEl = document.getElementById(`wisp-dot-${i}`);
-      if (dotEl) {
-        if (GameState.instance.collectedWispIds.has(i)) {
-          dotEl.classList.add('collected');
-        } else {
-          dotEl.classList.remove('collected');
-        }
-      }
+  public updateRealm(level: number) {
+    if (this.realmPillEl) {
+      this.realmPillEl.innerText = level === 2 ? '💎 Crystal Peaks' : '🌲 Ancient Grove';
     }
   }
 
@@ -175,15 +198,66 @@ export class GameHUD {
     }
   }
 
-  public updateChapterQuestText(chapter: number) {
-    const quests: Record<number, string> = {
-      1: 'Chapter 1: Speak with Elder Owl & cleanse the Shadow Creepers (⚡/Shift)!',
-      2: 'Chapter 2: Ring the 4 Chime Monoliths (🔔/E) & gather 20 Sun Acorns!',
-      3: 'Chapter 3: Step through the Northern Portal to the Moonlit Crystal Peaks!',
-      4: 'Chapter 4: Awaken the Moon Altar & Defeat the Shadow Behemoth!'
+  public renderQuestObjectives() {
+    const chapter = GameState.instance.currentChapter;
+    const state = GameState.instance;
+
+    const chapterTitles: Record<number, { tag: string; title: string }> = {
+      1: { tag: 'CHAPTER 1', title: 'The Ashen Shadow' },
+      2: { tag: 'CHAPTER 2', title: 'Harmonize the Grove' },
+      3: { tag: 'CHAPTER 3', title: 'The Alpine Gateway' },
+      4: { tag: 'CHAPTER 4', title: 'The Moonlit Summit' }
     };
-    if (this.questTextEl) {
-      this.questTextEl.innerText = quests[chapter] || quests[1];
+
+    const info = chapterTitles[chapter] || chapterTitles[1];
+    if (this.questChapterTagEl) this.questChapterTagEl.innerText = info.tag;
+    if (this.questTextEl) this.questTextEl.innerText = info.title;
+
+    let objectives: ObjectiveItem[] = [];
+
+    if (chapter === 1) {
+      const creepersKilled = Math.min(3, state.beastsDefeated);
+      objectives = [
+        { id: 'owl', text: 'Speak with Grand Elder Owl', isCompleted: this.hasTalkedToOwl },
+        { id: 'creepers', text: `Purify Shadow Creepers (${creepersKilled}/3)`, isCompleted: creepersKilled >= 3 },
+        { id: 'acorns', text: `Gather Sun Acorns (${state.acornsCollected}/${state.totalAcorns})`, isCompleted: state.acornsCollected >= state.totalAcorns }
+      ];
+    } else if (chapter === 2) {
+      const chimesLit = state.litChimeIds.size;
+      const wisps = state.wispsCollectedCount;
+      objectives = [
+        { id: 'chimes', text: `Ring Ancient Chimes (${chimesLit}/4 🔔)`, isCompleted: chimesLit >= 4 },
+        { id: 'wisps', text: `Awaken Grove Wisps (${wisps}/5 ✨)`, isCompleted: wisps >= 5 },
+        { id: 'acorns', text: `Gather Sun Acorns (${state.acornsCollected}/${state.totalAcorns})`, isCompleted: state.acornsCollected >= state.totalAcorns }
+      ];
+    } else if (chapter === 3) {
+      const isL2 = state.currentLevel === 2;
+      objectives = [
+        { id: 'portal', text: 'Step through the Northern Portal', isCompleted: isL2 },
+        { id: 'explore', text: 'Explore the Moonlit Crystal Peaks', isCompleted: isL2 },
+        { id: 'geyser', text: 'Launch off a Crystal Geyser 💨', isCompleted: isL2 }
+      ];
+    } else {
+      objectives = [
+        { id: 'altar', text: 'Ascend to the Moon Altar 💎', isCompleted: state.isGameWon },
+        { id: 'boss', text: 'Cleanse the Shadow Behemoth', isCompleted: state.isGameWon },
+        { id: 'golden', text: 'Master the Golden Spirit Fox Form', isCompleted: state.isGoldenForm }
+      ];
+    }
+
+    if (this.questObjectivesListEl) {
+      this.questObjectivesListEl.innerHTML = objectives
+        .map(
+          obj => `
+        <div class="quest-obj-row ${obj.isCompleted ? 'completed' : ''}">
+          <span class="obj-checkbox ${obj.isCompleted ? 'checked' : ''}">
+            ${obj.isCompleted ? '✓' : ''}
+          </span>
+          <span class="obj-text">${obj.text}</span>
+        </div>
+      `
+        )
+        .join('');
     }
   }
 
@@ -219,14 +293,16 @@ export class GameHUD {
   }
 
   public updateStamina(stamina: number, maxStamina: number) {
-    this.staminaFillEl.style.width = `${(stamina / maxStamina) * 100}%`;
+    if (this.staminaFillEl) {
+      this.staminaFillEl.style.width = `${(stamina / maxStamina) * 100}%`;
+    }
   }
 
   public showVictoryModal() {
     this.spiritRankBadgeEl.innerText = 'Golden Avatar';
     this.spiritRankBadgeEl.style.background = 'rgba(245, 158, 11, 0.4)';
     this.spiritRankBadgeEl.style.color = '#fff';
-    this.questTextEl.innerText = 'Ancient Grove & Crystal Peaks Restored!';
+    this.renderQuestObjectives();
 
     const elapsed = Math.floor((performance.now() - GameState.instance.gameStartTime) / 1000);
     const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
