@@ -125,6 +125,18 @@ test('Tween - from() tweens from given values to current', () => {
   assert.strictEqual(obj.scale, 2);
 });
 
+test('Tween - non-numeric properties are skipped without errors', () => {
+  const manager = new TweenManager();
+  const obj = { x: 0, name: 'fox', tag: 'hero' };
+  manager.to(obj, { x: 10, name: 'wolf', tag: 'villain' }, { duration: 1, easing: 'linear' });
+  manager.update(0.5);
+  assert.strictEqual(obj.x, 5);
+  assert.strictEqual(obj.name, 'fox'); // string props untouched
+  assert.strictEqual(obj.tag, 'hero');
+  manager.update(0.5);
+  assert.strictEqual(obj.x, 10);
+});
+
 test('Tween - fromTo() and killAll()', () => {
   const manager = new TweenManager();
   const obj = { x: 0 };

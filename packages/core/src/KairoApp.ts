@@ -17,6 +17,7 @@ import { QuestSystem } from './QuestSystem.ts';
 import { DialogueSystem } from './DialogueSystem.ts';
 import { CombatSystem } from './Combat.ts';
 import { TweenManager } from './Tween.ts';
+import { CameraFX } from './CameraFX.ts';
 import { AssetManager } from '@kairo/assets';
 import { animate } from 'motion';
 import * as BABYLON from '@babylonjs/core';
@@ -77,6 +78,7 @@ export class KairoApp {
   public dialogue: DialogueSystem;
   public combat: CombatSystem;
   public tweens: TweenManager;
+  public cameraFX: CameraFX;
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig | string = {}) {
@@ -205,6 +207,18 @@ export class KairoApp {
       this.camera.position.set(0, 6, 12);
     }
     this.cameraController = new CameraController(this.camera);
+    // Seed smooth lookAt from the camera's real forward direction (THREE Vector3).
+    const fxLookDir = new THREE.Vector3();
+    this.cameraFX = new CameraFX(this.camera, this.tweens, {
+      getLookTarget: () => {
+        this.camera.getWorldDirection(fxLookDir);
+        return {
+          x: this.camera.position.x + fxLookDir.x,
+          y: this.camera.position.y + fxLookDir.y,
+          z: this.camera.position.z + fxLookDir.z
+        };
+      }
+    });
 
     // Setup Render Pipeline
     this.pipeline = new RenderPipeline(this.renderer, this.scene, this.camera);
@@ -246,6 +260,7 @@ export class KairoApp {
       this.tweens.update(dt);
       this.dialogue.update(dt);
       this.combat.update(dt);
+      this.cameraFX.update(dt);
       
       this.physics.step(dt);
       if (this.cameraController.enabled) {

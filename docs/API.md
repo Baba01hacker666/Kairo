@@ -33,6 +33,7 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `app.dialogue`: `DialogueSystem` — branching dialogue with typewriter & choices.
 - `app.combat`: `CombatSystem` — entity health registry & damage events.
 - `app.tweens`: `TweenManager` — eased tweens for numeric properties (auto-ticked every frame).
+- `app.cameraFX`: `CameraFX` — tween-based camera shake, fov zoom, moveTo, and smooth lookAt.
 
 ### `QuestSystem`
 - `new QuestSystem()`: Quest & objective tracker. Emits `quest_started`, `quest_completed`, `quest_failed`, `objective_progress`, `objective_completed`, `quest_unlocked`.
@@ -42,6 +43,7 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `advance(id, objectiveId, amount?)` / `setProgress(id, objectiveId, value)`: Update objective progress; objectives & quests auto-complete.
 - `complete(id)` / `fail(id)`: Force-complete or fail a quest.
 - `get(id)` / `getActive()` / `isActive(id)` / `isCompleted(id)` / `hasUnlocked(id)`: Inspect quest state.
+- `getFormattedText(id, objectiveId)` / `getFormattedObjectives(id)`: Objective text with `{current}` / `{total}` placeholders filled with live progress.
 - `serialize()` / `deserialize(snapshots)`: Save/load quest state (definitions must be registered first).
 
 ### `DialogueSystem`
@@ -71,6 +73,14 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `TweenOptions`: `{ duration?, delay?, easing?, repeat?, yoyo?, onUpdate?, onComplete? }`.
 - Supports scalars, arrays, and nested objects (e.g. `THREE.Vector3` / engine `Vector3`).
 - `tween.then(next)`: Chain tweens. `tween.kill()` / `tweens.killAll()`: Cancel.
+
+### `CameraFX`
+- `new CameraFX(camera, tweens, config?)`: Tween-based camera effects. `config: { minFov?, maxFov? }`. Works with any camera-like object (position + optional `fov`, `lookAt`, `updateProjectionMatrix`, `getWorldDirection`).
+- `shake(intensity, duration, { decay?, axisScale? })`: Decaying random shake. Offsets are applied as per-frame deltas, so it composes with game-driven camera movement and settles back exactly.
+- `punchZoom(amount, duration?, easing?)` / `zoomTo(fov, duration?, easing?)`: FOV effects that refresh `updateProjectionMatrix`.
+- `moveTo({x, y, z}, duration?, easing?)`: Eased position tween via `app.tweens`.
+- `lookAt({x, y, z}, duration?, easing?)`: Smoothly rotates to face a target using the camera's own `lookAt`.
+- `stopShake()` / `stopLookAt()` / `update(dt)`: Control and tick (auto-ticked via `app.cameraFX`).
 
 ---
 

@@ -71,8 +71,15 @@ function isTweenable(value: unknown): value is Tweenable {
   if (typeof value === 'number' && Number.isFinite(value)) return true;
   if (Array.isArray(value)) return value.every(v => typeof v === 'number' && Number.isFinite(v));
   if (typeof value === 'object' && value !== null) {
-    const values = Object.values(value);
-    return values.length > 0 && values.every(v => typeof v === 'number' && Number.isFinite(v));
+    // for..in avoids the temporary array that Object.values() would allocate
+    // on tween-creation hot paths.
+    let hasProps = false;
+    for (const key in value) {
+      hasProps = true;
+      const v = (value as Record<string, unknown>)[key];
+      if (typeof v !== 'number' || !Number.isFinite(v)) return false;
+    }
+    return hasProps;
   }
   return false;
 }

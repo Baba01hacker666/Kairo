@@ -43,6 +43,7 @@ npx kairo audit examples/fox-odyssey
 - **💬 DialogueSystem** (`app.dialogue`): Branching dialogue scripts with a typewriter effect, speaker/avatar metadata, and player choices.
 - **❤️ Combat** (`app.combat`): Entity health pools with damage/heal/death/revive events, invulnerability windows, and a named-entity registry.
 - **✨ Tweens** (`app.tweens`): Eased tweens for any numeric property (scalars, arrays, vectors) with delay, repeat, yoyo, and chaining.
+- **🎥 CameraFX** (`app.cameraFX`): Tween-based camera shake, FOV zoom punches, position tweens, and smooth look-at.
 - **`@kairo/renderer`**: WebGL/WebGPU rendering, shaders, and particle systems.
 - **`@kairo/physics`**: 3D rigid bodies, raycasting, and collision detection.
 - **`@kairo/audio`**: Positional 3D spatial audio and procedural sound effects.

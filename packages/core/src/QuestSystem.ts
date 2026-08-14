@@ -159,6 +159,27 @@ export class QuestSystem extends EventEmitter {
     return this.quests.get(id) ?? this.buildState(def);
   }
 
+  /** Objective text with {current}/{total} placeholders filled with live values. */
+  public getFormattedText(id: string, objectiveId: string): string | null {
+    const quest = this.get(id);
+    const obj = quest?.objectives.find(o => o.id === objectiveId);
+    if (!obj) return null;
+    return formatObjectiveText(obj.text, obj.progress, obj.target);
+  }
+
+  /** All objectives of a quest with their placeholder-formatted display text. */
+  public getFormattedObjectives(id: string): Array<{ id: string; text: string; progress: number; target: number; completed: boolean }> | null {
+    const quest = this.get(id);
+    if (!quest) return null;
+    return quest.objectives.map(o => ({
+      id: o.id,
+      text: formatObjectiveText(o.text, o.progress, o.target),
+      progress: o.progress,
+      target: o.target,
+      completed: o.completed
+    }));
+  }
+
   /** All active (in-progress) quests. */
   public getActive(): QuestState[] {
     const result: QuestState[] = [];
@@ -268,4 +289,8 @@ export class QuestSystem extends EventEmitter {
       hidden: def.hidden ?? false
     };
   }
+}
+
+function formatObjectiveText(text: string, progress: number, target: number): string {
+  return text.split('{current}').join(String(progress)).split('{total}').join(String(target));
 }

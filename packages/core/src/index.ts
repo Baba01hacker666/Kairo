@@ -15,6 +15,7 @@ export * from './QuestSystem.ts';
 export * from './DialogueSystem.ts';
 export * from './Combat.ts';
 export * from './Tween.ts';
+export * from './CameraFX.ts';
 
 // Unified Engine Package Exports
 export * from '@kairo/ecs';

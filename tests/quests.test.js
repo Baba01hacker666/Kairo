@@ -86,6 +86,24 @@ test('QuestSystem - fail quest and serialize/deserialize round trip', () => {
   assert.strictEqual(qs2.get('run').objectives[0].completed, false);
 });
 
+test('QuestSystem - getFormattedText fills {current}/{total} placeholders', () => {
+  const qs = new QuestSystem();
+  qs.register({ id: 'gather', title: 'Gather', objectives: [{ id: 'acorns', text: 'Gather {current}/{total} acorns', target: 5 }] });
+  qs.start('gather');
+  qs.advance('gather', 'acorns', 3);
+
+  assert.strictEqual(qs.getFormattedText('gather', 'acorns'), 'Gather 3/5 acorns');
+  assert.strictEqual(qs.getFormattedText('gather', 'missing'), null);
+  assert.strictEqual(qs.getFormattedText('nope', 'acorns'), null);
+
+  const formatted = qs.getFormattedObjectives('gather');
+  assert.strictEqual(formatted.length, 1);
+  assert.strictEqual(formatted[0].text, 'Gather 3/5 acorns');
+  assert.strictEqual(formatted[0].progress, 3);
+  assert.strictEqual(formatted[0].completed, false);
+  assert.strictEqual(qs.getFormattedObjectives('nope'), null);
+});
+
 test('QuestSystem - unknown quest throws on progress, getActive lists started quests', () => {
   const qs = new QuestSystem();
   assert.throws(() => qs.advance('nope', 'o'));
