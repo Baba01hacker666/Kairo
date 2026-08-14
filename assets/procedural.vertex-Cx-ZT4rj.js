@@ -1,0 +1,1 @@
+import{Ti as e}from"./vendor-BMZqWkbJ.js";export{e as proceduralVertexShaderWGSL};

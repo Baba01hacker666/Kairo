@@ -1,0 +1,1 @@
+import{ir as e}from"./vendor-BMZqWkbJ.js";export{e as passPixelShaderWGSL};

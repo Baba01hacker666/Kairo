@@ -1,0 +1,1 @@
+import{G as e,J as t,K as n,X as r,Y as i,q as a}from"./vendor-BMZqWkbJ.js";export{e as AnimationPropertyInfo,n as TransformNodeAnimationPropertyInfo,a as WeightAnimationPropertyInfo,t as getQuaternion,i as getVector3,r as getWeights};

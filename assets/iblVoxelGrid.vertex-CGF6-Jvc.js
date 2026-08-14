@@ -1,0 +1,1 @@
+import{it as e}from"./vendor-BMZqWkbJ.js";export{e as iblVoxelGridVertexShaderWGSL};

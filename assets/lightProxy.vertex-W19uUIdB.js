@@ -1,0 +1,1 @@
+import{Oa as e}from"./vendor-BMZqWkbJ.js";export{e as lightProxyVertexShaderWGSL};

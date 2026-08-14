@@ -1,0 +1,1 @@
+import{M as e}from"./vendor-BMZqWkbJ.js";export{e as gaussianSplattingVertexShader};

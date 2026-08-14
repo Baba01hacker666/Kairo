@@ -1,1 +1,0 @@
-import{pa as e}from"./vendor-CiG8lhUG.js";export{e as lightVxUboDeclaration};

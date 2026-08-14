@@ -1,0 +1,1 @@
+import{y as e}from"./vendor-BMZqWkbJ.js";export{e as volumetricLightingRenderVolumeVertexShader};

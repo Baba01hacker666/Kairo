@@ -9,9 +9,10 @@ export declare class MobileInput {
     onPounce: (() => void) | null;
     onSpiritCall: (() => void) | null;
     onTogglePhotoMode: (() => void) | null;
-    private joystickContainer;
+    private joystickZone;
     private joystickKnob;
-    private joystickTouchId;
+    private activeTouchId;
+    private isPointerTracking;
     private joystickCenter;
     private maxRadius;
     private keys;

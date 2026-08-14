@@ -1,0 +1,1 @@
+import{Da as e}from"./vendor-BMZqWkbJ.js";export{e as lightVxUboDeclarationWGSL};

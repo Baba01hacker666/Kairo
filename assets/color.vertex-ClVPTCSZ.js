@@ -1,0 +1,1 @@
+import{Xr as e}from"./vendor-BMZqWkbJ.js";export{e as colorVertexShaderWGSL};

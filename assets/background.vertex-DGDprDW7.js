@@ -1,0 +1,1 @@
+import{wa as e}from"./vendor-BMZqWkbJ.js";export{e as backgroundVertexShaderWGSL};

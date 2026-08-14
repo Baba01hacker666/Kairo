@@ -1,0 +1,1 @@
+import{Lr as e}from"./vendor-BMZqWkbJ.js";export{e as particlesPixelShader};

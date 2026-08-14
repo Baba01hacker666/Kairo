@@ -1,0 +1,1 @@
+import{ua as e}from"./vendor-BMZqWkbJ.js";export{e as backgroundVertexShader};

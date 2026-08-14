@@ -1,0 +1,1 @@
+import{fr as e}from"./vendor-BMZqWkbJ.js";export{e as volumetricLightScatteringPassPixelShaderWGSL};

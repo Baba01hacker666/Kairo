@@ -1,0 +1,1 @@
+import{Zu as e}from"./vendor-BMZqWkbJ.js";export{e as bonesDeclarationWGSL};
