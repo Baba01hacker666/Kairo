@@ -10,6 +10,11 @@ import { DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline, GameBugDe
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
+import { QuestSystem } from './QuestSystem.ts';
+import { DialogueSystem } from './DialogueSystem.ts';
+import { CombatSystem } from './Combat.ts';
+import { TweenManager } from './Tween.ts';
+import { CameraFX } from './CameraFX.ts';
 import { AssetManager } from '@kairo/assets';
 import * as BABYLON from '@babylonjs/core';
 export interface KairoAppConfig {
@@ -58,6 +63,11 @@ export declare class KairoApp {
     debugRenderer: DebugRenderer;
     videoTimeline: VideoTimeline;
     bugDetector: GameBugDetector;
+    quests: QuestSystem;
+    dialogue: DialogueSystem;
+    combat: CombatSystem;
+    tweens: TweenManager;
+    cameraFX: CameraFX;
     private sceneObstacles;
     constructor(config?: KairoAppConfig | string);
     /** Native mobile touch joystick & action buttons helper */
