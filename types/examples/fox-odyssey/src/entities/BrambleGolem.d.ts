@@ -1,0 +1,29 @@
+import * as THREE from 'three';
+import { ParticleSystem } from '@kairo/renderer';
+import { ForestAudio } from '../audio/ForestAudio.ts';
+export declare class BrambleGolem {
+    group: THREE.Group;
+    position: THREE.Vector3;
+    hp: number;
+    maxHp: number;
+    isAlive: boolean;
+    isVulnerable: boolean;
+    private coreMesh;
+    private coreMat;
+    private fistLeft;
+    private fistRight;
+    private shockwaveRing;
+    private shockwaveMat;
+    private sparkleParticles;
+    private dustParticles;
+    private audio;
+    private attackTimer;
+    private slamAnimTimer;
+    private shockwaveActive;
+    private shockwaveRadius;
+    private vulnerableTimer;
+    private static readonly _scratchDist;
+    constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem, dustParticles: ParticleSystem, audio: ForestAudio);
+    takeDamage(damage: number, onDefeated: () => void): void;
+    update(dt: number, timeSeconds: number, playerPos: THREE.Vector3, isPlayerGrounded: boolean, onDamagePlayer: () => void): void;
+}
