@@ -10,7 +10,7 @@ export class FoxPlayer {
   public velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   public rotationY: number = Math.PI; // Face forward into grove on spawn
   public isGrounded: boolean = true;
-  public canDoubleJump: boolean = true;
+  public airJumpsLeft: number = 1;
   public isPouncing: boolean = false;
 
   public container: THREE.Group;
@@ -129,6 +129,10 @@ export class FoxPlayer {
           this.container.add(model);
           this.loadedModel = model;
 
+          if (GameState.instance.isGoldenForm) {
+            this.setGoldenAura();
+          }
+
           if (gltf.animations && gltf.animations.length >= 3) {
             this.animStateMachine = new AnimationStateMachine(model);
             this.animStateMachine.registerState('Idle', gltf.animations[0], { fadeDuration: 0.2 });
@@ -148,17 +152,20 @@ export class FoxPlayer {
   }
 
   public jump(): boolean {
+    const isGolden = GameState.instance.isGoldenForm;
+    const force = isGolden ? this.jumpForce * 1.25 : this.jumpForce;
+
     if (this.isGrounded) {
-      this.velocity.y = this.jumpForce;
+      this.velocity.y = force;
       this.isGrounded = false;
-      this.canDoubleJump = true;
+      this.airJumpsLeft = isGolden ? 2 : 1; // Triple jump in Golden form!
       this.dustParticles.emitBurst(this.position, 'dust_footstep', 15);
       this.audio.playSound('jump');
       return true;
-    } else if (this.canDoubleJump) {
-      this.velocity.y = this.jumpForce * 0.9;
-      this.canDoubleJump = false;
-      this.sparkleParticles.emitBurst(this.position, 'sparkle', 25);
+    } else if (this.airJumpsLeft > 0) {
+      this.velocity.y = force * 0.95;
+      this.airJumpsLeft--;
+      this.sparkleParticles.emitBurst(this.position, 'sparkle', isGolden ? 40 : 25);
       this.audio.playSound('teleport');
       return true;
     }
@@ -167,9 +174,11 @@ export class FoxPlayer {
 
   public pounce(): boolean {
     const state = GameState.instance;
-    if (state.stamina > 25 && !this.isPouncing) {
+    if (state.isGoldenForm || state.stamina > 20) {
       this.isPouncing = true;
-      state.stamina = Math.max(0, state.stamina - 30);
+      if (!state.isGoldenForm) {
+        state.stamina = Math.max(0, state.stamina - 25);
+      }
       this.audio.playSound('push');
       this.dustParticles.emitBurst(this.position, 'dust_footstep', 20);
       return true;
@@ -182,8 +191,8 @@ export class FoxPlayer {
     this.audio.playSound('fanfare');
     this.sparkleParticles.emitBurst(
       this.position,
-      'teleport_flash',
-      GameState.instance.isGoldenForm ? 50 : 35
+      'sparkle',
+      GameState.instance.isGoldenForm ? 65 : 40
     );
     return true;
   }
@@ -193,49 +202,67 @@ export class FoxPlayer {
       this.loadedModel.traverse((c: any) => {
         if (c.isMesh && c.material) {
           c.material.emissive = new THREE.Color(0xf59e0b);
-          c.material.emissiveIntensity = 0.8;
+          c.material.emissiveIntensity = 1.2;
         }
       });
     }
+    this.auraMaterial.color.setHex(0xfde047);
   }
 
-  public update(dt: number, inputX: number, inputZ: number, getTerrainHeight: (x: number, z: number) => number) {
+  public update(
+    dt: number,
+    inputX: number,
+    inputZ: number,
+    getTerrainHeight: (x: number, z: number) => number,
+    camYaw: number = 0
+  ) {
     const state = GameState.instance;
+    const isGolden = state.isGoldenForm;
+
+    // Golden Form Speed Boost & Infinite Stamina
+    const currentWalkSpeed = isGolden ? this.walkSpeed * 1.25 : this.walkSpeed;
+    const currentPounceSpeed = isGolden ? this.pounceSpeed * 1.35 : this.pounceSpeed;
 
     // Stamina Regeneration & Decay
-    if (!this.isPouncing) {
-      state.stamina = Math.min(state.maxStamina, state.stamina + dt * 20);
+    if (isGolden) {
+      state.stamina = state.maxStamina;
+    } else if (!this.isPouncing) {
+      state.stamina = Math.min(state.maxStamina, state.stamina + dt * 25);
     } else {
-      state.stamina = Math.max(0, state.stamina - dt * 35);
+      state.stamina = Math.max(0, state.stamina - dt * 30);
       if (state.stamina <= 0) this.isPouncing = false;
     }
 
-    const inputMag = Math.hypot(inputX, inputZ);
-    const speed = this.isPouncing ? this.pounceSpeed : this.walkSpeed;
+    // Convert Screen/Joystick inputs to World Space relative to Camera Yaw
+    const worldMoveX = inputX * Math.cos(camYaw) - inputZ * Math.sin(camYaw);
+    const worldMoveZ = -inputX * Math.sin(camYaw) - inputZ * Math.cos(camYaw);
+
+    const inputMag = Math.hypot(worldMoveX, worldMoveZ);
+    const speed = this.isPouncing ? currentPounceSpeed : currentWalkSpeed;
 
     if (inputMag > 0.05) {
-      const nx = inputX / inputMag;
-      const nz = inputZ / inputMag;
+      const nx = worldMoveX / inputMag;
+      const nz = worldMoveZ / inputMag;
       this.velocity.x = nx * speed;
       this.velocity.z = nz * speed;
 
-      // Smooth Orientation: atan2(nx, nz) smoothly maps movement to forward-facing angle
+      // Smooth Orientation
       const targetAngle = Math.atan2(nx, nz);
       let diff = targetAngle - this.rotationY;
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
-      this.rotationY += diff * Math.min(1.0, dt * 14);
+      this.rotationY += diff * Math.min(1.0, dt * 16);
 
       if (this.animStateMachine) {
         this.animStateMachine.setState(this.isPouncing ? 'Run' : 'Walk');
       }
 
-      if (this.isGrounded && Math.random() < 0.25) {
-        this.dustParticles.emitBurst(this.position, 'dust_footstep', 2);
+      if (this.isGrounded && Math.random() < 0.35) {
+        this.dustParticles.emitBurst(this.position, isGolden ? 'sparkle' : 'dust_footstep', 2);
       }
     } else {
-      this.velocity.x *= Math.exp(-12 * dt);
-      this.velocity.z *= Math.exp(-12 * dt);
+      this.velocity.x *= Math.exp(-14 * dt);
+      this.velocity.z *= Math.exp(-14 * dt);
 
       if (this.animStateMachine && this.isGrounded) {
         this.animStateMachine.setState('Idle');
@@ -254,16 +281,16 @@ export class FoxPlayer {
       this.position.y = surfaceY + 0.1;
       this.velocity.y = 0;
       this.isGrounded = true;
-      this.canDoubleJump = true;
+      this.airJumpsLeft = isGolden ? 2 : 1;
     } else {
       this.isGrounded = false;
     }
 
     // World Clamp
     const dist = Math.hypot(this.position.x, this.position.z);
-    if (dist > 70) {
-      this.position.x = (this.position.x / dist) * 70;
-      this.position.z = (this.position.z / dist) * 70;
+    if (dist > 72) {
+      this.position.x = (this.position.x / dist) * 72;
+      this.position.z = (this.position.z / dist) * 72;
     }
 
     this.container.position.copy(this.position);
@@ -273,7 +300,7 @@ export class FoxPlayer {
     if (this.barkTimer > 0) {
       this.barkTimer -= dt;
       const progress = 1.0 - this.barkTimer;
-      this.auraRing.scale.set(progress * 16, progress * 16, progress * 16);
+      this.auraRing.scale.set(progress * 18, progress * 18, progress * 18);
       this.auraMaterial.opacity = Math.max(0, Math.sin(progress * Math.PI));
     }
 

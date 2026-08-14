@@ -12,6 +12,7 @@ import { AcornManager } from './src/entities/Acorns.ts';
 import { ChimeManager } from './src/entities/Chimes.ts';
 import { MushroomManager } from './src/entities/Mushrooms.ts';
 import { DuckManager } from './src/entities/Ducks.ts';
+import { EndgameShrineManager } from './src/entities/EndgameShrine.ts';
 import { GameHUD } from './src/ui/GameHUD.ts';
 
 // --- 1. Mobile-Optimized KairoApp Setup ---
@@ -61,16 +62,22 @@ const input = new MobileInput();
 const world = new GroveWorld(app.scene);
 const player = new FoxPlayer(app.scene, dustParticles, sparkleParticles, audio);
 
-// Initial Camera Placement
-app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + 9.0);
-app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+// 3D Camera Orbit & Look Around State
+let camYaw = 0;
+let camPitch = 0.35; // ~20 degrees
+let camDistance = isMobile ? 9.5 : 8.2;
 const _camDesiredPos = new THREE.Vector3();
+
+// Initial Camera Placement
+app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + camDistance);
+app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
 
 const wisps = new WispManager(app.scene, sparkleParticles, audio);
 const acorns = new AcornManager(app.scene, sparkleParticles, audio);
 const chimes = new ChimeManager(app.scene, sparkleParticles, audio);
 const mushrooms = new MushroomManager(app.scene, sparkleParticles, audio);
 const ducks = new DuckManager(app.scene, sparkleParticles);
+const endgameShrine = new EndgameShrineManager(app.scene, sparkleParticles, audio);
 
 // --- 4. HUD & Start Screen Wireup ---
 let lastSaveTime = 0;
@@ -86,7 +93,7 @@ const hud = new GameHUD(
       if (save) {
         if (save.playerPos) {
           player.position.set(save.playerPos[0], save.playerPos[1], save.playerPos[2]);
-          app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + 9.0);
+          app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + camDistance);
           app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
         }
         // Restore collected/lit/following state onto the 3D world objects
@@ -104,7 +111,7 @@ const hud = new GameHUD(
         hud.showDialogue(
           'Grove Elder Owl',
           '🦉',
-          'Welcome back, little Fox! Let us continue awakening the spirits and restoring the ancient grove!'
+          'Welcome back, little Fox! Swipe the screen to look around, dash with sprint, and explore the ancient grove!'
         );
       }, 500);
     } else {
@@ -120,7 +127,7 @@ const hud = new GameHUD(
         hud.showDialogue(
           'Grove Elder Owl',
           '🦉',
-          'Welcome to the Ancient Grove, little Fox! Use your touch joystick to explore, leap across stepping stones, and ring the chime monoliths 🔔 to awaken the spirits!'
+          'Welcome to the Ancient Grove, little Fox! Swipe anywhere on the right to look around, leap across stepping stones, and ring the chime monoliths 🔔 to awaken the spirits!'
         );
       }, 500);
     }
@@ -167,6 +174,29 @@ input.onSpiritCall = () => {
   ducks.checkBarkCall(player.position, () => {
     hud.showToast('A duckling joined your pack!', '🦆');
   });
+
+  // Celestial Sky Harmonization at Ancient Life Tree in Golden Form
+  if (GameState.instance.isGoldenForm && player.position.distanceTo(new THREE.Vector3(0, 0, 0)) < 8.0) {
+    if (endgameShrine.skyState === 'noon') {
+      endgameShrine.skyState = 'sunset';
+      app.scene.background = new THREE.Color(0x311b28);
+      sunLight.color.setHex(0xfb923c);
+      sunLight.intensity = 2.2;
+      hud.showToast('🌅 Golden Sunset Sky Harmonized', '✨');
+    } else if (endgameShrine.skyState === 'sunset') {
+      endgameShrine.skyState = 'aurora';
+      app.scene.background = new THREE.Color(0x061118);
+      sunLight.color.setHex(0x38bdf8);
+      sunLight.intensity = 1.0;
+      hud.showToast('🌌 Starry Aurora Twilight Harmonized', '✨');
+    } else {
+      endgameShrine.skyState = 'noon';
+      app.scene.background = new THREE.Color(0x09120c);
+      sunLight.color.setHex(0xfff3d6);
+      sunLight.intensity = 1.8;
+      hud.showToast('☀️ Radiant Grove Noon Harmonized', '✨');
+    }
+  }
 };
 
 input.onTogglePhotoMode = () => {
@@ -177,6 +207,7 @@ input.onTogglePhotoMode = () => {
 GameState.instance.on('game_won', () => {
   player.setGoldenAura();
   audio.playSound('fanfare');
+  hud.showToast('🌟 Golden Fox Awakened! Triple Jump & Spirit Sprint Unlocked!', '🌟');
 });
 
 // --- 6. Main Game Loop ---
@@ -191,11 +222,10 @@ app.onUpdate((dt: number) => {
   // 2. Mobile Multi-Touch & Key Input
   if (GameState.instance.isGameStarted) {
     const moveInput = input.update();
-    // Sync pounce state from input so releasing the button/shift cancels the dash
     player.isPouncing = input.isPouncing;
 
-    // 3. Player Physics & Locomotion
-    player.update(dt, moveInput.x, moveInput.y, (x, z) => world.getTerrainHeight(x, z));
+    // 3. Player Physics & Locomotion (Camera Yaw Aligned)
+    player.update(dt, moveInput.x, moveInput.y, (x, z) => world.getTerrainHeight(x, z), camYaw);
     hud.updateStamina(GameState.instance.stamina, GameState.instance.maxStamina);
 
     // 4. Bouncy Mushrooms Collision
@@ -205,7 +235,7 @@ app.onUpdate((dt: number) => {
       hud.showToast('🍄 Super Mushroom Bounce!', '🚀');
     });
 
-    // 5. Sun Acorns Attraction & Collection
+    // 5. Sun Acorns Attraction & Collection (Snappy & Responsive)
     acorns.update(dt, timeSeconds, player.position, count => {
       hud.showToast(`Gathered Sun Acorn (${count}/${GameState.instance.totalAcorns})`, '🌰');
       if (count >= GameState.instance.totalAcorns) {
@@ -222,6 +252,24 @@ app.onUpdate((dt: number) => {
     // 7. Duck Companions Follow Pack
     ducks.update(dt, player.position, player.rotationY);
 
+    // 8. Endgame Spirit Sprint Time Trial
+    endgameShrine.update(
+      dt,
+      timeSeconds,
+      player.position,
+      (curr, total) => {
+        hud.showToast(`Celestial Ring (${curr}/${total}) Passed!`, '🌟');
+      },
+      (elapsed, isNewBest) => {
+        hud.showToast(
+          isNewBest
+            ? `🏆 NEW RECORD! Grove Sprint: ${elapsed.toFixed(1)}s!`
+            : `✨ Spirit Sprint Complete: ${elapsed.toFixed(1)}s!`,
+          '🌟'
+        );
+      }
+    );
+
     // Periodic position auto-save every 4 seconds
     if (now - lastSaveTime > 4000) {
       lastSaveTime = now;
@@ -229,23 +277,35 @@ app.onUpdate((dt: number) => {
     }
   }
 
-  // 8. Ultra-Smooth Stable Third-Person Follow Camera
+  // 9. Touch & Mouse 3D Camera Look & Orbit Follow Camera
   if (!GameState.instance.isPhotoMode) {
-    const camHeight = isMobile ? 5.8 : 5.0;
-    const camDist = isMobile ? 9.5 : 8.2;
+    const look = input.consumeLookDelta();
+    if (look.x !== 0 || look.y !== 0) {
+      camYaw -= look.x * 0.0055;
+      camPitch = Math.max(0.08, Math.min(1.25, camPitch + look.y * 0.0045));
+    }
+    if (look.zoom !== 0) {
+      camDistance = Math.max(4.5, Math.min(18.0, camDistance + look.zoom));
+    }
 
-    _camDesiredPos.set(player.position.x, player.position.y + camHeight, player.position.z + camDist);
-    app.camera.position.lerp(_camDesiredPos, Math.min(1.0, dt * 7.5));
+    const horizontalDist = camDistance * Math.cos(camPitch);
+    const verticalDist = camDistance * Math.sin(camPitch);
+
+    const desiredCamX = player.position.x + Math.sin(camYaw) * horizontalDist;
+    const desiredCamY = player.position.y + verticalDist + 1.2;
+    const desiredCamZ = player.position.z + Math.cos(camYaw) * horizontalDist;
+
+    _camDesiredPos.set(desiredCamX, desiredCamY, desiredCamZ);
+    app.camera.position.lerp(_camDesiredPos, Math.min(1.0, dt * 8.0));
     app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
 
-    // Track the player with the sun's shadow camera so the shadow map only
-    // covers the play area (faster shadow pass + sharper, pop-in-free shadows)
+    // Track player with sun shadow camera
     sunLight.position.set(player.position.x + 30, 45, player.position.z + 20);
     sunLight.target.position.set(player.position.x, 0, player.position.z);
     sunLight.target.updateMatrixWorld();
   }
 
-  // 9. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
+  // 10. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
   leafParticles.update(dt);
   sparkleParticles.update(dt);
   dustParticles.update(dt);
@@ -254,4 +314,4 @@ app.onUpdate((dt: number) => {
 
 // Launch Engine
 app.start();
-console.log('🦊 Fox Odyssey (Smooth Camera + Mobile Touch Architecture) active.');
+console.log('🦊 Fox Odyssey (3D Camera Orbit + Endgame Activities + Responsive Collection) active.');

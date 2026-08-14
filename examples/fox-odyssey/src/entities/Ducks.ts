@@ -1,7 +1,15 @@
 import * as THREE from 'three';
-import { FriendlyDuck } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
 import { GameState } from '../state.ts';
+
+export interface FriendlyDuck {
+  id: number;
+  mesh: THREE.Group;
+  position: THREE.Vector3;
+  targetPos: THREE.Vector3;
+  isFollowing: boolean;
+  animTime: number;
+}
 
 export class DuckManager {
   public ducks: FriendlyDuck[] = [];
@@ -11,41 +19,44 @@ export class DuckManager {
 
   constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem) {
     this.sparkleParticles = sparkleParticles;
-    const duckColors = [0x10b981, 0xf59e0b, 0x38bdf8];
 
-    for (let i = 0; i < 3; i++) {
-      const dg = new THREE.Group();
-      const dBody = new THREE.Mesh(
-        new THREE.SphereGeometry(0.35, 12, 12),
-        new THREE.MeshStandardMaterial({ color: duckColors[i], roughness: 0.5 })
-      );
-      dBody.scale.set(1, 0.8, 1.3);
-      dg.add(dBody);
+    const duckPositions = [
+      [-15, -9],
+      [-17, -15],
+      [-21, -12]
+    ];
 
-      const dHead = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 12, 12),
-        new THREE.MeshStandardMaterial({ color: duckColors[i], roughness: 0.5 })
-      );
-      dHead.position.set(0, 0.28, 0.35);
-      dg.add(dHead);
+    const duckBodyGeo = new THREE.SphereGeometry(0.35, 10, 8);
+    const duckHeadGeo = new THREE.SphereGeometry(0.22, 8, 8);
+    const duckBeakGeo = new THREE.ConeGeometry(0.12, 0.25, 6);
 
-      const dBeak = new THREE.Mesh(
-        new THREE.ConeGeometry(0.1, 0.25, 8),
-        new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 })
-      );
-      dBeak.rotation.x = Math.PI / 2;
-      dBeak.position.set(0, 0.26, 0.55);
-      dg.add(dBeak);
+    const yellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.5 });
+    const orangeMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
 
-      const sx = -18 + (i - 1) * 3;
-      const sz = -12 + (i - 1) * 2;
-      dg.position.set(sx, 0.35, sz);
-      scene.add(dg);
+    for (let i = 0; i < duckPositions.length; i++) {
+      const [sx, sz] = duckPositions[i];
+      const g = new THREE.Group();
+      g.position.set(sx, 0.35, sz);
+
+      const body = new THREE.Mesh(duckBodyGeo, yellowMat);
+      body.scale.set(1, 0.8, 1.2);
+      g.add(body);
+
+      const head = new THREE.Mesh(duckHeadGeo, yellowMat);
+      head.position.set(0, 0.35, 0.25);
+      g.add(head);
+
+      const beak = new THREE.Mesh(duckBeakGeo, orangeMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0.32, 0.48);
+      g.add(beak);
+
+      scene.add(g);
 
       const isFollowing = GameState.instance.ducksFollowing;
       this.ducks.push({
         id: i,
-        mesh: dg,
+        mesh: g,
         position: new THREE.Vector3(sx, 0.35, sz),
         targetPos: new THREE.Vector3(sx, 0.35, sz),
         isFollowing: isFollowing,
@@ -57,11 +68,12 @@ export class DuckManager {
   public checkBarkCall(playerPos: THREE.Vector3, onDuckFollow: () => void) {
     this.ducks.forEach(duck => {
       const d = playerPos.distanceTo(duck.position);
-      if (d < 12.0 && !duck.isFollowing) {
+      // Generous call radius (16.0 units) so Spirit Bark gathers the ducklings immediately
+      if (d < 16.0 && !duck.isFollowing) {
         duck.isFollowing = true;
         GameState.instance.ducksFollowing = true;
         GameState.instance.saveGame();
-        this.sparkleParticles.emitBurst(duck.position, 'collect_burst', 15);
+        this.sparkleParticles.emitBurst(duck.position, 'sparkle', 25);
         onDuckFollow();
       }
     });
@@ -82,9 +94,9 @@ export class DuckManager {
         const tx = playerPos.x - Math.sin(playerRotY) * offset;
         const tz = playerPos.z - Math.cos(playerRotY) * offset;
         // Reuse scratch vectors to avoid per-frame allocation
-        duck.mesh.position.lerp(this._followTarget.set(tx, 0.35, tz), dt * 5.0);
+        duck.mesh.position.lerp(this._followTarget.set(tx, 0.35, tz), dt * 5.5);
         duck.mesh.lookAt(this._lookTarget.set(playerPos.x, 0.35, playerPos.z));
-        duck.mesh.position.y = 0.35 + Math.abs(Math.sin(duck.animTime)) * 0.15;
+        duck.mesh.position.y = 0.35 + Math.abs(Math.sin(duck.animTime)) * 0.18;
       }
     });
   }

@@ -12,6 +12,14 @@ export class MobileInput {
   public onSpiritCall: (() => void) | null = null;
   public onTogglePhotoMode: (() => void) | null = null;
 
+  // 3D Camera Look & Orbit Drag
+  public lookDelta: { x: number; y: number } = { x: 0, y: 0 };
+  public zoomDelta: number = 0;
+  private cameraTouchId: number | null = null;
+  private lastCameraTouch = { x: 0, y: 0 };
+  private isMouseDraggingCamera: boolean = false;
+  private lastMousePos = { x: 0, y: 0 };
+
   private joystickZone: HTMLElement | null = null;
   private joystickKnob: HTMLElement | null = null;
   private activeTouchId: number | null = null;
@@ -24,6 +32,7 @@ export class MobileInput {
   constructor() {
     this.initKeyboard();
     this.initTouchControls();
+    this.initMouseCameraControls();
   }
 
   private initKeyboard() {
@@ -122,50 +131,57 @@ export class MobileInput {
       });
     }
 
-    // Dynamic Touch on Left 55% of Screen
+    // Dynamic Touch Handling: Left 50% = Joystick, Right 50% = Camera Look Orbit
     window.addEventListener(
       'touchstart',
       (e: TouchEvent) => {
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
-          // Check if touch is on left half of screen and not over action buttons/HUD top bar
-          if (this.activeTouchId === null && touch.clientX < window.innerWidth * 0.55 && touch.clientY > 90) {
+          const isOverButtons = (e.target as HTMLElement)?.closest?.('.mobile-buttons, .photo-bar, .dialogue-box, .victory-modal');
+          if (isOverButtons) continue;
+
+          // Left Half of Screen -> Virtual Joystick
+          if (this.activeTouchId === null && touch.clientX < window.innerWidth * 0.52 && touch.clientY > 90) {
             startJoystick(touch.clientX, touch.clientY, touch.identifier);
-            break;
+          }
+          // Right Half of Screen -> Camera Look Drag
+          else if (this.cameraTouchId === null && touch.clientX >= window.innerWidth * 0.48 && touch.clientY > 80) {
+            this.cameraTouchId = touch.identifier;
+            this.lastCameraTouch = { x: touch.clientX, y: touch.clientY };
           }
         }
       },
       { passive: false }
     );
 
-    // Touch / Pointer Move
+    // Touch Move: Track Joystick + Camera Look
     window.addEventListener(
       'touchmove',
       (e: TouchEvent) => {
-        if (this.activeTouchId === null) return;
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
           if (touch.identifier === this.activeTouchId) {
             e.preventDefault();
             this.updateJoystick(touch.clientX, touch.clientY);
-            break;
+          } else if (touch.identifier === this.cameraTouchId) {
+            e.preventDefault();
+            const dx = touch.clientX - this.lastCameraTouch.x;
+            const dy = touch.clientY - this.lastCameraTouch.y;
+            this.lookDelta.x += dx;
+            this.lookDelta.y += dy;
+            this.lastCameraTouch = { x: touch.clientX, y: touch.clientY };
           }
         }
       },
       { passive: false }
     );
 
-    window.addEventListener('pointermove', (e: PointerEvent) => {
-      if (this.isPointerTracking && (this.activeTouchId === null || this.activeTouchId === e.pointerId)) {
-        this.updateJoystick(e.clientX, e.clientY);
-      }
-    });
-
-    // Touch / Pointer End
+    // Touch End
     const resetJoystick = () => {
       this.activeTouchId = null;
       this.isPointerTracking = false;
-      this.moveVector = { x: 0, y: 0 };
+      this.moveVector.x = 0;
+      this.moveVector.y = 0;
       if (this.joystickKnob) {
         this.joystickKnob.style.transform = `translate(-50%, -50%)`;
       }
@@ -173,15 +189,59 @@ export class MobileInput {
 
     window.addEventListener('touchend', (e: TouchEvent) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === this.activeTouchId) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === this.activeTouchId) {
           resetJoystick();
-          break;
+        }
+        if (touch.identifier === this.cameraTouchId) {
+          this.cameraTouchId = null;
         }
       }
     });
-    window.addEventListener('touchcancel', resetJoystick);
-    window.addEventListener('pointerup', resetJoystick);
-    window.addEventListener('pointercancel', resetJoystick);
+
+    window.addEventListener('touchcancel', (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === this.activeTouchId) resetJoystick();
+        if (touch.identifier === this.cameraTouchId) this.cameraTouchId = null;
+      }
+    });
+  }
+
+  private initMouseCameraControls() {
+    window.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return; // Handled by touch events
+      const isOverInteractive = (e.target as HTMLElement)?.closest?.('button, input, #hud, .dialogue-box, .victory-card, #touch-joystick');
+      if (isOverInteractive) return;
+
+      this.isMouseDraggingCamera = true;
+      this.lastMousePos = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('pointermove', (e: PointerEvent) => {
+      if (this.isMouseDraggingCamera) {
+        const dx = e.clientX - this.lastMousePos.x;
+        const dy = e.clientY - this.lastMousePos.y;
+        this.lookDelta.x += dx;
+        this.lookDelta.y += dy;
+        this.lastMousePos = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    const stopMouse = () => {
+      this.isMouseDraggingCamera = false;
+    };
+    window.addEventListener('pointerup', stopMouse);
+    window.addEventListener('pointercancel', stopMouse);
+
+    // Zoom on wheel
+    window.addEventListener(
+      'wheel',
+      (e: WheelEvent) => {
+        this.zoomDelta += e.deltaY * 0.004;
+      },
+      { passive: true }
+    );
   }
 
   private updateJoystick(clientX: number, clientY: number) {
@@ -227,6 +287,17 @@ export class MobileInput {
     }
   }
 
+  /**
+   * Consume and reset camera look deltas for smooth frame rotation
+   */
+  public consumeLookDelta(): { x: number; y: number; zoom: number } {
+    const res = { x: this.lookDelta.x, y: this.lookDelta.y, zoom: this.zoomDelta };
+    this.lookDelta.x = 0;
+    this.lookDelta.y = 0;
+    this.zoomDelta = 0;
+    return res;
+  }
+
   public update(): InputVector {
     let x = this.moveVector.x;
     let y = this.moveVector.y;
@@ -235,10 +306,6 @@ export class MobileInput {
     if (this.keys['KeyS'] || this.keys['ArrowDown']) y += 1;
     if (this.keys['KeyA'] || this.keys['ArrowLeft']) x -= 1;
     if (this.keys['KeyD'] || this.keys['ArrowRight']) x += 1;
-
-    if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) {
-      this.isPouncing = true;
-    }
 
     const len = Math.hypot(x, y);
     if (len > 1.0) {

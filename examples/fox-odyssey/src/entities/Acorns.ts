@@ -1,11 +1,19 @@
 import * as THREE from 'three';
-import { CollectibleAcorn } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
-import { GameState } from '../state.ts';
 import { ForestAudio } from '../audio/ForestAudio.ts';
+import { GameState } from '../state.ts';
+
+export interface SunAcorn {
+  id: number;
+  mesh: THREE.Group;
+  position: THREE.Vector3;
+  collected: boolean;
+  baseY: number;
+  spinSpeed: number;
+}
 
 export class AcornManager {
-  public acorns: CollectibleAcorn[] = [];
+  public acorns: SunAcorn[] = [];
   private sparkleParticles: ParticleSystem;
   private audio: ForestAudio;
 
@@ -13,34 +21,36 @@ export class AcornManager {
     this.sparkleParticles = sparkleParticles;
     this.audio = audio;
 
-    const acornMat = new THREE.MeshStandardMaterial({
+    const acornPositions = [
+      [3, 0.4, 4], [8, 0.4, 2], [14, 0.4, 6], [22, 0.4, 12],
+      [-5, 0.4, 5], [-12, 0.4, 8], [-18, 0.4, 15], [-26, 0.4, 6],
+      [6, 0.4, -6], [12, 0.4, -14], [20, 0.4, -18], [28, 0.4, -8],
+      [-6, 0.4, -8], [-14, 0.4, -16], [-22, 0.4, -20], [-30, 0.4, -12],
+      [0, 0.4, 18], [0, 0.4, -24], [-18, 0.4, -6], [16, 0.4, 25]
+    ];
+
+    const capGeo = new THREE.ConeGeometry(0.26, 0.22, 10);
+    const nutGeo = new THREE.SphereGeometry(0.24, 10, 8);
+    const capMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+    const nutMat = new THREE.MeshStandardMaterial({
       color: 0xf59e0b,
       emissive: 0xd97706,
-      emissiveIntensity: 0.8,
-      roughness: 0.3,
-      metalness: 0.4
+      emissiveIntensity: 0.6,
+      roughness: 0.3
     });
-    const capMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
 
-    for (let i = 0; i < GameState.instance.totalAcorns; i++) {
+    for (let i = 0; i < acornPositions.length; i++) {
+      const [ax, ay, az] = acornPositions[i];
       const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), acornMat);
-      body.scale.set(1.0, 1.3, 1.0);
-      g.add(body);
-
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), capMat);
-      cap.position.y = 0.15;
+      const cap = new THREE.Mesh(capGeo, capMat);
+      cap.position.y = 0.16;
+      cap.rotation.x = Math.PI;
+      const nut = new THREE.Mesh(nutGeo, nutMat);
+      g.add(nut);
       g.add(cap);
-
-      const angle = (i / GameState.instance.totalAcorns) * Math.PI * 2;
-      const radius = 8 + (i % 5) * 5.5;
-      const ax = Math.cos(angle) * radius + (Math.sin(i * 7) * 4);
-      const az = Math.sin(angle) * radius + (Math.cos(i * 5) * 4);
-      const ay = 1.0 + (i % 3 === 0 ? 0.8 : 0);
 
       const isCollected = GameState.instance.collectedAcornIds.has(i);
       g.position.set(ax, ay, az);
-      // Small collectibles don't need to cast shadows — keeps the shadow pass cheap
       g.castShadow = false;
       if (isCollected) g.visible = false;
       scene.add(g);
@@ -71,16 +81,19 @@ export class AcornManager {
       acorn.mesh.rotation.y += dt * acorn.spinSpeed;
       acorn.mesh.position.y = acorn.baseY + Math.sin(timeSeconds * 3 + acorn.spinSpeed) * 0.2;
 
-      // Measure distance from the live mesh position so attraction/collection
-      // works even after the acorn has been pulled toward the player.
       const d = playerPos.distanceTo(acorn.mesh.position);
-      if (d < 4.5) {
-        acorn.mesh.position.lerp(playerPos, dt * 6.0);
+
+      // Snappy, instant magnetic pull
+      if (d < 5.5) {
+        const pullSpeed = Math.max(20.0, (6.0 - d) * 8.0);
+        acorn.mesh.position.lerp(playerPos, Math.min(1.0, dt * pullSpeed));
       }
-      if (d < 1.4) {
+
+      // Responsive, zero-lag collection trigger
+      if (d < 2.0) {
         acorn.collected = true;
         acorn.mesh.visible = false;
-        this.sparkleParticles.emitBurst(acorn.mesh.position, 'sparkle', 20);
+        this.sparkleParticles.emitBurst(acorn.mesh.position, 'sparkle', 25);
         this.audio.playSound('coin');
         const count = GameState.instance.collectAcorn(acorn.id);
         onCollect(count);
