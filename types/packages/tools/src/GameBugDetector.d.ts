@@ -59,8 +59,13 @@ export declare class GameBugDetector {
     visible: boolean;
     private originalOnError;
     private originalOnUnhandledRejection;
+    private onUnhandledRejection;
+    private onKeydown;
+    private disposed;
     constructor();
     private hookGlobalErrors;
+    /** Remove all global error listeners and restore the original handlers. */
+    dispose(): void;
     addBug(bug: Omit<GameBug, 'id' | 'timestamp'>): GameBug;
     clearBugs(): void;
     /**

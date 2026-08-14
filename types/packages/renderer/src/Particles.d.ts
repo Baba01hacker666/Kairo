@@ -24,6 +24,7 @@ export declare class ParticleSystem {
     private lives;
     private maxLives;
     private activeCount;
+    private instanceColorDirty;
     constructor(maxParticles?: number, color?: number);
     emitBurst(pos: THREE.Vector3 | [number, number, number], preset: ParticleEffectPreset, count?: number): void;
     private writeInstanceColor;

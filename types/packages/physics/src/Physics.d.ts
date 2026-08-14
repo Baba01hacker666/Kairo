@@ -31,12 +31,17 @@ export interface RaycastHit {
 }
 export declare class SpatialHashGrid3D {
     private cellSize;
+    private invCellSize;
     private grid;
     constructor(cellSize?: number);
-    private getKey;
+    private getHash;
     clear(): void;
     insert(id: number, pos: Vector3, radius?: number): void;
-    getNearby(pos: Vector3): Array<{
+    getNearby(pos: Vector3, outBuffer?: Array<{
+        id: number;
+        pos: Vector3;
+        radius: number;
+    }>): Array<{
         id: number;
         pos: Vector3;
         radius: number;

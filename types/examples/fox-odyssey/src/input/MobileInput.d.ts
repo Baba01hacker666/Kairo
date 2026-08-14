@@ -15,6 +15,7 @@ export declare class MobileInput {
         y: number;
     };
     zoomDelta: number;
+    private _consumedLook;
     private cameraTouchId;
     private lastCameraTouch;
     private isMouseDraggingCamera;
@@ -36,7 +37,8 @@ export declare class MobileInput {
     triggerSpiritCall(): void;
     private vibrate;
     /**
-     * Consume and reset camera look deltas for smooth frame rotation
+     * Consume and reset camera look deltas for smooth frame rotation.
+     * Writes into a reused object so no garbage is produced at 60fps.
      */
     consumeLookDelta(): {
         x: number;
