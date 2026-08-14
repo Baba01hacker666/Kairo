@@ -29,6 +29,7 @@ export class BrambleGolem {
   private vulnerableTimer: number = 0;
 
   private static readonly _scratchDist = new THREE.Vector3();
+  private static readonly _dustPos = new THREE.Vector3();
 
   constructor(
     scene: THREE.Scene,
@@ -184,7 +185,8 @@ export class BrambleGolem {
       this.fistRight.position.y = fistY;
 
       if (progress >= 0.6 && !this.isVulnerable) {
-        this.dustParticles.emitBurst([this.position.x, 0.4, this.position.z], 'dust_footstep', 40);
+        BrambleGolem._dustPos.set(this.position.x, 0.4, this.position.z);
+        this.dustParticles.emitBurst(BrambleGolem._dustPos, 'dust_footstep', 40);
         this.audio.playSound('push');
         this.isVulnerable = true;
         this.vulnerableTimer = 2.4; // Vulnerable window for player to attack!

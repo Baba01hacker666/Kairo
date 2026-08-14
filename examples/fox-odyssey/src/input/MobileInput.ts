@@ -38,9 +38,10 @@ export class MobileInput {
 
   private initKeyboard() {
     window.addEventListener('keydown', e => {
-      // Ignore auto-repeat so holding Space/Shift doesn't spam jumps/pounces
-      if (e.repeat) return;
+      // Mark the key as held first so a held key survives a blur-reset; then
+      // ignore auto-repeat so holding Space/Shift doesn't spam jumps/pounces.
       this.keys[e.code] = true;
+      if (e.repeat) return;
       if (e.code === 'Space') {
         e.preventDefault();
         this.triggerJump();

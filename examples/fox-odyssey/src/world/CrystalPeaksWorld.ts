@@ -26,11 +26,11 @@ export class CrystalPeaksWorld {
       if (dist > 30) {
         height += (dist - 30) * 0.35 + Math.sin(x * 0.15) * 2.0;
       }
-    // Canyon basin near center (local Y maps to world -Z after the -90deg X rotation,
-    // so `y < 10 && y > -20` renders as `z > -10 && z < 20` in world space)
-    if (Math.abs(x) < 14 && y < 10 && y > -20) {
-      height = Math.min(height, 0.2);
-    }
+      // Canyon basin near center (local Y maps to world -Z after the -90deg X rotation,
+      // so `y < 10 && y > -20` renders as `z > -10 && z < 20` in world space)
+      if (Math.abs(x) < 14 && y < 10 && y > -20) {
+        height = Math.min(height, 0.2);
+      }
       posAttr.setZ(i, height);
     }
     terrainGeo.computeVertexNormals();

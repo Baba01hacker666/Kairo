@@ -47,7 +47,7 @@ export class AcornManager {
     });
 
     for (let i = 0; i < acornPositions.length; i++) {
-      const [ax, ay, az] = acornPositions[i];
+      const [ax, , az] = acornPositions[i];
       const g = new THREE.Group();
       const cap = new THREE.Mesh(capGeo, capMat);
       cap.position.y = 0.16;

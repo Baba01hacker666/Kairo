@@ -147,6 +147,22 @@ export class ParticleSystem {
         this.velocitiesZ[idx] = speed * Math.cos(theta);
         color = 0xfde047;
         this.sizes[idx] = 0.22;
+      } else if (preset === 'explosion') {
+        this.maxLives[idx] = 0.5 + Math.random() * 0.5;
+        this.velocitiesX[idx] = (Math.random() - 0.5) * 12;
+        this.velocitiesY[idx] = Math.random() * 8 + 3;
+        this.velocitiesZ[idx] = (Math.random() - 0.5) * 12;
+        color = Math.random() > 0.5 ? 0xef4444 : 0xf59e0b;
+        this.sizes[idx] = 0.3 + Math.random() * 0.3;
+      } else if (preset === 'teleport_flash') {
+        this.maxLives[idx] = 0.8;
+        const angle = Math.random() * Math.PI * 2;
+        const rad = Math.random() * 1.5;
+        this.velocitiesX[idx] = Math.cos(angle) * rad;
+        this.velocitiesY[idx] = Math.random() * 6 + 2;
+        this.velocitiesZ[idx] = Math.sin(angle) * rad;
+        color = 0xa855f7;
+        this.sizes[idx] = 0.25;
       } else {
         this.maxLives[idx] = 0.5;
         this.velocitiesX[idx] = (Math.random() - 0.5) * 3;
