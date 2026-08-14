@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ChimeMonolith } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
+import { GameState } from '../state.ts';
 import { ForestAudio } from '../audio/ForestAudio.ts';
 
 export class ChimeManager {
@@ -31,23 +32,23 @@ export class ChimeManager {
       stone.receiveShadow = true;
       g.add(stone);
 
+      const isLit = GameState.instance.litChimeIds.has(item.id);
+
       const rune = new THREE.Mesh(
         new THREE.SphereGeometry(0.35, 12, 12),
         new THREE.MeshStandardMaterial({
           color: 0x475569,
-          emissive: 0x000000,
+          emissive: isLit ? 0xf59e0b : 0x000000,
+          emissiveIntensity: isLit ? 2.0 : 0.0,
           roughness: 0.3
         })
       );
       rune.position.set(0, 2.2, 0.45);
       g.add(rune);
 
-      const isLit = GameState.instance.litChimeIds.has(item.id);
-      if (isLit) {
-        (rune.material as THREE.MeshStandardMaterial).emissive.setHex(0xf59e0b);
-        (rune.material as THREE.MeshStandardMaterial).emissiveIntensity = 2.0;
-        pLight.intensity = 4.0;
-      }
+      const pLight = new THREE.PointLight(0xf59e0b, isLit ? 4.0 : 0, 10);
+      pLight.position.set(0, 2.2, 0.8);
+      g.add(pLight);
 
       scene.add(g);
       this.chimes.push({

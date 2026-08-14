@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FriendlyDuck } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
+import { GameState } from '../state.ts';
 
 export class DuckManager {
   public ducks: FriendlyDuck[] = [];
