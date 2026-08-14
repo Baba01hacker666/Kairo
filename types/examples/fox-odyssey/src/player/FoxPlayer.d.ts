@@ -1,0 +1,33 @@
+import * as THREE from 'three';
+import { ParticleSystem } from '@kairo/renderer';
+import { ForestAudio } from '../audio/ForestAudio.ts';
+export declare class FoxPlayer {
+    container: THREE.Group;
+    position: THREE.Vector3;
+    velocity: THREE.Vector3;
+    rotationY: number;
+    isGrounded: boolean;
+    canDoubleJump: boolean;
+    isPouncing: boolean;
+    pounceTimer: number;
+    barkTimer: number;
+    walkSpeed: number;
+    pounceSpeed: number;
+    jumpForce: number;
+    private animStateMachine;
+    private loadedModel;
+    private fallbackGroup;
+    private auraRing;
+    private auraMaterial;
+    private dustParticles;
+    private sparkleParticles;
+    private audio;
+    constructor(scene: THREE.Scene, dustParticles: ParticleSystem, sparkleParticles: ParticleSystem, audio: ForestAudio);
+    private createFallbackFox;
+    private loadFoxModel;
+    jump(): boolean;
+    pounce(): boolean;
+    spiritBark(): boolean;
+    setGoldenAura(): void;
+    update(dt: number, inputX: number, inputZ: number, getTerrainHeight: (x: number, z: number) => number): void;
+}

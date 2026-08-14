@@ -1,0 +1,30 @@
+export declare class GameHUD {
+    private acornValEl;
+    private staminaFillEl;
+    private questTextEl;
+    private spiritRankBadgeEl;
+    private actionToastEl;
+    private toastIconEl;
+    private toastTextEl;
+    private soundBtnEl;
+    private photoBtnEl;
+    private photoModeUIEl;
+    private photoExitBtnEl;
+    private photoCaptureBtnEl;
+    private victoryModalEl;
+    private finalAcornsEl;
+    private finalTimeEl;
+    private victoryContinueBtnEl;
+    private dialogueBoxEl;
+    private npcAvatarEl;
+    private npcNameEl;
+    private npcTextEl;
+    private dialogueCloseBtnEl;
+    private toastTimeout;
+    constructor(onCaptureScreenshot: () => void, onPlayClickSound: () => void);
+    showToast(text: string, icon?: string): void;
+    showDialogue(speaker: string, avatar: string, text: string): void;
+    togglePhotoMode(): boolean;
+    updateStamina(stamina: number, maxStamina: number): void;
+    showVictoryModal(): void;
+}
