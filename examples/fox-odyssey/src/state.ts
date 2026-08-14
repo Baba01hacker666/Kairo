@@ -1,3 +1,5 @@
+import type { HealthComponent } from '@kairo/core';
+
 export interface SaveData {
   acornsCollected: number;
   collectedAcornIds: number[];
@@ -24,6 +26,13 @@ export class GameState {
   public hearts: number = 3;
   public maxHearts: number = 3;
   public beastsDefeated: number = 0;
+
+  /**
+   * Engine HealthComponent backing the spirit hearts. Wired up by the game
+   * bootstrap (main.ts); when present, damagePlayer/healPlayer delegate to it
+   * and the component's events drive the player_damaged/player_healed/… emits.
+   */
+  public health?: HealthComponent;
 
   // Collectibles & Quests
   public acornsCollected: number = 0;
@@ -66,6 +75,13 @@ export class GameState {
 
   public damagePlayer(amount: number = 1): number {
     if (this.isGoldenForm) return this.hearts;
+    if (this.health) {
+      // Engine CombatSystem drives the damage/revive cycle and re-emits the
+      // classic events (player_damaged / player_fainted / player_revived).
+      this.health.damage(amount, { source: 'enemy' });
+      this.saveGame();
+      return this.health.current;
+    }
     this.hearts = Math.max(0, this.hearts - amount);
     this.emit('player_damaged', this.hearts);
     if (this.hearts <= 0) {
@@ -79,6 +95,11 @@ export class GameState {
   }
 
   public healPlayer(amount: number = 1): number {
+    if (this.health) {
+      this.health.heal(amount);
+      this.saveGame();
+      return this.health.current;
+    }
     this.hearts = Math.min(this.maxHearts, this.hearts + amount);
     this.emit('player_healed', this.hearts);
     this.saveGame();

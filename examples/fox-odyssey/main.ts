@@ -20,6 +20,7 @@ import { MushroomManager } from './src/entities/Mushrooms.ts';
 import { DuckManager } from './src/entities/Ducks.ts';
 import { EndgameShrineManager } from './src/entities/EndgameShrine.ts';
 import { GameHUD } from './src/ui/GameHUD.ts';
+import { registerFoxQuests, syncFoxQuestProgress, questForChapter } from './src/quests.ts';
 
 // --- 1. Mobile-Optimized KairoApp Setup ---
 const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
@@ -73,6 +74,67 @@ const elderOwl = new ElderOwl(app.scene, sparkleParticles, audio);
 const shadowBeasts = new ShadowBeastManager(app.scene, sparkleParticles, dustParticles, audio);
 const brambleGolem = new BrambleGolem(app.scene, sparkleParticles, dustParticles, audio);
 const abyssalLeviathan = new AbyssalLeviathan(app.scene, sparkleParticles, splashParticles, audio);
+
+// --- 3.5 Engine Gameplay Systems (Quest / Dialogue / Combat) ---
+registerFoxQuests(app.quests);
+app.quests.start(questForChapter(GameState.instance.currentChapter));
+
+// Full-text dialogue (no typewriter) so a single tap closes the box
+app.dialogue.typewriterCps = 0;
+
+// Spirit hearts backed by the engine CombatSystem (keeps classic events for the HUD)
+const foxHealth = app.combat.add('fox', GameState.instance.maxHearts);
+foxHealth.invulnerabilityDuration = 1.2;
+GameState.instance.health = foxHealth;
+foxHealth.on('damaged', e => {
+  GameState.instance.hearts = e.current;
+  GameState.instance.emit('player_damaged', e.current);
+});
+foxHealth.on('died', () => {
+  GameState.instance.emit('player_fainted');
+  foxHealth.revive(GameState.instance.maxHearts);
+  // Persist the revived hearts (matches the legacy auto-revive save behavior)
+  GameState.instance.saveGame();
+});
+foxHealth.on('revived', e => {
+  GameState.instance.hearts = e.current;
+  GameState.instance.emit('player_revived', e.current);
+});
+foxHealth.on('healed', e => {
+  GameState.instance.hearts = e.current;
+  GameState.instance.emit('player_healed', e.current);
+});
+
+// Quest progress driven by the classic GameState events
+GameState.instance.on('beast_defeated', () => {
+  app.quests.advance(questForChapter(1), 'creepers', 1);
+});
+GameState.instance.on('acorn_collected', () => {
+  app.quests.advance(questForChapter(1), 'acorns', 1);
+  app.quests.advance(questForChapter(2), 'acorns', 1);
+});
+GameState.instance.on('wisp_collected', () => {
+  app.quests.advance(questForChapter(2), 'wisps', 1);
+});
+GameState.instance.on('chime_lit', () => {
+  app.quests.advance(questForChapter(2), 'chimes', 1);
+});
+GameState.instance.on('chapter_changed', chapter => {
+  app.quests.start(questForChapter(chapter));
+});
+GameState.instance.on('game_won', () => {
+  ['altar', 'boss', 'golden'].forEach(obj => app.quests.setProgress(questForChapter(4), obj, 1));
+});
+
+// Elder Owl mentor dialogue scripts (chapter-appropriate wisdom)
+for (let ch = 1; ch <= 4; ch++) {
+  const owlLine = elderOwl.getDialogueForChapter(ch);
+  app.dialogue.register(`owl_ch${ch}`, [{
+    speaker: owlLine.speaker,
+    avatar: owlLine.avatar,
+    text: owlLine.text
+  }]);
+}
 
 // Portal Archways
 const portalArchL1 = new THREE.Mesh(
@@ -191,12 +253,13 @@ function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
     sparkleParticles.emitBurst(player.position, 'sparkle', 60);
     audio.playSound('teleport');
     hud.showToast('💧 Entered Realm: Whispering Azure Grotto (Act II)', '💧');
+    app.cameraFX.punchZoom(3).shake(0.3, 0.4);
     setTimeout(() => {
-      hud.showDialogue(
-        'Water Sprite Aqualis',
-        '💧',
-        'Welcome to the Azure Grotto, Fox! Beware the Leviathan in the lagoon, skim across lily pads, and awaken the subterranean light!'
-      );
+      app.dialogue.play([{
+        speaker: 'Water Sprite Aqualis',
+        avatar: '💧',
+        text: 'Welcome to the Azure Grotto, Fox! Beware the Leviathan in the lagoon, skim across lily pads, and awaken the subterranean light!'
+      }]);
     }, 400);
   } else if (targetLevel === 2) {
     // Act III: Moonlit Crystal Peaks
@@ -216,12 +279,15 @@ function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
     sparkleParticles.emitBurst(player.position, 'sparkle', 60);
     audio.playSound('teleport');
     hud.showToast('❄️ Entered Realm: Moonlit Crystal Peaks (Act III)', '💎');
+    app.cameraFX.punchZoom(3).shake(0.3, 0.4);
+    app.quests.advance(questForChapter(3), 'portal', 1);
+    app.quests.advance(questForChapter(3), 'explore', 1);
     setTimeout(() => {
-      hud.showDialogue(
-        'Moon Spirit Wolf',
-        '🐺',
-        'Welcome to the Crystal Peaks, Fox! Beware the icy winds, leap onto bouncy crystal geysers 💨, and explore the alpine spires!'
-      );
+      app.dialogue.play([{
+        speaker: 'Moon Spirit Wolf',
+        avatar: '🐺',
+        text: 'Welcome to the Crystal Peaks, Fox! Beware the icy winds, leap onto bouncy crystal geysers 💨, and explore the alpine spires!'
+      }]);
     }, 400);
   } else {
     // Act I: The Ancient Grove
@@ -241,6 +307,7 @@ function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
     sparkleParticles.emitBurst(player.position, 'sparkle', 60);
     audio.playSound('teleport');
     hud.showToast('🌲 Entered Realm: The Ancient Grove (Act I)', '🦊');
+    app.cameraFX.punchZoom(3).shake(0.3, 0.4);
   }
 
   _camTargetLookAt.set(player.position.x, player.position.y + 1.2, player.position.z);
@@ -276,14 +343,20 @@ const hud = new GameHUD(
         if (save.isGoldenForm) {
           player.setGoldenAura();
         }
+        // Restore engine systems (quest progress derived from saved state)
+        syncFoxQuestProgress(app.quests, GameState.instance);
+        app.quests.start(questForChapter(GameState.instance.currentChapter));
+        foxHealth.reset();
+        foxHealth.current = Math.min(foxHealth.max, Math.max(1, save.hearts ?? GameState.instance.maxHearts));
+        GameState.instance.hearts = foxHealth.current;
         hud.showToast('💾 Adventure Progress Restored!', '✨');
       }
       setTimeout(() => {
-        hud.showDialogue(
-          'Grand Elder Owl',
-          '🦉',
-          'Welcome back, little Fox! Approach me anytime for wisdom, strike shadow creepers with Pounce (⚡), and let us restore the grove!'
-        );
+        app.dialogue.play([{
+          speaker: 'Grand Elder Owl',
+          avatar: '🦉',
+          text: 'Welcome back, little Fox! Approach me anytime for wisdom, strike shadow creepers with Pounce (⚡), and let us restore the grove!'
+        }]);
       }, 500);
     } else {
       GameState.instance.clearSaveData();
@@ -294,18 +367,25 @@ const hud = new GameHUD(
       chimes.syncWithSave();
       ducks.syncWithSave();
       hud.syncSavedUI();
+      // Fresh quest + health state for a new adventure
+      syncFoxQuestProgress(app.quests, GameState.instance);
+      app.quests.start(questForChapter(1));
+      foxHealth.reset();
+      GameState.instance.hearts = foxHealth.current;
       hud.showToast('🌲 A new journey begins...', '🦊');
       setTimeout(() => {
-        hud.showDialogue(
-          'Grand Elder Owl',
-          '🦉',
-          'Hoo-hoo! Welcome to the Ancient Grove, little Fox! An Ashen Shadow has invaded. Approach me on my stone roost, leap into combat with Pounce (⚡), and defeat the Bramble Golem!'
-        );
+        app.dialogue.play([{
+          speaker: 'Grand Elder Owl',
+          avatar: '🦉',
+          text: 'Hoo-hoo! Welcome to the Ancient Grove, little Fox! An Ashen Shadow has invaded. Approach me on my stone roost, leap into combat with Pounce (⚡), and defeat the Bramble Golem!'
+        }]);
       }, 500);
     }
   },
   () => app.captureScreenshot(`FoxOdyssey_${Date.now()}.png`),
-  () => audio.playSound('click')
+  () => audio.playSound('click'),
+  app.quests,
+  app.dialogue
 );
 
 // Sync world object states from any existing save loaded during HUD construction
@@ -324,6 +404,7 @@ input.onPounce = () => {
   if (!GameState.instance.isGameStarted) return;
   const pounced = player.pounce();
   if (pounced) {
+    app.cameraFX.punchZoom(2);
     // Combat Strike Hitbox against minions
     shadowBeasts.handlePlayerPounceAttack(player.position, player.rotationY, beast => {
       hud.showToast(`💥 Cleansed ${beast.type.toUpperCase()}!`, '💥');
@@ -358,6 +439,7 @@ input.onPounce = () => {
 input.onSpiritCall = () => {
   if (!GameState.instance.isGameStarted) return;
   player.spiritBark();
+  app.cameraFX.punchZoom(2.5).shake(0.15, 0.3);
   hud.showToast('Spirit Call Resonated!', '🔔');
 
   // Purifying shockwave hits shadow beasts
@@ -491,8 +573,9 @@ app.onUpdate((dt: number) => {
     // 4. Elder Owl Companion & Story Interaction (Level 1)
     if (worldL1.group.visible) {
       elderOwl.update(dt, timeSeconds, player.position);
-      elderOwl.checkProximity(player.position, GameState.instance.currentChapter, diag => {
-        hud.showDialogue(diag.speaker, diag.avatar, diag.text);
+      elderOwl.checkProximity(player.position, GameState.instance.currentChapter, () => {
+        app.quests.advance(questForChapter(1), 'speak_owl', 1);
+        app.dialogue.play(`owl_ch${GameState.instance.currentChapter}`);
       });
     }
 
@@ -505,6 +588,7 @@ app.onUpdate((dt: number) => {
         player.isGrounded,
         () => {
           player.takeDamage();
+          app.cameraFX.shake(0.9, 0.6);
           hud.showToast('💔 Struck by Golem Shockwave! Jump (Space) to dodge!', '💔');
         }
       );
@@ -515,6 +599,7 @@ app.onUpdate((dt: number) => {
         player.position,
         () => {
           player.takeDamage();
+          app.cameraFX.shake(0.6, 0.5);
           hud.showToast('💔 Struck by Leviathan Geyser!', '💔');
         }
       );
@@ -528,6 +613,7 @@ app.onUpdate((dt: number) => {
       player.invulnerabilityTimer > 0,
       damage => {
         player.takeDamage();
+        app.cameraFX.shake(0.5, 0.4);
         hud.showToast('💔 Struck by Shadow Beast!', '💔');
       }
     );
@@ -559,6 +645,8 @@ app.onUpdate((dt: number) => {
         sparkleParticles.emitBurst(player.position, 'sparkle', 35);
         audio.playSound('teleport');
         hud.showToast('💨 Crystal Geyser Launch!', '🚀');
+        app.quests.advance(questForChapter(3), 'geyser', 1);
+        app.cameraFX.shake(0.5, 0.5);
       });
     }
 
@@ -568,6 +656,7 @@ app.onUpdate((dt: number) => {
         player.velocity.y = force;
         player.isGrounded = false;
         hud.showToast('🍄 Super Mushroom Bounce!', '🚀');
+        app.cameraFX.shake(0.3, 0.3);
       });
     }
 

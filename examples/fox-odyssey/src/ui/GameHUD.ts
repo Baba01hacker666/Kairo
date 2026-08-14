@@ -1,11 +1,11 @@
+import type { QuestSystem, DialogueSystem } from '@kairo/core';
 import { GameState } from '../state.ts';
+import { questForChapter } from '../quests.ts';
 
 export interface ObjectiveItem {
   id: string;
   text: string;
   isCompleted: boolean;
-  currentCount?: number;
-  totalCount?: number;
 }
 
 export class GameHUD {
@@ -46,13 +46,18 @@ export class GameHUD {
   private dialogueCloseBtnEl = document.getElementById('dialogue-close-btn')!;
 
   private toastTimeout: any = null;
-  private hasTalkedToOwl: boolean = false;
+  private quests?: QuestSystem;
+  private dialogue?: DialogueSystem;
 
   constructor(
     onStartGame: (isContinue: boolean) => void,
     onCaptureScreenshot: () => void,
-    onPlayClickSound: () => void
+    onPlayClickSound: () => void,
+    quests?: QuestSystem,
+    dialogue?: DialogueSystem
   ) {
+    this.quests = quests;
+    this.dialogue = dialogue;
     this.checkSavedGame();
 
     // Start Screen New Game
@@ -99,11 +104,11 @@ export class GameHUD {
       this.showToast('📸 Screenshot Saved!', '✨');
     });
 
-    // Dialogue Close
+    // Dialogue Close — advances the engine DialogueSystem (finish typing → next
+    // line → end). The box is hidden by the 'dialogue_ended' event below.
     this.dialogueCloseBtnEl.addEventListener('click', () => {
-      this.dialogueBoxEl.classList.remove('active');
-      this.hasTalkedToOwl = true;
-      this.renderQuestObjectives();
+      this.dialogue?.advance();
+      if (!this.dialogue) this.dialogueBoxEl.classList.remove('active');
       onPlayClickSound();
     });
 
@@ -117,14 +122,6 @@ export class GameHUD {
       if (this.acornValEl) {
         this.acornValEl.innerText = `${count} / ${GameState.instance.totalAcorns}`;
       }
-      this.renderQuestObjectives();
-    });
-
-    GameState.instance.on('wisp_collected', () => {
-      this.renderQuestObjectives();
-    });
-
-    GameState.instance.on('beast_defeated', () => {
       this.renderQuestObjectives();
     });
 
@@ -145,12 +142,6 @@ export class GameHUD {
       this.showToast(`The grove spirit revives you! (${hearts}/${GameState.instance.maxHearts} ❤️)`, '✨');
     });
 
-    GameState.instance.on('chime_lit', () => {
-      // Keep the chime objective counter live instead of waiting for the
-      // chapter change event.
-      this.renderQuestObjectives();
-    });
-
     GameState.instance.on('chapter_changed', () => {
       this.renderQuestObjectives();
     });
@@ -163,6 +154,24 @@ export class GameHUD {
     GameState.instance.on('game_won', () => {
       this.showVictoryModal();
     });
+
+    // Quest-driven objective UI (objective progress/completion re-renders the list)
+    if (this.quests) {
+      this.quests.on('quest_started', () => this.renderQuestObjectives());
+      this.quests.on('objective_progress', () => this.renderQuestObjectives());
+      this.quests.on('objective_completed', () => this.renderQuestObjectives());
+      this.quests.on('quest_completed', () => this.renderQuestObjectives());
+    }
+
+    // Engine DialogueSystem drives the dialogue box
+    if (this.dialogue) {
+      this.dialogue.on('dialogue_line', e => {
+        this.showDialogue(e.line.speaker ?? '', e.line.avatar ?? '', e.line.text);
+      });
+      this.dialogue.on('dialogue_ended', () => {
+        this.hideDialogue();
+      });
+    }
   }
 
   public checkSavedGame() {
@@ -219,49 +228,25 @@ export class GameHUD {
 
   public renderQuestObjectives() {
     const chapter = GameState.instance.currentChapter;
-    const state = GameState.instance;
-
-    const chapterTitles: Record<number, { tag: string; title: string }> = {
-      1: { tag: 'CHAPTER 1', title: 'The Ashen Shadow' },
-      2: { tag: 'CHAPTER 2', title: 'Harmonize the Grove' },
-      3: { tag: 'CHAPTER 3', title: 'The Alpine Gateway' },
-      4: { tag: 'CHAPTER 4', title: 'The Moonlit Summit' }
+    const fallbackTitles: Record<number, string> = {
+      1: 'The Ashen Shadow',
+      2: 'Harmonize the Grove',
+      3: 'The Alpine Gateway',
+      4: 'The Moonlit Summit'
     };
 
-    const info = chapterTitles[chapter] || chapterTitles[1];
-    if (this.questChapterTagEl) this.questChapterTagEl.innerText = info.tag;
-    if (this.questTextEl) this.questTextEl.innerText = info.title;
+    const questId = questForChapter(chapter);
+    const quest = this.quests?.get(questId);
+    const title = quest?.title ?? fallbackTitles[chapter] ?? fallbackTitles[1];
 
+    if (this.questChapterTagEl) this.questChapterTagEl.innerText = `CHAPTER ${chapter}`;
+    if (this.questTextEl) this.questTextEl.innerText = title;
+
+    // Objectives come from the engine QuestSystem (formatted with live progress)
     let objectives: ObjectiveItem[] = [];
-
-    if (chapter === 1) {
-      const creepersKilled = Math.min(3, state.beastsDefeated);
-      objectives = [
-        { id: 'owl', text: 'Speak with Grand Elder Owl', isCompleted: this.hasTalkedToOwl },
-        { id: 'creepers', text: `Purify Shadow Creepers (${creepersKilled}/3)`, isCompleted: creepersKilled >= 3 },
-        { id: 'acorns', text: `Gather Sun Acorns (${state.acornsCollected}/${state.totalAcorns})`, isCompleted: state.acornsCollected >= state.totalAcorns }
-      ];
-    } else if (chapter === 2) {
-      const chimesLit = state.litChimeIds.size;
-      const wisps = state.wispsCollectedCount;
-      objectives = [
-        { id: 'chimes', text: `Ring Ancient Chimes (${chimesLit}/4 🔔)`, isCompleted: chimesLit >= 4 },
-        { id: 'wisps', text: `Awaken Grove Wisps (${wisps}/5 ✨)`, isCompleted: wisps >= 5 },
-        { id: 'acorns', text: `Gather Sun Acorns (${state.acornsCollected}/${state.totalAcorns})`, isCompleted: state.acornsCollected >= state.totalAcorns }
-      ];
-    } else if (chapter === 3) {
-      const isL2 = state.currentLevel === 2;
-      objectives = [
-        { id: 'portal', text: 'Step through the Northern Portal', isCompleted: isL2 },
-        { id: 'explore', text: 'Explore the Moonlit Crystal Peaks', isCompleted: isL2 },
-        { id: 'geyser', text: 'Launch off a Crystal Geyser 💨', isCompleted: isL2 }
-      ];
-    } else {
-      objectives = [
-        { id: 'altar', text: 'Ascend to the Moon Altar 💎', isCompleted: state.isGameWon },
-        { id: 'boss', text: 'Cleanse the Shadow Behemoth', isCompleted: state.isGameWon },
-        { id: 'golden', text: 'Master the Golden Spirit Fox Form', isCompleted: state.isGoldenForm }
-      ];
+    const formatted = this.quests?.getFormattedObjectives(questId);
+    if (formatted) {
+      objectives = formatted.map(o => ({ id: o.id, text: o.text, isCompleted: o.completed }));
     }
 
     if (this.questObjectivesListEl) {
@@ -296,6 +281,10 @@ export class GameHUD {
     this.npcAvatarEl.innerText = avatar;
     this.npcTextEl.innerText = text;
     this.dialogueBoxEl.classList.add('active');
+  }
+
+  public hideDialogue() {
+    this.dialogueBoxEl.classList.remove('active');
   }
 
   public togglePhotoMode(): boolean {
