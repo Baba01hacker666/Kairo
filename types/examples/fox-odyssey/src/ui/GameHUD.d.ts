@@ -1,3 +1,10 @@
+export interface ObjectiveItem {
+    id: string;
+    text: string;
+    isCompleted: boolean;
+    currentCount?: number;
+    totalCount?: number;
+}
 export declare class GameHUD {
     private startScreenEl;
     private startNewBtnEl;
@@ -8,7 +15,10 @@ export declare class GameHUD {
     private startResetSaveBtnEl;
     private acornValEl;
     private staminaFillEl;
+    private realmPillEl;
+    private questChapterTagEl;
     private questTextEl;
+    private questObjectivesListEl;
     private spiritRankBadgeEl;
     private actionToastEl;
     private toastIconEl;
@@ -28,11 +38,13 @@ export declare class GameHUD {
     private npcTextEl;
     private dialogueCloseBtnEl;
     private toastTimeout;
+    private hasTalkedToOwl;
     constructor(onStartGame: (isContinue: boolean) => void, onCaptureScreenshot: () => void, onPlayClickSound: () => void);
     checkSavedGame(): void;
     syncSavedUI(): void;
+    updateRealm(level: number): void;
     updateHearts(hearts: number, maxHearts?: number): void;
-    updateChapterQuestText(chapter: number): void;
+    renderQuestObjectives(): void;
     showToast(text: string, icon?: string): void;
     showDialogue(speaker: string, avatar: string, text: string): void;
     togglePhotoMode(): boolean;
