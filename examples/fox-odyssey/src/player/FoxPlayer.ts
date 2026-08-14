@@ -12,6 +12,7 @@ export class FoxPlayer {
   public isGrounded: boolean = true;
   public airJumpsLeft: number = 1;
   public isPouncing: boolean = false;
+  public invulnerabilityTimer: number = 0;
 
   public container: THREE.Group;
   private loadedModel: THREE.Object3D | null = null;
@@ -158,7 +159,7 @@ export class FoxPlayer {
     if (this.isGrounded) {
       this.velocity.y = force;
       this.isGrounded = false;
-      this.airJumpsLeft = isGolden ? 2 : 1; // Triple jump in Golden form!
+      this.airJumpsLeft = isGolden ? 2 : 1; // Triple jump in Golden form
       this.dustParticles.emitBurst(this.position, 'dust_footstep', 15);
       this.audio.playSound('jump');
       return true;
@@ -197,6 +198,22 @@ export class FoxPlayer {
     return true;
   }
 
+  public takeDamage(knockbackDir?: THREE.Vector3) {
+    if (this.invulnerabilityTimer > 0 || GameState.instance.isGoldenForm) return;
+    this.invulnerabilityTimer = 1.2;
+    this.audio.playSound('push');
+    this.dustParticles.emitBurst(this.position, 'dust_footstep', 30);
+
+    if (knockbackDir) {
+      this.velocity.x = knockbackDir.x * 10;
+      this.velocity.y = 5.0;
+      this.velocity.z = knockbackDir.z * 10;
+    } else {
+      this.velocity.y = 6.0;
+    }
+    GameState.instance.damagePlayer(1);
+  }
+
   public setGoldenAura() {
     if (this.loadedModel) {
       this.loadedModel.traverse((c: any) => {
@@ -219,11 +236,19 @@ export class FoxPlayer {
     const state = GameState.instance;
     const isGolden = state.isGoldenForm;
 
+    // Invulnerability flashing feedback
+    if (this.invulnerabilityTimer > 0) {
+      this.invulnerabilityTimer -= dt;
+      this.container.visible = Math.floor(this.invulnerabilityTimer * 12) % 2 === 0;
+    } else {
+      this.container.visible = true;
+    }
+
     // Golden Form Speed Boost & Infinite Stamina
     const currentWalkSpeed = isGolden ? this.walkSpeed * 1.25 : this.walkSpeed;
     const currentPounceSpeed = isGolden ? this.pounceSpeed * 1.35 : this.pounceSpeed;
 
-    // Stamina Regeneration & Decay (Super Fast Recharge, Long Lasting Sprint)
+    // Stamina Regeneration & Decay
     if (isGolden) {
       state.stamina = state.maxStamina;
     } else if (!this.isPouncing) {

@@ -7,6 +7,9 @@ export interface SaveData {
   isGoldenForm: boolean;
   playerPos: [number, number, number];
   currentLevel?: number;
+  currentChapter?: number;
+  hearts?: number;
+  beastsDefeated?: number;
   timestamp: number;
 }
 
@@ -15,6 +18,14 @@ export class GameState {
 
   public isGameStarted: boolean = false;
   public currentLevel: number = 1; // 1 = Ancient Grove, 2 = Moonlit Crystal Peaks
+  public currentChapter: number = 1; // 1: Ashen Shadow, 2: Chime Resonance, 3: Portal Journey, 4: Moonlit Summit
+
+  // Combat Health (3 Spirit Hearts)
+  public hearts: number = 3;
+  public maxHearts: number = 3;
+  public beastsDefeated: number = 0;
+
+  // Collectibles & Quests
   public acornsCollected: number = 0;
   public totalAcorns: number = 20;
   public totalWisps: number = 5;
@@ -25,7 +36,7 @@ export class GameState {
   public litChimeIds: Set<number> = new Set();
   public ducksFollowing: boolean = false;
 
-  // Generous Double Stamina (200 max) for fast, free exploration!
+  // Generous Double Stamina (200 max)
   public stamina: number = 200;
   public maxStamina: number = 200;
   public isGoldenForm: boolean = false;
@@ -53,9 +64,48 @@ export class GameState {
     }
   }
 
+  public damagePlayer(amount: number = 1): number {
+    if (this.isGoldenForm) return this.hearts;
+    this.hearts = Math.max(0, this.hearts - amount);
+    this.emit('player_damaged', this.hearts);
+    if (this.hearts <= 0) {
+      this.emit('player_fainted');
+      // Revive at entrance with 3 hearts
+      this.hearts = this.maxHearts;
+      this.emit('player_revived', this.hearts);
+    }
+    this.saveGame();
+    return this.hearts;
+  }
+
+  public healPlayer(amount: number = 1): number {
+    this.hearts = Math.min(this.maxHearts, this.hearts + amount);
+    this.emit('player_healed', this.hearts);
+    this.saveGame();
+    return this.hearts;
+  }
+
+  public recordBeastDefeat() {
+    this.beastsDefeated++;
+    this.emit('beast_defeated', this.beastsDefeated);
+    if (this.currentChapter === 1 && this.beastsDefeated >= 3) {
+      this.setChapter(2);
+    }
+    this.saveGame();
+  }
+
+  public setChapter(chapter: number) {
+    this.currentChapter = chapter;
+    this.emit('chapter_changed', chapter);
+    this.saveGame();
+  }
+
   public setLevel(level: number) {
     this.currentLevel = level;
     this.emit('level_changed', level);
+    if (level === 2 && this.currentChapter < 3) {
+      this.setChapter(3);
+    }
     this.saveGame();
   }
 
@@ -77,6 +127,7 @@ export class GameState {
     if (this.wispsCollectedCount >= this.totalWisps && !this.isGameWon) {
       this.isGameWon = true;
       this.isGoldenForm = true;
+      this.setChapter(4);
       this.emit('game_won');
     }
     this.saveGame();
@@ -84,6 +135,9 @@ export class GameState {
 
   public lightChime(id: number) {
     this.litChimeIds.add(id);
+    if (this.litChimeIds.size >= 4 && this.currentChapter < 3) {
+      this.setChapter(3);
+    }
     this.saveGame();
   }
 
@@ -114,6 +168,9 @@ export class GameState {
         isGoldenForm: this.isGoldenForm,
         playerPos: this.lastPlayerPos,
         currentLevel: this.currentLevel,
+        currentChapter: this.currentChapter,
+        hearts: this.hearts,
+        beastsDefeated: this.beastsDefeated,
         timestamp: Date.now()
       };
       localStorage.setItem(GameState.SAVE_KEY, JSON.stringify(data));
@@ -139,6 +196,9 @@ export class GameState {
       this.wispsCollectedCount = this.collectedWispIds.size;
       this.isGameWon = this.wispsCollectedCount >= this.totalWisps;
       this.currentLevel = data.currentLevel || 1;
+      this.currentChapter = data.currentChapter || 1;
+      this.hearts = data.hearts !== undefined ? data.hearts : 3;
+      this.beastsDefeated = data.beastsDefeated || 0;
       if (data.playerPos) {
         this.lastPlayerPos = data.playerPos;
       }
@@ -167,6 +227,9 @@ export class GameState {
     this.isGameWon = false;
     this.ducksFollowing = false;
     this.currentLevel = 1;
+    this.currentChapter = 1;
+    this.hearts = 3;
+    this.beastsDefeated = 0;
     this.stamina = 200;
     this.maxStamina = 200;
     this.lastPlayerPos = [0, 0.5, 8];

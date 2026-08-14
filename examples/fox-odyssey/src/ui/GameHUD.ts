@@ -108,34 +108,48 @@ export class GameHUD {
       if (dotEl) dotEl.classList.add('collected');
     });
 
-    GameState.instance.on('game_won', () => {
-      this.showVictoryModal();
+    GameState.instance.on('player_damaged', (hearts: number) => {
+      this.updateHearts(hearts, GameState.instance.maxHearts);
+      this.showToast(`Fox took damage! (${hearts}/${GameState.instance.maxHearts} ❤️)`, '💔');
     });
 
-    GameState.instance.on('saved', () => {
-      // Subtle auto-save notification
+    GameState.instance.on('player_healed', (hearts: number) => {
+      this.updateHearts(hearts, GameState.instance.maxHearts);
+      this.showToast(`Restored Heart! (${hearts}/${GameState.instance.maxHearts} ❤️)`, '💖');
+    });
+
+    GameState.instance.on('chapter_changed', (chapter: number) => {
+      this.updateChapterQuestText(chapter);
+    });
+
+    GameState.instance.on('game_won', () => {
+      this.showVictoryModal();
     });
   }
 
   public checkSavedGame() {
-    if (GameState.instance.hasSaveData()) {
+    const hasSave = GameState.instance.hasSaveData();
+    if (hasSave) {
       const save = GameState.instance.loadGame();
-      if (save && (save.acornsCollected > 0 || save.collectedWispIds.length > 0)) {
-        this.startContinueBtnEl.style.display = 'flex';
-        this.saveInfoPreviewEl.style.display = 'block';
+      if (save) {
+        this.startContinueBtnEl.style.display = 'block';
         this.startResetSaveBtnEl.style.display = 'inline-block';
-        this.saveWispsCountEl.innerText = String(save.collectedWispIds.length);
-        this.saveAcornsCountEl.innerText = String(save.acornsCollected);
-      } else {
-        this.startContinueBtnEl.style.display = 'none';
-        this.saveInfoPreviewEl.style.display = 'none';
-        this.startResetSaveBtnEl.style.display = 'none';
+        this.saveInfoPreviewEl.style.display = 'block';
+        this.saveWispsCountEl.innerText = String(save.collectedWispIds?.length || 0);
+        this.saveAcornsCountEl.innerText = String(save.acornsCollected || 0);
       }
+    } else {
+      this.startContinueBtnEl.style.display = 'none';
+      this.startResetSaveBtnEl.style.display = 'none';
+      this.saveInfoPreviewEl.style.display = 'none';
     }
   }
 
   public syncSavedUI() {
     this.acornValEl.innerText = `${GameState.instance.acornsCollected} / ${GameState.instance.totalAcorns}`;
+    this.updateHearts(GameState.instance.hearts, GameState.instance.maxHearts);
+    this.updateChapterQuestText(GameState.instance.currentChapter);
+
     for (let i = 0; i < 5; i++) {
       const dotEl = document.getElementById(`wisp-dot-${i}`);
       if (dotEl) {
@@ -145,6 +159,31 @@ export class GameHUD {
           dotEl.classList.remove('collected');
         }
       }
+    }
+  }
+
+  public updateHearts(hearts: number, maxHearts: number = 3) {
+    for (let i = 0; i < maxHearts; i++) {
+      const heartEl = document.getElementById(`heart-${i}`);
+      if (heartEl) {
+        if (i < hearts) {
+          heartEl.classList.remove('lost');
+        } else {
+          heartEl.classList.add('lost');
+        }
+      }
+    }
+  }
+
+  public updateChapterQuestText(chapter: number) {
+    const quests: Record<number, string> = {
+      1: 'Chapter 1: Speak with Elder Owl & cleanse the Shadow Creepers (⚡/Shift)!',
+      2: 'Chapter 2: Ring the 4 Chime Monoliths (🔔/E) & gather 20 Sun Acorns!',
+      3: 'Chapter 3: Step through the Northern Portal to the Moonlit Crystal Peaks!',
+      4: 'Chapter 4: Awaken the Moon Altar & Defeat the Shadow Behemoth!'
+    };
+    if (this.questTextEl) {
+      this.questTextEl.innerText = quests[chapter] || quests[1];
     }
   }
 
@@ -187,7 +226,7 @@ export class GameHUD {
     this.spiritRankBadgeEl.innerText = 'Golden Avatar';
     this.spiritRankBadgeEl.style.background = 'rgba(245, 158, 11, 0.4)';
     this.spiritRankBadgeEl.style.color = '#fff';
-    this.questTextEl.innerText = 'Ancient Grove Restored! You are the Golden Spirit Fox!';
+    this.questTextEl.innerText = 'Ancient Grove & Crystal Peaks Restored!';
 
     const elapsed = Math.floor((performance.now() - GameState.instance.gameStartTime) / 1000);
     const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');

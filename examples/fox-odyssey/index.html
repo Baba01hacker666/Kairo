@@ -328,6 +328,19 @@
       background: linear-gradient(90deg, #10b981, #fbbf24);
       border-radius: 99px;
       transition: width 0.1s linear;
+    .hearts-container {
+      display: flex;
+      gap: 3px;
+      margin: 2px 0;
+      font-size: 13px;
+    }
+    .heart-icon {
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    }
+    .heart-icon.lost {
+      opacity: 0.25;
+      filter: grayscale(1);
+      transform: scale(0.85);
     }
 
     /* Quest Objective Banner */
@@ -844,6 +857,11 @@
           <div class="player-title">
             Spirit Fox
             <span class="spirit-badge" id="spirit-rank-badge">Apprentice</span>
+          </div>
+          <div class="hearts-container" id="hearts-container">
+            <span class="heart-icon" id="heart-0">❤️</span>
+            <span class="heart-icon" id="heart-1">❤️</span>
+            <span class="heart-icon" id="heart-2">❤️</span>
           </div>
           <div class="stamina-bar-container">
             <div class="stamina-bar-fill" id="stamina-fill"></div>

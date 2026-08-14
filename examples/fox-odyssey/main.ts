@@ -8,6 +8,8 @@ import { ForestAudio } from './src/audio/ForestAudio.ts';
 import { FoxPlayer } from './src/player/FoxPlayer.ts';
 import { GroveWorld } from './src/world/GroveWorld.ts';
 import { CrystalPeaksWorld } from './src/world/CrystalPeaksWorld.ts';
+import { ElderOwl } from './src/entities/ElderOwl.ts';
+import { ShadowBeastManager } from './src/entities/ShadowBeasts.ts';
 import { WispManager } from './src/entities/Wisps.ts';
 import { AcornManager } from './src/entities/Acorns.ts';
 import { ChimeManager } from './src/entities/Chimes.ts';
@@ -63,6 +65,8 @@ const input = new MobileInput();
 const worldL1 = new GroveWorld(app.scene);
 const worldL2 = new CrystalPeaksWorld(app.scene);
 const player = new FoxPlayer(app.scene, dustParticles, sparkleParticles, audio);
+const elderOwl = new ElderOwl(app.scene, sparkleParticles, audio);
+const shadowBeasts = new ShadowBeastManager(app.scene, sparkleParticles, dustParticles, audio);
 
 // Portal Archway in Level 1 leading to Level 2
 const portalArchL1 = new THREE.Mesh(
@@ -126,6 +130,7 @@ const endgameShrine = new EndgameShrineManager(app.scene, sparkleParticles, audi
 // --- 4. Level Switcher Routine ---
 function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
   GameState.instance.currentLevel = targetLevel;
+  shadowBeasts.onLevelSwitch(targetLevel);
 
   if (targetLevel === 2) {
     worldL1.group.visible = false;
@@ -207,9 +212,9 @@ const hud = new GameHUD(
       }
       setTimeout(() => {
         hud.showDialogue(
-          'Grove Elder Owl',
+          'Grand Elder Owl',
           '🦉',
-          'Welcome back, little Fox! Swipe the screen to look around, dash with sprint, and explore the ancient grove!'
+          'Welcome back, little Fox! Approach me anytime for wisdom, strike shadow creepers with Pounce (⚡), and let us restore the grove!'
         );
       }, 500);
     } else {
@@ -224,9 +229,9 @@ const hud = new GameHUD(
       hud.showToast('🌲 A new journey begins...', '🦊');
       setTimeout(() => {
         hud.showDialogue(
-          'Grove Elder Owl',
+          'Grand Elder Owl',
           '🦉',
-          'Welcome to the Ancient Grove, little Fox! Swipe anywhere on the right to look around, leap across stepping stones, and step through the ancient northern portal to visit the Moonlit Crystal Peaks!'
+          'Hoo-hoo! Welcome to the Ancient Grove, little Fox! An Ashen Shadow has invaded. Approach me on my stone roost, leap into combat with Pounce (⚡), and ring the Chimes (🔔)!'
         );
       }, 500);
     }
@@ -241,7 +246,7 @@ wisps.syncWithSave();
 chimes.syncWithSave();
 ducks.syncWithSave();
 
-// --- 6. Action Input Handlers ---
+// --- 6. Action Input Handlers (Combat & Interaction) ---
 input.onJump = () => {
   if (!GameState.instance.isGameStarted) return;
   player.jump();
@@ -249,13 +254,28 @@ input.onJump = () => {
 
 input.onPounce = () => {
   if (!GameState.instance.isGameStarted) return;
-  player.pounce();
+  const pounced = player.pounce();
+  if (pounced) {
+    // Combat Strike Hitbox
+    shadowBeasts.handlePlayerPounceAttack(player.position, player.rotationY, beast => {
+      hud.showToast(`💥 Cleansed ${beast.type.toUpperCase()}!`, '💥');
+      GameState.instance.healPlayer(1);
+      GameState.instance.recordBeastDefeat();
+    });
+  }
 };
 
 input.onSpiritCall = () => {
   if (!GameState.instance.isGameStarted) return;
   player.spiritBark();
   hud.showToast('Spirit Call Resonated!', '🔔');
+
+  // Purifying shockwave hits shadow beasts
+  shadowBeasts.handlePlayerSpiritBark(player.position, beast => {
+    hud.showToast(`✨ Purified ${beast.type.toUpperCase()} with Spirit Shockwave!`, '✨');
+    GameState.instance.healPlayer(1);
+    GameState.instance.recordBeastDefeat();
+  });
 
   // Check Chimes Resonance
   chimes.checkBarkResonance(player.position, chime => {
@@ -335,7 +355,27 @@ app.onUpdate((dt: number) => {
     player.update(dt, moveInput.x, moveInput.y, (x, z) => activeWorld.getTerrainHeight(x, z), camYaw);
     hud.updateStamina(GameState.instance.stamina, GameState.instance.maxStamina);
 
-    // 4. Realm Portal Transitions
+    // 4. Elder Owl Companion & Story Interaction (Level 1)
+    if (worldL1.group.visible) {
+      elderOwl.update(dt, timeSeconds, player.position);
+      elderOwl.checkProximity(player.position, GameState.instance.currentChapter, diag => {
+        hud.showDialogue(diag.speaker, diag.avatar, diag.text);
+      });
+    }
+
+    // 5. Shadow Beasts Combat AI Loop
+    shadowBeasts.update(
+      dt,
+      timeSeconds,
+      player.position,
+      player.invulnerabilityTimer > 0,
+      damage => {
+        player.takeDamage();
+        hud.showToast('💔 Struck by Shadow Beast!', '💔');
+      }
+    );
+
+    // 6. Realm Portal Transitions
     if (GameState.instance.currentLevel === 1) {
       if (player.position.distanceTo(_portalPosL1) < 3.2) {
         switchLevel(2);
@@ -355,7 +395,7 @@ app.onUpdate((dt: number) => {
       });
     }
 
-    // 5. Bouncy Mushrooms Collision (Level 1)
+    // 7. Bouncy Mushrooms Collision (Level 1)
     if (worldL1.group.visible) {
       mushrooms.checkPlayerBounce(player.position, now, force => {
         player.velocity.y = force;
@@ -364,7 +404,7 @@ app.onUpdate((dt: number) => {
       });
     }
 
-    // 6. Sun Acorns Attraction & Collection
+    // 8. Sun Acorns Attraction & Collection
     acorns.update(dt, timeSeconds, player.position, count => {
       hud.showToast(`Gathered Sun Acorn (${count}/${GameState.instance.totalAcorns})`, '🌰');
       if (count >= GameState.instance.totalAcorns) {
@@ -373,15 +413,15 @@ app.onUpdate((dt: number) => {
       }
     });
 
-    // 7. Lost Spirit Wisps Update & Follow
+    // 9. Lost Spirit Wisps Update & Follow
     wisps.update(dt, timeSeconds, player.position, wisp => {
       hud.showToast(`Awakened ${wisp.name}! (${GameState.instance.wispsCollectedCount}/5)`, '✨');
     });
 
-    // 8. Duck Companions Follow Pack
+    // 10. Duck Companions Follow Pack
     ducks.update(dt, player.position, player.rotationY);
 
-    // 9. Endgame Spirit Sprint Time Trial
+    // 11. Endgame Spirit Sprint Time Trial
     endgameShrine.update(
       dt,
       timeSeconds,
@@ -406,7 +446,7 @@ app.onUpdate((dt: number) => {
     }
   }
 
-  // 10. Touch & Mouse 3D Camera Look & Orbit Follow Camera
+  // 12. Touch & Mouse 3D Camera Look & Orbit Follow Camera
   if (!GameState.instance.isPhotoMode) {
     const look = input.consumeLookDelta();
     if (look.x !== 0 || look.y !== 0) {
@@ -434,7 +474,7 @@ app.onUpdate((dt: number) => {
     sunLight.target.updateMatrixWorld();
   }
 
-  // 11. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
+  // 13. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
   leafParticles.update(dt);
   sparkleParticles.update(dt);
   dustParticles.update(dt);
@@ -443,4 +483,4 @@ app.onUpdate((dt: number) => {
 
 // Launch Engine
 app.start();
-console.log('🦊 Fox Odyssey (Level 1: Ancient Grove + Level 2: Moonlit Crystal Peaks) active.');
+console.log('🦊 Fox Odyssey (Story + Elder Owl + Combat + Levels 1 & 2) active.');
