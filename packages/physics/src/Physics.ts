@@ -288,6 +288,13 @@ export class PhysicsWorld {
       }
     }
 
+    // Fast path: nothing to simulate. Skipping the Cannon solver entirely
+    // removes broadphase/solver overhead from games that don't use physics
+    // (e.g. terrain-only demos) while keeping per-frame cost at ~0.
+    if (this.bodies.length === 0 && this.cannonWorld.bodies.length === 0) {
+      return;
+    }
+
     const world = this.cannonWorld;
     world.gravity.set(this.gravity.x, this.gravity.y, this.gravity.z);
     this.cancelGravityForNonGravityBodies();

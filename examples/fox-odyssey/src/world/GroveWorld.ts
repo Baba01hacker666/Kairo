@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ShaderPresets, CustomShaderMaterial } from '@kairo/renderer';
-import { createTree, createRock, createCloud } from '@kairo/geometry';
+import { createTree, createTreeField, createRockField, createCloudField } from '@kairo/geometry';
 
 export class GroveWorld {
   public group: THREE.Group;
@@ -47,18 +47,17 @@ export class GroveWorld {
     pondMesh.receiveShadow = true;
     this.group.add(pondMesh);
 
-    // 3. Pond Rocks & Stepping Stones
+    // 3. Pond Rocks & Stepping Stones (rocks rendered as a single instanced draw call)
+    const pondRocks: Array<{ position: [number, number, number]; scale: number; color: number }> = [];
     for (let i = 0; i < 18; i++) {
       const angle = (i / 18) * Math.PI * 2;
-      const rx = -18 + Math.cos(angle) * 14.5;
-      const rz = -12 + Math.sin(angle) * 14.5;
-      const rock = createRock({
-        position: [rx, 0.3, rz],
+      pondRocks.push({
+        position: [-18 + Math.cos(angle) * 14.5, 0.3, -12 + Math.sin(angle) * 14.5],
         scale: 0.8 + Math.sin(i * 3) * 0.3,
         color: 0x52796f
       });
-      this.group.add(rock);
     }
+    this.group.add(createRockField({ rocks: pondRocks }));
 
     const stepPositions = [
       [-22, 0.35, -16],
@@ -119,31 +118,34 @@ export class GroveWorld {
     }
     this.group.add(this.shrineGroup);
 
-    // 5. Forest Trees & Ambient Clouds
-    const trees = [
+    // 5. Forest Trees & Ambient Clouds (one instanced draw call each)
+    const forestTrees = [
       [12, 0, 15], [18, 0, 10], [25, 0, 20], [15, 0, -18], [28, 0, -10],
       [-10, 0, 22], [-24, 0, 18], [-32, 0, 8], [-28, 0, -25], [-12, 0, -35],
       [8, 0, -28], [32, 0, -25], [5, 0, 32], [-5, 0, 38], [22, 0, 32],
       [-35, 0, -8], [38, 0, 5], [0, 0, 42], [-18, 0, 35], [30, 0, -38]
     ];
-    trees.forEach((pos, idx) => {
-      const tree = createTree({
-        position: [pos[0], pos[1], pos[2]],
-        scale: 1.0 + (idx % 4) * 0.25,
-        canopyColor: idx % 2 === 0 ? 0x2d6a4f : 0x40916c
-      });
-      this.group.add(tree);
-    });
+    const treeFieldItems = forestTrees.map((pos, idx): {
+      position: [number, number, number];
+      scale: number;
+      canopyColor: number;
+    } => ({
+      position: [pos[0], pos[1], pos[2]],
+      scale: 1.0 + (idx % 4) * 0.25,
+      canopyColor: idx % 2 === 0 ? 0x2d6a4f : 0x40916c
+    }));
+    this.group.add(createTreeField({ trees: treeFieldItems }));
 
+    const cloudPositions: Array<{ position: [number, number, number]; scale: number; color: number }> = [];
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
-      const cloud = createCloud({
+      cloudPositions.push({
         position: [Math.cos(angle) * 50, 24 + (i % 3) * 4, Math.sin(angle) * 50],
         scale: 2.2 + (i % 3) * 0.8,
         color: 0xffffff
       });
-      this.group.add(cloud);
     }
+    this.group.add(createCloudField({ clouds: cloudPositions }));
   }
 
   public getTerrainHeight(x: number, z: number): number {

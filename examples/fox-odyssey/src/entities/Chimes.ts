@@ -62,6 +62,17 @@ export class ChimeManager {
     });
   }
 
+  /** Restore lit state from the save so already-lit chimes glow on Continue. */
+  public syncWithSave() {
+    this.chimes.forEach(chime => {
+      const lit = GameState.instance.litChimeIds.has(chime.id);
+      chime.isLit = lit;
+      (chime.runeMesh.material as THREE.MeshStandardMaterial).emissive.setHex(lit ? 0xf59e0b : 0x000000);
+      (chime.runeMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = lit ? 2.0 : 0.0;
+      chime.light.intensity = lit ? 4.0 : 0;
+    });
+  }
+
   public checkBarkResonance(playerPos: THREE.Vector3, onLit: (chime: ChimeMonolith) => void) {
     this.chimes.forEach(chime => {
       const d = playerPos.distanceTo(chime.position);

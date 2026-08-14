@@ -31,6 +31,9 @@ export class MobileInput {
       if (e.code === 'Space') {
         e.preventDefault();
         this.triggerJump();
+      } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.isPouncing = true;
+        this.triggerPounce();
       } else if (e.code === 'KeyE') {
         this.triggerSpiritCall();
       } else if (e.code === 'KeyQ') {

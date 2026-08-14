@@ -40,7 +40,8 @@ export class AcornManager {
 
       const isCollected = GameState.instance.collectedAcornIds.has(i);
       g.position.set(ax, ay, az);
-      g.castShadow = true;
+      // Small collectibles don't need to cast shadows — keeps the shadow pass cheap
+      g.castShadow = false;
       if (isCollected) g.visible = false;
       scene.add(g);
 
@@ -55,20 +56,31 @@ export class AcornManager {
     }
   }
 
+  /** Restore collected state from the save so already-collected acorns are hidden. */
+  public syncWithSave() {
+    this.acorns.forEach(acorn => {
+      const collected = GameState.instance.collectedAcornIds.has(acorn.id);
+      acorn.collected = collected;
+      acorn.mesh.visible = !collected;
+    });
+  }
+
   public update(dt: number, timeSeconds: number, playerPos: THREE.Vector3, onCollect: (count: number) => void) {
     this.acorns.forEach(acorn => {
       if (acorn.collected) return;
       acorn.mesh.rotation.y += dt * acorn.spinSpeed;
       acorn.mesh.position.y = acorn.baseY + Math.sin(timeSeconds * 3 + acorn.spinSpeed) * 0.2;
 
-      const d = playerPos.distanceTo(acorn.position);
+      // Measure distance from the live mesh position so attraction/collection
+      // works even after the acorn has been pulled toward the player.
+      const d = playerPos.distanceTo(acorn.mesh.position);
       if (d < 4.5) {
         acorn.mesh.position.lerp(playerPos, dt * 6.0);
       }
       if (d < 1.4) {
         acorn.collected = true;
         acorn.mesh.visible = false;
-        this.sparkleParticles.emitBurst(acorn.position, 'sparkle', 20);
+        this.sparkleParticles.emitBurst(acorn.mesh.position, 'sparkle', 20);
         this.audio.playSound('coin');
         const count = GameState.instance.collectAcorn(acorn.id);
         onCollect(count);

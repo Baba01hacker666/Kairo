@@ -30,6 +30,8 @@ export class GameState {
   public soundEnabled: boolean = true;
   public isPhotoMode: boolean = false;
   public gameStartTime: number = performance.now();
+  /** Last known player position, used as default when saving without an explicit position. */
+  private lastPlayerPos: [number, number, number] = [0, 0.5, 8];
 
   private listeners: Map<string, Array<(data?: any) => void>> = new Map();
   private static readonly SAVE_KEY = 'kairo_fox_odyssey_save_v1';
@@ -91,6 +93,9 @@ export class GameState {
   public saveGame(playerPos?: [number, number, number]) {
     if (typeof localStorage === 'undefined') return;
     try {
+      if (playerPos) {
+        this.lastPlayerPos = playerPos;
+      }
       const data: SaveData = {
         acornsCollected: this.acornsCollected,
         collectedAcornIds: Array.from(this.collectedAcornIds),
@@ -98,7 +103,7 @@ export class GameState {
         litChimeIds: Array.from(this.litChimeIds),
         ducksFollowing: this.ducksFollowing,
         isGoldenForm: this.isGoldenForm,
-        playerPos: playerPos || [0, 0.5, 8],
+        playerPos: this.lastPlayerPos,
         timestamp: Date.now()
       };
       localStorage.setItem(GameState.SAVE_KEY, JSON.stringify(data));
@@ -123,6 +128,9 @@ export class GameState {
       this.isGoldenForm = data.isGoldenForm || false;
       this.wispsCollectedCount = this.collectedWispIds.size;
       this.isGameWon = this.wispsCollectedCount >= this.totalWisps;
+      if (data.playerPos) {
+        this.lastPlayerPos = data.playerPos;
+      }
 
       return data;
     } catch (err) {
@@ -147,5 +155,6 @@ export class GameState {
     this.isGoldenForm = false;
     this.isGameWon = false;
     this.ducksFollowing = false;
+    this.lastPlayerPos = [0, 0.5, 8];
   }
 }

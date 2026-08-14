@@ -8,6 +8,7 @@ export class WispManager {
   public wisps: SpiritWisp[] = [];
   private sparkleParticles: ParticleSystem;
   private audio: ForestAudio;
+  private _orbitTarget: THREE.Vector3 = new THREE.Vector3();
 
   constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem, audio: ForestAudio) {
     this.sparkleParticles = sparkleParticles;
@@ -54,15 +55,22 @@ export class WispManager {
     });
   }
 
+  /** Restore collected state from the save so collected wisps orbit the fox. */
+  public syncWithSave() {
+    this.wisps.forEach(wisp => {
+      wisp.isCollected = GameState.instance.collectedWispIds.has(wisp.id);
+    });
+  }
+
   public update(dt: number, timeSeconds: number, playerPos: THREE.Vector3, onCollect: (wisp: SpiritWisp) => void) {
     this.wisps.forEach(wisp => {
       if (wisp.isCollected) {
-        // Orbit following fox
+        // Orbit following fox (reuse scratch vector to avoid per-frame allocation)
         const angle = timeSeconds * 2.5 + wisp.id * 1.25;
         const tx = playerPos.x + Math.sin(angle) * (1.8 + wisp.id * 0.4);
         const tz = playerPos.z + Math.cos(angle) * (1.8 + wisp.id * 0.4);
         const ty = playerPos.y + 1.2 + Math.sin(timeSeconds * 4 + wisp.id) * 0.3;
-        wisp.mesh.position.lerp(new THREE.Vector3(tx, ty, tz), dt * 7);
+        wisp.mesh.position.lerp(this._orbitTarget.set(tx, ty, tz), dt * 7);
         return;
       }
 

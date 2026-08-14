@@ -40,8 +40,20 @@ export class CodeBugAuditor {
       const line = lines[i];
       const trimmed = line.trim();
 
+      // Detect a 60fps update loop entry point: engine hooks (onUpdate/.step/rAF)
+      // AND class update() method definitions (e.g. `public update(dt, ...) {`)
+      // so GC churn inside entity update methods is caught too. Calls like
+      // `obj.update(...)` are excluded by anchoring the method pattern to the
+      // start of the line.
+      const isLoopStart = /onUpdate|\.step\(|requestAnimationFrame|function\s+tick|function\s+loop|^\s*(public|private|protected)?\s*(async\s+)?update\s*\(/i.test(line);
+
       // Track if we are inside a 60fps update loop
-      if (/onUpdate|\.step\(|requestAnimationFrame|function\s+tick|function\s+loop/i.test(line)) {
+      if (isLoopStart) {
+        // A new loop/method entry means any previous short loop has ended,
+        // preventing the flag from sticking for the rest of the file.
+        if (insideUpdateLoop && lineNum - updateLoopStartLine > 2) {
+          insideUpdateLoop = false;
+        }
         insideUpdateLoop = true;
         updateLoopStartLine = lineNum;
       }

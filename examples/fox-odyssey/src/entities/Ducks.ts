@@ -6,6 +6,8 @@ import { GameState } from '../state.ts';
 export class DuckManager {
   public ducks: FriendlyDuck[] = [];
   private sparkleParticles: ParticleSystem;
+  private _followTarget: THREE.Vector3 = new THREE.Vector3();
+  private _lookTarget: THREE.Vector3 = new THREE.Vector3();
 
   constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem) {
     this.sparkleParticles = sparkleParticles;
@@ -65,6 +67,13 @@ export class DuckManager {
     });
   }
 
+  /** Restore following state from the save so recruited ducks follow on Continue. */
+  public syncWithSave() {
+    this.ducks.forEach(duck => {
+      duck.isFollowing = GameState.instance.ducksFollowing;
+    });
+  }
+
   public update(dt: number, playerPos: THREE.Vector3, playerRotY: number) {
     this.ducks.forEach((duck, idx) => {
       duck.animTime += dt * 4;
@@ -72,8 +81,9 @@ export class DuckManager {
         const offset = (idx + 1) * 1.6;
         const tx = playerPos.x - Math.sin(playerRotY) * offset;
         const tz = playerPos.z - Math.cos(playerRotY) * offset;
-        duck.mesh.position.lerp(new THREE.Vector3(tx, 0.35, tz), dt * 5.0);
-        duck.mesh.lookAt(new THREE.Vector3(playerPos.x, 0.35, playerPos.z));
+        // Reuse scratch vectors to avoid per-frame allocation
+        duck.mesh.position.lerp(this._followTarget.set(tx, 0.35, tz), dt * 5.0);
+        duck.mesh.lookAt(this._lookTarget.set(playerPos.x, 0.35, playerPos.z));
         duck.mesh.position.y = 0.35 + Math.abs(Math.sin(duck.animTime)) * 0.15;
       }
     });

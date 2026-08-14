@@ -22,7 +22,6 @@ export class FoxPlayer {
   public pounceSpeed: number = 13.5;
   public jumpForce: number = 11.5;
 
-  private pounceTimer: number = 0;
   private barkTimer: number = 0;
   private auraRing: THREE.Mesh;
   private auraMaterial: THREE.MeshBasicMaterial;
@@ -170,7 +169,6 @@ export class FoxPlayer {
     const state = GameState.instance;
     if (state.stamina > 25 && !this.isPouncing) {
       this.isPouncing = true;
-      this.pounceTimer = 0.45;
       state.stamina = Math.max(0, state.stamina - 30);
       this.audio.playSound('push');
       this.dustParticles.emitBurst(this.position, 'dust_footstep', 20);

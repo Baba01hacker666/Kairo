@@ -34,13 +34,15 @@ if (app.renderer) {
   app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2.0));
 }
 
-app.setLighting({
+const sunLight = app.setLighting({
   sunPosition: [30, 45, 20],
   sunColor: 0xfff3d6,
   sunIntensity: 1.8,
   ambientColor: 0x6ee7b7,
   ambientIntensity: 0.9
-});
+}).sun;
+// Add the sun's target to the scene so its shadow camera can follow the player
+app.scene.add(sunLight.target);
 
 // --- 2. Shared Particle Systems ---
 const leafParticles = new ParticleSystem(300, 0x34d399);
@@ -77,6 +79,7 @@ const hud = new GameHUD(
   (isContinue: boolean) => {
     // Start Game Callback
     audio.resumeAudio();
+    GameState.instance.gameStartTime = performance.now();
 
     if (isContinue) {
       const save = GameState.instance.loadGame();
@@ -86,6 +89,11 @@ const hud = new GameHUD(
           app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + 9.0);
           app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
         }
+        // Restore collected/lit/following state onto the 3D world objects
+        acorns.syncWithSave();
+        wisps.syncWithSave();
+        chimes.syncWithSave();
+        ducks.syncWithSave();
         hud.syncSavedUI();
         if (save.isGoldenForm) {
           player.setGoldenAura();
@@ -101,6 +109,11 @@ const hud = new GameHUD(
       }, 500);
     } else {
       GameState.instance.clearSaveData();
+      // Reset world objects to fresh (uncollected) state
+      acorns.syncWithSave();
+      wisps.syncWithSave();
+      chimes.syncWithSave();
+      ducks.syncWithSave();
       hud.syncSavedUI();
       hud.showToast('🌲 A new journey begins...', '🦊');
       setTimeout(() => {
@@ -115,6 +128,12 @@ const hud = new GameHUD(
   () => app.captureScreenshot(`FoxOdyssey_${Date.now()}.png`),
   () => audio.playSound('click')
 );
+
+// Sync world object states from any existing save loaded during HUD construction
+acorns.syncWithSave();
+wisps.syncWithSave();
+chimes.syncWithSave();
+ducks.syncWithSave();
 
 // --- 5. Action Input Handlers ---
 input.onJump = () => {
@@ -172,9 +191,8 @@ app.onUpdate((dt: number) => {
   // 2. Mobile Multi-Touch & Key Input
   if (GameState.instance.isGameStarted) {
     const moveInput = input.update();
-    if (input.isPouncing) {
-      player.isPouncing = true;
-    }
+    // Sync pounce state from input so releasing the button/shift cancels the dash
+    player.isPouncing = input.isPouncing;
 
     // 3. Player Physics & Locomotion
     player.update(dt, moveInput.x, moveInput.y, (x, z) => world.getTerrainHeight(x, z));
@@ -219,13 +237,19 @@ app.onUpdate((dt: number) => {
     _camDesiredPos.set(player.position.x, player.position.y + camHeight, player.position.z + camDist);
     app.camera.position.lerp(_camDesiredPos, Math.min(1.0, dt * 7.5));
     app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+
+    // Track the player with the sun's shadow camera so the shadow map only
+    // covers the play area (faster shadow pass + sharper, pop-in-free shadows)
+    sunLight.position.set(player.position.x + 30, 45, player.position.z + 20);
+    sunLight.target.position.set(player.position.x, 0, player.position.z);
+    sunLight.target.updateMatrixWorld();
   }
 
-  // 9. Particle Lifecycles
-  leafParticles.mesh.count = leafParticles.maxParticles;
-  sparkleParticles.mesh.count = sparkleParticles.maxParticles;
-  dustParticles.mesh.count = dustParticles.maxParticles;
-  splashParticles.mesh.count = splashParticles.maxParticles;
+  // 9. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
+  leafParticles.update(dt);
+  sparkleParticles.update(dt);
+  dustParticles.update(dt);
+  splashParticles.update(dt);
 });
 
 // Launch Engine

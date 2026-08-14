@@ -6,6 +6,9 @@ import {
   createGrassField,
   createTree,
   createRock,
+  createTreeField,
+  createRockField,
+  createCloudField,
   createBlock,
   createSphere,
   createPlane,
@@ -77,6 +80,59 @@ test('scenery helpers return sensible object graphs', () => {
   const rock = createRock({ position: [0, 1, 0], scale: 2 });
   assert.ok(rock instanceof THREE.Mesh);
   assert.ok(rock.geometry.attributes.position.count >= 12);
+});
+
+test('createTreeField collapses a forest into a few instanced draw calls', () => {
+  const field = createTreeField({
+    trees: [
+      { position: [0, 0, 0], scale: 1.0, canopyColor: 0x2d6a4f },
+      { position: [5, 0, 3], scale: 1.5, canopyColor: 0x40916c },
+      { position: [-4, 0, 2], scale: 1.25, canopyColor: 0x2d6a4f }
+    ]
+  });
+
+  assert.ok(field instanceof THREE.Group);
+  // Trunk + canopy + blob InstancedMeshes — one draw call per part, not per tree
+  assert.strictEqual(field.children.length, 3);
+  field.children.forEach(mesh => {
+    assert.ok(mesh instanceof THREE.InstancedMesh);
+    assert.strictEqual(mesh.count, 3, 'every part mesh has one instance per tree');
+  });
+
+  // Canopies sit above their trunks (different instance matrices)
+  const trunkY = field.children[0].instanceMatrix.array[13];
+  const canopyY = field.children[1].instanceMatrix.array[13];
+  assert.ok(canopyY > trunkY, 'canopy should be raised above the trunk');
+});
+
+test('createRockField and createCloudField return instanced meshes', () => {
+  const rocks = createRockField({
+    rocks: [
+      { position: [0, 0, 0], scale: 1 },
+      { position: [3, 0, 1], scale: 2 },
+      { position: [-2, 0, 4], scale: 0.5 }
+    ]
+  });
+  assert.ok(rocks instanceof THREE.InstancedMesh);
+  assert.strictEqual(rocks.count, 3);
+
+  // Bigger rock -> bigger instance scale (column-major diagonal)
+  const smallScale = rocks.instanceMatrix.array[0];
+  const bigIndex = 1 * 16;
+  const bigScale = rocks.instanceMatrix.array[bigIndex];
+  assert.ok(bigScale > smallScale, 'scaled-up rock should have a larger instance matrix');
+
+  const clouds = createCloudField({
+    clouds: [
+      { position: [0, 10, 0], scale: 1 },
+      { position: [10, 20, 5], scale: 2 }
+    ]
+  });
+  assert.ok(clouds instanceof THREE.Group);
+  const cloudMesh = clouds.children[0];
+  assert.ok(cloudMesh instanceof THREE.InstancedMesh);
+  assert.strictEqual(cloudMesh.count, 8, '4 puffs per cloud x 2 clouds');
+  assert.strictEqual(cloudMesh.castShadow, false, 'clouds should not cast shadows');
 });
 
 test('deriveCollider maps primitive geometry to the right collider type', () => {
