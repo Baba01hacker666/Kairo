@@ -11,29 +11,19 @@ export class ForestAudio {
   }
 
   public resumeAudio() {
-    try {
-      this.audioManager.init();
-      const ctx = (this.audioManager as any).ctx as AudioContext;
-      if (ctx && ctx.state === 'suspended') {
-        ctx.resume();
-      }
-    } catch (e) {}
+    this.audioManager.resume();
   }
 
   public playSound(type: 'jump' | 'coin' | 'fanfare' | 'hint' | 'teleport' | 'push' | 'click') {
     if (!GameState.instance.soundEnabled) return;
-    try {
-      this.audioManager.playSynthesizedSound(type);
-    } catch (e) {
-      // Unlocked on user interaction
-    }
+    this.audioManager.playSynthesizedSound(type);
   }
 
   public update(timeSeconds: number) {
-    if (!GameState.instance.soundEnabled) return;
+    if (!GameState.instance.isGameStarted || !GameState.instance.soundEnabled) return;
 
     if (timeSeconds > this.nextMelodyTime) {
-      this.nextMelodyTime = timeSeconds + (3.0 + Math.random() * 3.5);
+      this.nextMelodyTime = timeSeconds + (3.5 + Math.random() * 3.5);
       const freq = this.pentatonicScale[Math.floor(Math.random() * this.pentatonicScale.length)];
       this.playFluteNote(freq, 1.4);
     }
@@ -41,9 +31,8 @@ export class ForestAudio {
 
   private playFluteNote(frequency: number, duration: number) {
     try {
-      this.audioManager.init();
       const ctx = (this.audioManager as any).ctx as AudioContext;
-      if (!ctx) return;
+      if (!ctx || ctx.state !== 'running') return;
 
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();

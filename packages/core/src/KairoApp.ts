@@ -350,7 +350,7 @@ export class KairoApp {
   }
 
   public async start() {
-    this.audio.init();
+    this.audio.setupUserGestureUnlock();
     
     // Initialize WebGPU if requested
     if (this.config.rendererBackend === 'webgpu') {
