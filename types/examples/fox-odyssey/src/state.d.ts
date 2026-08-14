@@ -6,11 +6,13 @@ export interface SaveData {
     ducksFollowing: boolean;
     isGoldenForm: boolean;
     playerPos: [number, number, number];
+    currentLevel?: number;
     timestamp: number;
 }
 export declare class GameState {
     static instance: GameState;
     isGameStarted: boolean;
+    currentLevel: number;
     acornsCollected: number;
     totalAcorns: number;
     totalWisps: number;
@@ -32,6 +34,7 @@ export declare class GameState {
     private static readonly SAVE_KEY;
     on(event: string, callback: (data?: any) => void): void;
     emit(event: string, data?: any): void;
+    setLevel(level: number): void;
     collectAcorn(id: number): number;
     collectWisp(id: number, name: string): void;
     lightChime(id: number): void;
