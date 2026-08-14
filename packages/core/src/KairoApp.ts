@@ -226,7 +226,9 @@ export class KairoApp {
     // Core loops
     this.engine.events.on('update', (dt: number) => {
       this.physics.step(dt);
-      this.cameraController.update(dt, this.sceneObstacles);
+      if (this.cameraController.enabled) {
+        this.cameraController.update(dt, this.sceneObstacles);
+      }
       
       // Sync Babylon camera to Three camera continuously
       if (this.babylonScene && this.babylonScene.activeCamera) {

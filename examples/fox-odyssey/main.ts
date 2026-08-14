@@ -26,6 +26,9 @@ const app = new KairoApp({
   fogFar: 95
 });
 
+// Disable default engine camera controller to prevent conflicting dual updates / flickering
+app.cameraController.enabled = false;
+
 // Cap pixel ratio on mobile for thermal safety & locked 60 FPS
 if (app.renderer) {
   app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2.0));
@@ -56,6 +59,10 @@ const input = new MobileInput();
 const world = new GroveWorld(app.scene);
 const player = new FoxPlayer(app.scene, dustParticles, sparkleParticles, audio);
 
+// Initial Camera Placement
+app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + 9.0);
+app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+
 const wisps = new WispManager(app.scene, sparkleParticles, audio);
 const acorns = new AcornManager(app.scene, sparkleParticles, audio);
 const chimes = new ChimeManager(app.scene, sparkleParticles, audio);
@@ -75,6 +82,8 @@ const hud = new GameHUD(
       if (save) {
         if (save.playerPos) {
           player.position.set(save.playerPos[0], save.playerPos[1], save.playerPos[2]);
+          app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + 9.0);
+          app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
         }
         hud.syncSavedUI();
         if (save.isGoldenForm) {
@@ -201,16 +210,17 @@ app.onUpdate((dt: number) => {
     }
   }
 
-  // 8. Camera Follow Tracking (with mobile touch drag support in photo mode)
+  // 8. Ultra-Smooth Stable Third-Person Follow Camera
   if (!GameState.instance.isPhotoMode) {
-    const camDist = isMobile ? 11.0 : 9.5;
-    const camHeight = isMobile ? 5.5 : 4.8;
-    const camTargetX = player.position.x - Math.sin(player.rotationY) * camDist * 0.4;
-    const camTargetZ = player.position.z - Math.cos(player.rotationY) * camDist * 0.4 + camDist;
-    const camTargetY = player.position.y + camHeight;
+    const camHeight = isMobile ? 5.8 : 5.0;
+    const camDist = isMobile ? 9.5 : 8.2;
 
-    app.camera.position.lerp(new THREE.Vector3(camTargetX, camTargetY, camTargetZ), dt * 6.5);
-    app.camera.lookAt(new THREE.Vector3(player.position.x, player.position.y + 1.2, player.position.z));
+    const desiredX = player.position.x;
+    const desiredY = player.position.y + camHeight;
+    const desiredZ = player.position.z + camDist;
+
+    app.camera.position.lerp(new THREE.Vector3(desiredX, desiredY, desiredZ), Math.min(1.0, dt * 7.5));
+    app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
   }
 
   // 9. Particle Lifecycles
@@ -222,4 +232,4 @@ app.onUpdate((dt: number) => {
 
 // Launch Engine
 app.start();
-console.log('🦊 Fox Odyssey (Mobile-First Architecture + LocalStorage Save System) active.');
+console.log('🦊 Fox Odyssey (Smooth Camera + Mobile Touch Architecture) active.');

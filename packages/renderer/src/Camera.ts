@@ -21,6 +21,7 @@ export interface CinematicShotConfig {
 export class CameraController {
   public camera: THREE.PerspectiveCamera | THREE.Camera;
   public target: THREE.Vector3 = new THREE.Vector3();
+  public enabled: boolean = true;
   
   public distance: number = 6.0;
   public minDistance: number = 2.0;
@@ -151,6 +152,8 @@ export class CameraController {
   }
 
   public update(dt: number, sceneObstacles: THREE.Object3D[] = []): void {
+    if (!this.enabled) return;
+
     // 1. Process Active Cinematic Shot Movement
     if (this.activeShot) {
       this.shotTimer += dt;
