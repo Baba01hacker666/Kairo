@@ -6,7 +6,7 @@ export declare class FoxPlayer {
     velocity: THREE.Vector3;
     rotationY: number;
     isGrounded: boolean;
-    canDoubleJump: boolean;
+    airJumpsLeft: number;
     isPouncing: boolean;
     container: THREE.Group;
     private loadedModel;
@@ -28,5 +28,5 @@ export declare class FoxPlayer {
     pounce(): boolean;
     spiritBark(): boolean;
     setGoldenAura(): void;
-    update(dt: number, inputX: number, inputZ: number, getTerrainHeight: (x: number, z: number) => number): void;
+    update(dt: number, inputX: number, inputZ: number, getTerrainHeight: (x: number, z: number) => number, camYaw?: number): void;
 }

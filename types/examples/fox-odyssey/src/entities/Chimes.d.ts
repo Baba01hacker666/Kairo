@@ -1,7 +1,14 @@
 import * as THREE from 'three';
-import { ChimeMonolith } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
 import { ForestAudio } from '../audio/ForestAudio.ts';
+export interface ChimeMonolith {
+    id: number;
+    mesh: THREE.Group;
+    runeMesh: THREE.Mesh;
+    light: THREE.PointLight;
+    position: THREE.Vector3;
+    isLit: boolean;
+}
 export declare class ChimeManager {
     chimes: ChimeMonolith[];
     private sparkleParticles;

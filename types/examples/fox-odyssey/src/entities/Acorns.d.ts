@@ -1,9 +1,16 @@
 import * as THREE from 'three';
-import { CollectibleAcorn } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
 import { ForestAudio } from '../audio/ForestAudio.ts';
+export interface SunAcorn {
+    id: number;
+    mesh: THREE.Group;
+    position: THREE.Vector3;
+    collected: boolean;
+    baseY: number;
+    spinSpeed: number;
+}
 export declare class AcornManager {
-    acorns: CollectibleAcorn[];
+    acorns: SunAcorn[];
     private sparkleParticles;
     private audio;
     constructor(scene: THREE.Scene, sparkleParticles: ParticleSystem, audio: ForestAudio);

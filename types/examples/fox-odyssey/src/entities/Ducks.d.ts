@@ -1,6 +1,13 @@
 import * as THREE from 'three';
-import { FriendlyDuck } from '../types.ts';
 import { ParticleSystem } from '@kairo/renderer';
+export interface FriendlyDuck {
+    id: number;
+    mesh: THREE.Group;
+    position: THREE.Vector3;
+    targetPos: THREE.Vector3;
+    isFollowing: boolean;
+    animTime: number;
+}
 export declare class DuckManager {
     ducks: FriendlyDuck[];
     private sparkleParticles;
