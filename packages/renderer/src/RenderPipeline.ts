@@ -69,6 +69,23 @@ export class RenderPipeline {
   private frameCount: number = 0;
   private fpsTimer: number = 0;
 
+  // --- Adaptive Quality: automatically trades resolution for frame rate ---
+  // When the frame budget is blown (heavy terrain/shadow scenes on weak GPUs),
+  // we step the render scale + shadow map size down so the game stays smooth;
+  // when headroom returns we step back up. This keeps "no lag" without the
+  // developer having to pick a fixed quality tier.
+  private adaptiveEnabled: boolean = true;
+  private adaptiveLevel: number = 0; // 0 = best quality
+  private adaptiveMaxLevel: number = 3;
+  private adaptiveTimer: number = 0;
+  private lowFpsStreak: number = 0;
+  private highFpsStreak: number = 0;
+  private readonly PIXEL_RATIO_STEPS = [1.0, 0.85, 0.72, 0.6];
+  private readonly SHADOW_MAP_STEPS = [1.0, 0.75, 0.5, 0.35];
+  private basePixelRatio: number = 0; // captured from the app's configured ratio
+  private baseShadowSize: number = 1024;
+  private adaptiveBaseCaptured: boolean = false;
+
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
     this.renderer = renderer;
     this.scene = scene;
@@ -76,6 +93,79 @@ export class RenderPipeline {
     this.postProcessing = new PostProcessManager(this.renderer, this.scene, this.camera);
 
     this.setupRendererDefaults();
+  }
+
+  /** Enable/disable automatic resolution scaling when FPS drops. */
+  public setAdaptiveQuality(enabled: boolean): void {
+    this.adaptiveEnabled = enabled;
+    this.adaptiveLevel = 0;
+    this.lowFpsStreak = 0;
+    this.highFpsStreak = 0;
+  }
+
+  private evaluateAdaptiveQuality(dtMs: number): void {
+    if (!this.adaptiveEnabled) return;
+
+    // Evaluate once per second (after metrics.fps has been refreshed)
+    this.adaptiveTimer += dtMs;
+    if (this.adaptiveTimer < 1000) return;
+    this.adaptiveTimer = 0;
+
+    const fps = this.metrics.fps;
+    if (fps <= 0) return;
+
+    // Capture the app's configured pixel ratio on first use (level 0 = as-is)
+    if (!this.adaptiveBaseCaptured) {
+      this.adaptiveBaseCaptured = true;
+      this.basePixelRatio = this.renderer.getPixelRatio() || 1;
+      this.baseShadowSize = this.currentSun?.shadow?.mapSize?.width ?? 1024;
+    }
+
+    if (fps < 45) {
+      this.lowFpsStreak++;
+      this.highFpsStreak = 0;
+      // Two consecutive bad seconds -> drop one quality level
+      if (this.lowFpsStreak >= 2 && this.adaptiveLevel < this.adaptiveMaxLevel) {
+        this.adaptiveLevel++;
+        this.lowFpsStreak = 0;
+        this.applyAdaptiveLevel();
+      }
+    } else if (fps >= 58) {
+      this.highFpsStreak++;
+      this.lowFpsStreak = 0;
+      // Four consecutive good seconds -> restore one quality level
+      if (this.highFpsStreak >= 4 && this.adaptiveLevel > 0) {
+        this.adaptiveLevel--;
+        this.highFpsStreak = 0;
+        this.applyAdaptiveLevel();
+      }
+    } else {
+      this.lowFpsStreak = 0;
+      this.highFpsStreak = 0;
+    }
+  }
+
+  private applyAdaptiveLevel(): void {
+    const ratioStep = this.PIXEL_RATIO_STEPS[this.adaptiveLevel];
+    const shadowStep = this.SHADOW_MAP_STEPS[this.adaptiveLevel];
+
+    // Scale the render resolution (setPixelRatio re-sizes the drawing buffer)
+    this.renderer.setPixelRatio(this.basePixelRatio * ratioStep);
+
+    // Scale the shadow map; dispose + null forces three.js to reallocate it
+    if (this.currentSun && this.currentSun.shadow) {
+      const shadow = this.currentSun.shadow;
+      const size = Math.max(256, Math.round(this.baseShadowSize * shadowStep));
+      shadow.mapSize.set(size, size);
+      if (shadow.map) {
+        shadow.map.dispose();
+        shadow.map = null;
+      }
+    }
+
+    // Re-measure after the change so the first FPS reading isn't polluted
+    this.lowFpsStreak = 0;
+    this.highFpsStreak = 0;
   }
 
   private setupRendererDefaults(): void {
@@ -121,6 +211,7 @@ export class RenderPipeline {
     sun.castShadow = true;
     
     const size = options.shadowMapSize ?? 1024;
+    this.baseShadowSize = size;
     sun.shadow.mapSize.width = size;
     sun.shadow.mapSize.height = size;
     sun.shadow.camera.near = 0.5;
@@ -157,6 +248,9 @@ export class RenderPipeline {
       this.frameCount = 0;
       this.fpsTimer = 0;
     }
+
+    // Auto quality scaling: keep the game smooth before it starts dropping frames
+    this.evaluateAdaptiveQuality(dt);
 
     // Measure exact CPU render execution time
     const t0 = performance.now();

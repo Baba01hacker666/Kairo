@@ -45,13 +45,14 @@ export function createGrassField(opts: GrassOptions = {}): THREE.InstancedMesh {
 
   const base = new THREE.Color(opts.color ?? 0x4c9a3f);
   const tip = new THREE.Color(opts.tipColor ?? 0x8fd460);
+  const scratchColor = new THREE.Color(); // Reused: no per-vertex allocation
   const colors = new Float32Array(bladeGeo.attributes.position.count * 3);
   for (let i = 0; i < bladeGeo.attributes.position.count; i++) {
     const y = bladeGeo.attributes.position.getY(i); // 0 (base) .. 1 (tip)
-    const c = base.clone().lerp(tip, y);
-    colors[i * 3] = c.r;
-    colors[i * 3 + 1] = c.g;
-    colors[i * 3 + 2] = c.b;
+    scratchColor.copy(base).lerp(tip, y);
+    colors[i * 3] = scratchColor.r;
+    colors[i * 3 + 1] = scratchColor.g;
+    colors[i * 3 + 2] = scratchColor.b;
   }
   bladeGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 

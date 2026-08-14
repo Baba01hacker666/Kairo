@@ -31,6 +31,8 @@ export interface KairoAppConfig {
   orthoScale?: number;
   enableBabylon?: boolean; // Experimental dual-engine mode
   rendererBackend?: 'webgl' | 'webgpu'; // WebGPU support!
+  /** Auto-tune resolution & shadow quality to hold a smooth frame rate (default: true). */
+  adaptiveQuality?: boolean;
 }
 
 /**
@@ -192,6 +194,7 @@ export class KairoApp {
 
     // Setup Render Pipeline
     this.pipeline = new RenderPipeline(this.renderer, this.scene, this.camera);
+    this.pipeline.setAdaptiveQuality(opts.adaptiveQuality !== false);
     if (opts.shadows !== false) {
       this.pipeline.setupLighting({});
     }

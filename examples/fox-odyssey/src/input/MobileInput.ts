@@ -6,6 +6,7 @@ export interface InputVector {
 export class MobileInput {
   public moveVector: InputVector = { x: 0, y: 0 };
   public isPouncing: boolean = false;
+  private _outVector: InputVector = { x: 0, y: 0 }; // Reused to avoid per-frame allocation
   public onJump: (() => void) | null = null;
   public onPounce: (() => void) | null = null;
   public onSpiritCall: (() => void) | null = null;
@@ -193,7 +194,8 @@ export class MobileInput {
     // Direct Cartesian normalized vectors (nx: left/right, ny: up/down)
     const nx = (Math.cos(angle) * clampedDist) / this.maxRadius;
     const ny = (Math.sin(angle) * clampedDist) / this.maxRadius;
-    this.moveVector = { x: nx, y: ny };
+    this.moveVector.x = nx;
+    this.moveVector.y = ny;
 
     if (this.joystickKnob) {
       const px = Math.cos(angle) * clampedDist;
@@ -244,6 +246,9 @@ export class MobileInput {
       y /= len;
     }
 
-    return { x, y };
+    // Write into a reused object so no garbage is produced at 60fps
+    this._outVector.x = x;
+    this._outVector.y = y;
+    return this._outVector;
   }
 }

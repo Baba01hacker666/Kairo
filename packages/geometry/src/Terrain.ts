@@ -67,6 +67,7 @@ export function createTerrain(opts: TerrainOptions = {}): TerrainResult {
   const colors = new Float32Array(posAttr.count * 3);
   const cLow = new THREE.Color(opts.color ?? 0x4a7c3f);
   const cHigh = new THREE.Color(opts.highColor ?? 0x8fae6b);
+  const scratchColor = new THREE.Color(); // Reused: no per-vertex allocation
 
   for (let i = 0; i < posAttr.count; i++) {
     const x = posAttr.getX(i);
@@ -78,10 +79,10 @@ export function createTerrain(opts: TerrainOptions = {}): TerrainResult {
     if (!heights[row]) heights[row] = [];
     heights[row][Math.floor((x + size / 2) / size * segments)] = h;
 
-    const c = cLow.clone().lerp(cHigh, h);
-    colors[i * 3] = c.r;
-    colors[i * 3 + 1] = c.g;
-    colors[i * 3 + 2] = c.b;
+    scratchColor.copy(cLow).lerp(cHigh, h);
+    colors[i * 3] = scratchColor.r;
+    colors[i * 3 + 1] = scratchColor.g;
+    colors[i * 3 + 2] = scratchColor.b;
   }
   posAttr.needsUpdate = true;
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
