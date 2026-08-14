@@ -35,3 +35,7 @@
 - Clamp `fixedUpdateAccumulator` to a maximum budget (e.g. 5 steps max per frame) to maintain smooth frame rates during spikes.
 
 
+
+## 2024-12-08 - [Avoid Object Allocations and Reference Leaks in Hot Paths]
+**Learning:** During optimization of physics raycasting methods, allowing a target result to be passed to methods (like `Ray.intersectBox` and `Ray.intersectSphere`) eliminates the garbage collection penalty of returning newly-instantiated `Vector3` and result objects for every hit. However, using `Object.assign` to revert `targetResult` states on 'miss' unintentionally creates shallow reference copies of nested variables in the static miss result. This leaks shared state causing mutations of the static miss result during subsequent hits.
+**Action:** When updating target objects without allocating, explicitly reset primitive fields and conditionally apply `Vector3.set` assignments instead of relying on generic shallow-copy utilities like `Object.assign`.
