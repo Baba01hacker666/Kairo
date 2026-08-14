@@ -6,24 +6,24 @@ import { GameState } from '../state.ts';
 import { ForestAudio } from '../audio/ForestAudio.ts';
 
 export class FoxPlayer {
-  public container: THREE.Group;
-  public position: THREE.Vector3 = new THREE.Vector3(0, 0, 8);
+  public position: THREE.Vector3 = new THREE.Vector3(0, 0.5, 8);
   public velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-  public rotationY: number = Math.PI;
-
+  public rotationY: number = Math.PI; // Face forward into grove on spawn
   public isGrounded: boolean = true;
   public canDoubleJump: boolean = true;
   public isPouncing: boolean = false;
-  public pounceTimer: number = 0;
-  public barkTimer: number = 0;
 
-  public walkSpeed: number = 7.5;
-  public pounceSpeed: number = 16.0;
-  public jumpForce: number = 10.5;
-
-  private animStateMachine: AnimationStateMachine | null = null;
+  public container: THREE.Group;
   private loadedModel: THREE.Object3D | null = null;
   private fallbackGroup: THREE.Group;
+  private animStateMachine: AnimationStateMachine | null = null;
+
+  public walkSpeed: number = 7.5;
+  public pounceSpeed: number = 13.5;
+  public jumpForce: number = 11.5;
+
+  private pounceTimer: number = 0;
+  private barkTimer: number = 0;
   private auraRing: THREE.Mesh;
   private auraMaterial: THREE.MeshBasicMaterial;
 
@@ -67,14 +67,18 @@ export class FoxPlayer {
     const chestMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.7 });
 
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.7, 4, 8), bodyMat);
-    body.rotation.z = Math.PI / 2;
+    body.rotation.x = Math.PI / 2;
     body.position.y = 0.5;
     group.add(body);
 
-    const head = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.55, 6), bodyMat);
-    head.rotation.y = Math.PI / 4;
-    head.position.set(0, 0.75, 0.48);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.55, 6), bodyMat);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(0, 0.65, 0.55);
     group.add(head);
+
+    const snout = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), chestMat);
+    snout.position.set(0, 0.62, 0.85);
+    group.add(snout);
 
     const chest = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), chestMat);
     chest.scale.set(0.9, 1.2, 0.5);
@@ -82,8 +86,8 @@ export class FoxPlayer {
     group.add(chest);
 
     const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.85, 8), bodyMat);
-    tail.rotation.x = Math.PI / 3;
-    tail.position.set(0, 0.55, -0.6);
+    tail.rotation.x = -Math.PI / 3;
+    tail.position.set(0, 0.65, -0.6);
     group.add(tail);
 
     return group;
@@ -115,7 +119,7 @@ export class FoxPlayer {
           this.container.remove(this.fallbackGroup);
           const model = gltf.scene;
           model.scale.set(0.022, 0.022, 0.022);
-          model.rotation.y = Math.PI;
+          model.rotation.y = 0; // Model faces forward (+Z in local coords)
           model.traverse((child: any) => {
             if (child.isMesh) {
               child.castShadow = true;
@@ -217,7 +221,7 @@ export class FoxPlayer {
       this.velocity.x = nx * speed;
       this.velocity.z = nz * speed;
 
-      // Smooth Orientation
+      // Smooth Orientation: atan2(nx, nz) smoothly maps movement to forward-facing angle
       const targetAngle = Math.atan2(nx, nz);
       let diff = targetAngle - this.rotationY;
       while (diff < -Math.PI) diff += Math.PI * 2;
@@ -228,7 +232,7 @@ export class FoxPlayer {
         this.animStateMachine.setState(this.isPouncing ? 'Run' : 'Walk');
       }
 
-      if (this.isGrounded && Math.random() < 0.3) {
+      if (this.isGrounded && Math.random() < 0.25) {
         this.dustParticles.emitBurst(this.position, 'dust_footstep', 2);
       }
     } else {
@@ -273,8 +277,6 @@ export class FoxPlayer {
       const progress = 1.0 - this.barkTimer;
       this.auraRing.scale.set(progress * 16, progress * 16, progress * 16);
       this.auraMaterial.opacity = Math.max(0, Math.sin(progress * Math.PI));
-    } else {
-      this.auraMaterial.opacity = 0;
     }
 
     if (this.animStateMachine) {

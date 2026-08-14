@@ -62,6 +62,7 @@ const player = new FoxPlayer(app.scene, dustParticles, sparkleParticles, audio);
 // Initial Camera Placement
 app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + 9.0);
 app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+const _camDesiredPos = new THREE.Vector3();
 
 const wisps = new WispManager(app.scene, sparkleParticles, audio);
 const acorns = new AcornManager(app.scene, sparkleParticles, audio);
@@ -215,11 +216,8 @@ app.onUpdate((dt: number) => {
     const camHeight = isMobile ? 5.8 : 5.0;
     const camDist = isMobile ? 9.5 : 8.2;
 
-    const desiredX = player.position.x;
-    const desiredY = player.position.y + camHeight;
-    const desiredZ = player.position.z + camDist;
-
-    app.camera.position.lerp(new THREE.Vector3(desiredX, desiredY, desiredZ), Math.min(1.0, dt * 7.5));
+    _camDesiredPos.set(player.position.x, player.position.y + camHeight, player.position.z + camDist);
+    app.camera.position.lerp(_camDesiredPos, Math.min(1.0, dt * 7.5));
     app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
   }
 

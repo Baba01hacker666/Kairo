@@ -11,9 +11,10 @@ export class MobileInput {
   public onSpiritCall: (() => void) | null = null;
   public onTogglePhotoMode: (() => void) | null = null;
 
-  private joystickContainer: HTMLElement | null = null;
+  private joystickZone: HTMLElement | null = null;
   private joystickKnob: HTMLElement | null = null;
-  private joystickTouchId: number | null = null;
+  private activeTouchId: number | null = null;
+  private isPointerTracking: boolean = false;
   private joystickCenter = { x: 0, y: 0 };
   private maxRadius = 45;
 
@@ -39,92 +40,144 @@ export class MobileInput {
 
     window.addEventListener('keyup', e => {
       this.keys[e.code] = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.isPouncing = false;
+      }
     });
   }
 
   private initTouchControls() {
-    this.joystickContainer = document.getElementById('touch-joystick');
+    this.joystickZone = document.getElementById('touch-joystick');
     this.joystickKnob = document.getElementById('joystick-knob');
 
     const mobileJumpBtn = document.getElementById('mobile-jump-btn');
     const mobilePounceBtn = document.getElementById('mobile-pounce-btn');
     const mobileBarkBtn = document.getElementById('mobile-bark-btn');
 
-    if (mobileJumpBtn) {
-      mobileJumpBtn.addEventListener('touchstart', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.triggerJump();
-      }, { passive: false });
-    }
+    // 1. Action Buttons Multi-Touch & Pointer Handlers
+    const bindButton = (el: HTMLElement | null, onDown: () => void, onUp?: () => void) => {
+      if (!el) return;
 
-    if (mobilePounceBtn) {
-      mobilePounceBtn.addEventListener('touchstart', e => {
+      const handleDown = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
+        onDown();
+      };
+
+      const handleUp = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onUp) onUp();
+      };
+
+      el.addEventListener('pointerdown', handleDown);
+      el.addEventListener('pointerup', handleUp);
+      el.addEventListener('pointercancel', handleUp);
+      el.addEventListener('touchstart', handleDown, { passive: false });
+      el.addEventListener('touchend', handleUp, { passive: false });
+      el.addEventListener('touchcancel', handleUp, { passive: false });
+    };
+
+    bindButton(mobileJumpBtn, () => this.triggerJump());
+    bindButton(
+      mobilePounceBtn,
+      () => {
+        this.isPouncing = true;
         this.triggerPounce();
-      }, { passive: false });
-      mobilePounceBtn.addEventListener('touchend', e => {
-        e.preventDefault();
+      },
+      () => {
         this.isPouncing = false;
-      }, { passive: false });
-    }
+      }
+    );
+    bindButton(mobileBarkBtn, () => this.triggerSpiritCall());
 
-    if (mobileBarkBtn) {
-      mobileBarkBtn.addEventListener('touchstart', e => {
+    // 2. Fixed & Dynamic Joystick Touch Tracking
+    const startJoystick = (clientX: number, clientY: number, touchId: number | null) => {
+      this.activeTouchId = touchId;
+      this.isPointerTracking = true;
+
+      if (this.joystickZone) {
+        const rect = this.joystickZone.getBoundingClientRect();
+        this.joystickCenter = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
+      } else {
+        this.joystickCenter = { x: clientX, y: clientY };
+      }
+
+      this.updateJoystick(clientX, clientY);
+    };
+
+    // Dedicated Joystick Zone direct pointerdown
+    if (this.joystickZone) {
+      this.joystickZone.addEventListener('pointerdown', (e: PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.triggerSpiritCall();
-      }, { passive: false });
+        startJoystick(e.clientX, e.clientY, e.pointerId);
+      });
     }
 
-    // Dynamic Full-Screen Left Touch Area for Virtual Joystick
-    window.addEventListener('touchstart', e => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        // If touch is on left 50% of screen and joystick is not active
-        if (this.joystickTouchId === null && touch.clientX < window.innerWidth * 0.55 && touch.clientY > 100) {
-          this.joystickTouchId = touch.identifier;
-          this.joystickCenter = { x: touch.clientX, y: touch.clientY };
-
-          if (this.joystickContainer) {
-            this.joystickContainer.style.display = 'block';
-            this.joystickContainer.style.left = `${touch.clientX - 65}px`;
-            this.joystickContainer.style.top = `${touch.clientY - 65}px`;
-            this.joystickContainer.style.bottom = 'auto';
+    // Dynamic Touch on Left 55% of Screen
+    window.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          // Check if touch is on left half of screen and not over action buttons/HUD top bar
+          if (this.activeTouchId === null && touch.clientX < window.innerWidth * 0.55 && touch.clientY > 90) {
+            startJoystick(touch.clientX, touch.clientY, touch.identifier);
+            break;
           }
-          this.updateJoystick(touch.clientX, touch.clientY);
         }
-      }
-    }, { passive: false });
+      },
+      { passive: false }
+    );
 
-    window.addEventListener('touchmove', e => {
-      if (this.joystickTouchId === null) return;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        if (touch.identifier === this.joystickTouchId) {
-          e.preventDefault();
-          this.updateJoystick(touch.clientX, touch.clientY);
-          break;
-        }
-      }
-    }, { passive: false });
-
-    const endTouch = (e: TouchEvent) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === this.joystickTouchId) {
-          this.joystickTouchId = null;
-          this.moveVector = { x: 0, y: 0 };
-          if (this.joystickKnob) {
-            this.joystickKnob.style.transform = `translate(-50%, -50%)`;
+    // Touch / Pointer Move
+    window.addEventListener(
+      'touchmove',
+      (e: TouchEvent) => {
+        if (this.activeTouchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === this.activeTouchId) {
+            e.preventDefault();
+            this.updateJoystick(touch.clientX, touch.clientY);
+            break;
           }
-          break;
         }
+      },
+      { passive: false }
+    );
+
+    window.addEventListener('pointermove', (e: PointerEvent) => {
+      if (this.isPointerTracking && (this.activeTouchId === null || this.activeTouchId === e.pointerId)) {
+        this.updateJoystick(e.clientX, e.clientY);
+      }
+    });
+
+    // Touch / Pointer End
+    const resetJoystick = () => {
+      this.activeTouchId = null;
+      this.isPointerTracking = false;
+      this.moveVector = { x: 0, y: 0 };
+      if (this.joystickKnob) {
+        this.joystickKnob.style.transform = `translate(-50%, -50%)`;
       }
     };
 
-    window.addEventListener('touchend', endTouch);
-    window.addEventListener('touchcancel', endTouch);
+    window.addEventListener('touchend', (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === this.activeTouchId) {
+          resetJoystick();
+          break;
+        }
+      }
+    });
+    window.addEventListener('touchcancel', resetJoystick);
+    window.addEventListener('pointerup', resetJoystick);
+    window.addEventListener('pointercancel', resetJoystick);
   }
 
   private updateJoystick(clientX: number, clientY: number) {
@@ -134,6 +187,7 @@ export class MobileInput {
     const clampedDist = Math.min(dist, this.maxRadius);
     const angle = Math.atan2(dy, dx);
 
+    // Direct Cartesian normalized vectors (nx: left/right, ny: up/down)
     const nx = (Math.cos(angle) * clampedDist) / this.maxRadius;
     const ny = (Math.sin(angle) * clampedDist) / this.maxRadius;
     this.moveVector = { x: nx, y: ny };
@@ -151,7 +205,6 @@ export class MobileInput {
   }
 
   public triggerPounce() {
-    this.isPouncing = true;
     this.vibrate(25);
     if (this.onPounce) this.onPounce();
   }
@@ -163,7 +216,9 @@ export class MobileInput {
 
   private vibrate(durationMs: number) {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(durationMs); } catch (e) {}
+      try {
+        navigator.vibrate(durationMs);
+      } catch (e) {}
     }
   }
 
