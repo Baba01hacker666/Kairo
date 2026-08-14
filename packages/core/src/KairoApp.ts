@@ -8,7 +8,7 @@ import { deriveCollider, createTerrain, createGrassField } from '@kairo/geometry
 import { GlobalInput, InputManager } from '@kairo/input';
 import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
-import { GlobalDebugInspector, DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline } from '@kairo/tools';
+import { GlobalDebugInspector, DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline, GlobalGameBugDetector, GameBugDetector } from '@kairo/tools';
 import { Serializer } from './Serializer.ts';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
@@ -64,6 +64,7 @@ export class KairoApp {
   public debug: DebugInspector = GlobalDebugInspector;
   public debugRenderer: DebugRenderer;
   public videoTimeline: VideoTimeline;
+  public bugDetector: GameBugDetector = GlobalGameBugDetector;
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig | string = {}) {
@@ -293,8 +294,16 @@ export class KairoApp {
     return this.world.entity(name).sharedContext(contextId);
   }
 
-  public query(q: any) {
-    return this.world.query(q);
+  public audit() {
+    return this.bugDetector.audit(this);
+  }
+
+  public runFuzzTest(durationSeconds: number = 3.0) {
+    return this.bugDetector.runFuzzTest(this, durationSeconds);
+  }
+
+  public toggleBugInspector(): void {
+    this.bugDetector.toggleOverlay();
   }
 
   public clearObstacles(): void {

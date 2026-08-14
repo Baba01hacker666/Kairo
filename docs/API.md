@@ -41,8 +41,19 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `seek(time)`: Scrub playhead to timestamp.
 - `play()` / `pause()`: Play or pause timeline.
 - `evaluateAt(time)`: Evaluate active clips, camera shots, image overlays, transitions & color grading.
-- `exportVideo(filename)`: Record and export full WebM video file.
-- `toJSON()` / `fromJSON(data)`: Serialize / deserialize video timeline project.
+### `GameBugDetector` & `GlobalGameBugDetector`
+- `app.audit()` / `bugDetector.audit(app)`: Instant full-scan QA audit returning health score (0-100), critical bugs, warnings, and metrics summary.
+- `app.runFuzzTest(durationSeconds?)`: Automated AI stress tester simulating rapid player actions and edge bounds.
+- `app.toggleBugInspector()` / `bugDetector.toggleOverlay()`: Visual in-game diagnostic panel displaying live alerts, health score, and export button.
+- `bugDetector.enableLiveWatchdog(app, options)`: Lightweight background assertion monitor running frame checks.
+- `bugDetector.exportReportMarkdown()` / `downloadReportMarkdown()`: Exports diagnostic bug report for CI/CD and debugging.
+- **Bug Detection Vectors**:
+  - `nan_infinity`: Catches NaN or Infinity in positions, Euler rotations, velocities, and audio parameters.
+  - `physics_anomaly`: Detects extreme velocities (>500 u/s) risking tunneling and out-of-bounds fallen objects ($y < -150$).
+  - `memory_leak`: Detects unreleased Three.js geometries/materials, runaway entity counts, and orphaned entities.
+  - `rendering_glitch`: Catches degenerate/negative scales ($s \le 0$), missing materials, and missing geometries.
+  - `performance_spike`: Identifies severe frame rate drops (<22 FPS) and draw call spikes (>350 calls).
+  - `runtime_error`: Intercepts unhandled JS exceptions and promise rejections with stack traces and suggested fixes.
 
 ---
 
