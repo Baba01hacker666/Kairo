@@ -91,36 +91,57 @@ export class FoxPlayer {
 
   private loadFoxModel() {
     const loader = new GLTFLoader();
-    loader.load(
+    const isGhPages = typeof window !== 'undefined' && window.location.pathname.includes('/Kairo');
+    const basePath = isGhPages ? '/Kairo' : '';
+
+    const candidateUrls = [
+      `${basePath}/models/Fox.glb`,
+      '../../models/Fox.glb',
+      '../models/Fox.glb',
+      './models/Fox.glb',
       '/models/Fox.glb',
-      gltf => {
-        this.container.remove(this.fallbackGroup);
-        const model = gltf.scene;
-        model.scale.set(0.022, 0.022, 0.022);
-        model.rotation.y = Math.PI;
-        model.traverse((child: any) => {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
+      'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb'
+    ];
 
-        this.container.add(model);
-        this.loadedModel = model;
-
-        if (gltf.animations && gltf.animations.length >= 3) {
-          this.animStateMachine = new AnimationStateMachine(model);
-          this.animStateMachine.registerState('Idle', gltf.animations[0], { fadeDuration: 0.2 });
-          this.animStateMachine.registerState('Walk', gltf.animations[1], { fadeDuration: 0.15 });
-          this.animStateMachine.registerState('Run', gltf.animations[2], { fadeDuration: 0.15 });
-          this.animStateMachine.setState('Idle');
-        }
-      },
-      undefined,
-      err => {
-        console.warn('Fallback procedural fox mesh active.', err);
+    const tryLoad = (index: number) => {
+      if (index >= candidateUrls.length) {
+        console.warn('Fallback procedural fox mesh active.');
+        return;
       }
-    );
+      const url = candidateUrls[index];
+      loader.load(
+        url,
+        gltf => {
+          this.container.remove(this.fallbackGroup);
+          const model = gltf.scene;
+          model.scale.set(0.022, 0.022, 0.022);
+          model.rotation.y = Math.PI;
+          model.traverse((child: any) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+
+          this.container.add(model);
+          this.loadedModel = model;
+
+          if (gltf.animations && gltf.animations.length >= 3) {
+            this.animStateMachine = new AnimationStateMachine(model);
+            this.animStateMachine.registerState('Idle', gltf.animations[0], { fadeDuration: 0.2 });
+            this.animStateMachine.registerState('Walk', gltf.animations[1], { fadeDuration: 0.15 });
+            this.animStateMachine.registerState('Run', gltf.animations[2], { fadeDuration: 0.15 });
+            this.animStateMachine.setState('Idle');
+          }
+        },
+        undefined,
+        () => {
+          tryLoad(index + 1);
+        }
+      );
+    };
+
+    tryLoad(0);
   }
 
   public jump(): boolean {

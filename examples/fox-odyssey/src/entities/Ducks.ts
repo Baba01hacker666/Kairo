@@ -39,12 +39,13 @@ export class DuckManager {
       dg.position.set(sx, 0.35, sz);
       scene.add(dg);
 
+      const isFollowing = GameState.instance.ducksFollowing;
       this.ducks.push({
         id: i,
         mesh: dg,
         position: new THREE.Vector3(sx, 0.35, sz),
         targetPos: new THREE.Vector3(sx, 0.35, sz),
-        isFollowing: false,
+        isFollowing: isFollowing,
         animTime: i * 2
       });
     }
@@ -55,6 +56,8 @@ export class DuckManager {
       const d = playerPos.distanceTo(duck.position);
       if (d < 12.0 && !duck.isFollowing) {
         duck.isFollowing = true;
+        GameState.instance.ducksFollowing = true;
+        GameState.instance.saveGame();
         this.sparkleParticles.emitBurst(duck.position, 'collect_burst', 15);
         onDuckFollow();
       }

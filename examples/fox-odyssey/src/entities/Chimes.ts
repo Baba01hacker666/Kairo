@@ -42,9 +42,12 @@ export class ChimeManager {
       rune.position.set(0, 2.2, 0.45);
       g.add(rune);
 
-      const pLight = new THREE.PointLight(0xf59e0b, 0, 10);
-      pLight.position.set(0, 2.2, 0.8);
-      g.add(pLight);
+      const isLit = GameState.instance.litChimeIds.has(item.id);
+      if (isLit) {
+        (rune.material as THREE.MeshStandardMaterial).emissive.setHex(0xf59e0b);
+        (rune.material as THREE.MeshStandardMaterial).emissiveIntensity = 2.0;
+        pLight.intensity = 4.0;
+      }
 
       scene.add(g);
       this.chimes.push({
@@ -53,7 +56,7 @@ export class ChimeManager {
         runeMesh: rune,
         light: pLight,
         position: new THREE.Vector3(item.x, 0, item.z),
-        isLit: false
+        isLit: isLit
       });
     });
   }
@@ -63,6 +66,7 @@ export class ChimeManager {
       const d = playerPos.distanceTo(chime.position);
       if (d < 7.0 && !chime.isLit) {
         chime.isLit = true;
+        GameState.instance.lightChime(chime.id);
         (chime.runeMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0xf59e0b);
         (chime.runeMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 2.0;
         chime.light.intensity = 4.0;

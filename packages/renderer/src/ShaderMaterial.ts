@@ -134,22 +134,37 @@ export class CustomShaderMaterial {
 
   private formatThreeUniformValue(val: any, type: UniformType): any {
     if (val instanceof Color) {
+      if (type === 'vec4') {
+        return new THREE.Vector4(val.r, val.g, val.b, val.a ?? 1.0);
+      }
       return new THREE.Color(val.r, val.g, val.b);
     }
-    if (type === 'color' && typeof val === 'string') {
-      return new THREE.Color(val);
+    if (val instanceof THREE.Color) {
+      if (type === 'vec4') {
+        return new THREE.Vector4(val.r, val.g, val.b, 1.0);
+      }
+      return val;
     }
-    if (type === 'color' && Array.isArray(val)) {
-      return new THREE.Color(val[0], val[1], val[2]);
+    if (type === 'color') {
+      if (typeof val === 'string') return new THREE.Color(val);
+      if (Array.isArray(val)) return new THREE.Color(val[0], val[1], val[2]);
+      if (val && typeof val === 'object') {
+        return new THREE.Color(val.r ?? 1, val.g ?? 1, val.b ?? 1);
+      }
     }
-    if (type === 'vec2' && Array.isArray(val)) {
-      return new THREE.Vector2(val[0], val[1]);
+    if (type === 'vec2') {
+      if (Array.isArray(val)) return new THREE.Vector2(val[0], val[1]);
+      if (val && typeof val === 'object') return new THREE.Vector2(val.x ?? val[0] ?? 0, val.y ?? val[1] ?? 0);
     }
-    if (type === 'vec3' && Array.isArray(val)) {
-      return new THREE.Vector3(val[0], val[1], val[2]);
+    if (type === 'vec3') {
+      if (Array.isArray(val)) return new THREE.Vector3(val[0], val[1], val[2]);
+      if (val && typeof val === 'object') return new THREE.Vector3(val.x ?? val.r ?? 0, val.y ?? val.g ?? 0, val.z ?? val.b ?? 0);
     }
-    if (type === 'vec4' && Array.isArray(val)) {
-      return new THREE.Vector4(val[0], val[1], val[2], val[3]);
+    if (type === 'vec4') {
+      if (Array.isArray(val)) return new THREE.Vector4(val[0], val[1], val[2], val[3] ?? 1.0);
+      if (val && typeof val === 'object') {
+        return new THREE.Vector4(val.x ?? val.r ?? 0, val.y ?? val.g ?? 0, val.z ?? val.b ?? 0, val.w ?? val.a ?? 1.0);
+      }
     }
     return val;
   }

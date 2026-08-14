@@ -15,12 +15,12 @@ export class ShaderPresets {
       uniforms: {
         u_time: { value: 0.0, type: 'float' },
         u_useWorldSpace: { value: 1.0, type: 'float' }, // 1.0 = World Space matrix waves (seamless tiling across meshes), 0.0 = Local Space
-        u_shallowColor: { value: new Color(0.1, 0.7, 0.9, 0.8), type: 'color' },
-        u_deepColor: { value: new Color(0.01, 0.15, 0.45, 0.95), type: 'color' },
+        u_shallowColor: { value: new Color(0.1, 0.7, 0.9, 0.8), type: 'vec4' },
+        u_deepColor: { value: new Color(0.01, 0.15, 0.45, 0.95), type: 'vec4' },
         u_waveSpeed: { value: 1.5, type: 'float' },
         u_waveHeight: { value: 0.12, type: 'float' },
         u_waveFrequency: { value: 4.0, type: 'float' },
-        u_foamColor: { value: new Color(1.0, 1.0, 1.0, 0.9), type: 'color' }
+        u_foamColor: { value: new Color(1.0, 1.0, 1.0, 0.9), type: 'vec4' }
       },
       vertexShader: `
         uniform float u_time;

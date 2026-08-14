@@ -38,15 +38,17 @@ export class AcornManager {
       const az = Math.sin(angle) * radius + (Math.cos(i * 5) * 4);
       const ay = 1.0 + (i % 3 === 0 ? 0.8 : 0);
 
+      const isCollected = GameState.instance.collectedAcornIds.has(i);
       g.position.set(ax, ay, az);
       g.castShadow = true;
+      if (isCollected) g.visible = false;
       scene.add(g);
 
       this.acorns.push({
         id: i,
         mesh: g,
         position: new THREE.Vector3(ax, ay, az),
-        collected: false,
+        collected: isCollected,
         baseY: ay,
         spinSpeed: 2.0 + Math.random() * 1.5
       });
@@ -68,7 +70,7 @@ export class AcornManager {
         acorn.mesh.visible = false;
         this.sparkleParticles.emitBurst(acorn.position, 'sparkle', 20);
         this.audio.playSound('coin');
-        const count = GameState.instance.collectAcorn();
+        const count = GameState.instance.collectAcorn(acorn.id);
         onCollect(count);
       }
     });

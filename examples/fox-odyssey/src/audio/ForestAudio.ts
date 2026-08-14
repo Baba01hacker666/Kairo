@@ -10,6 +10,16 @@ export class ForestAudio {
     this.audioManager = audioManager;
   }
 
+  public resumeAudio() {
+    try {
+      this.audioManager.init();
+      const ctx = (this.audioManager as any).ctx as AudioContext;
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+    } catch (e) {}
+  }
+
   public playSound(type: 'jump' | 'coin' | 'fanfare' | 'hint' | 'teleport' | 'push' | 'click') {
     if (!GameState.instance.soundEnabled) return;
     try {

@@ -39,6 +39,7 @@ export class WispManager {
       const pLight = new THREE.PointLight(0xfde047, 2.5, 12);
       g.add(pLight);
 
+      const isCollected = GameState.instance.collectedWispIds.has(idx);
       scene.add(g);
       this.wisps.push({
         id: idx,
@@ -46,7 +47,7 @@ export class WispManager {
         position: new THREE.Vector3(loc.x, 2.0, loc.z),
         mesh: g,
         light: pLight,
-        isCollected: false,
+        isCollected: isCollected,
         baseY: 2.0,
         bobOffset: idx * 1.3
       });

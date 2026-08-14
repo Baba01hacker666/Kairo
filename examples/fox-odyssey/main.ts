@@ -19,9 +19,9 @@ const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|
 
 const app = new KairoApp({
   canvas: '#game-canvas',
-  background: 0x0a140f,
-  shadows: !isMobile, // Disable heavy dynamic shadows on low-end mobile for locked 60 FPS
-  fogColor: 0x142820,
+  background: 0x09120c,
+  shadows: !isMobile, // Disable heavy dynamic shadows on mobile for locked 60 FPS
+  fogColor: 0x12241a,
   fogNear: 25,
   fogFar: 95
 });
@@ -62,21 +62,63 @@ const chimes = new ChimeManager(app.scene, sparkleParticles, audio);
 const mushrooms = new MushroomManager(app.scene, sparkleParticles, audio);
 const ducks = new DuckManager(app.scene, sparkleParticles);
 
+// --- 4. HUD & Start Screen Wireup ---
+let lastSaveTime = 0;
+
 const hud = new GameHUD(
+  (isContinue: boolean) => {
+    // Start Game Callback
+    audio.resumeAudio();
+
+    if (isContinue) {
+      const save = GameState.instance.loadGame();
+      if (save) {
+        if (save.playerPos) {
+          player.position.set(save.playerPos[0], save.playerPos[1], save.playerPos[2]);
+        }
+        hud.syncSavedUI();
+        if (save.isGoldenForm) {
+          player.setGoldenAura();
+        }
+        hud.showToast('💾 Adventure Progress Restored!', '✨');
+      }
+      setTimeout(() => {
+        hud.showDialogue(
+          'Grove Elder Owl',
+          '🦉',
+          'Welcome back, little Fox! Let us continue awakening the spirits and restoring the ancient grove!'
+        );
+      }, 500);
+    } else {
+      GameState.instance.clearSaveData();
+      hud.syncSavedUI();
+      hud.showToast('🌲 A new journey begins...', '🦊');
+      setTimeout(() => {
+        hud.showDialogue(
+          'Grove Elder Owl',
+          '🦉',
+          'Welcome to the Ancient Grove, little Fox! Use your touch joystick to explore, leap across stepping stones, and ring the chime monoliths 🔔 to awaken the spirits!'
+        );
+      }, 500);
+    }
+  },
   () => app.captureScreenshot(`FoxOdyssey_${Date.now()}.png`),
   () => audio.playSound('click')
 );
 
-// --- 4. Input & Event Wireup ---
+// --- 5. Action Input Handlers ---
 input.onJump = () => {
+  if (!GameState.instance.isGameStarted) return;
   player.jump();
 };
 
 input.onPounce = () => {
+  if (!GameState.instance.isGameStarted) return;
   player.pounce();
 };
 
 input.onSpiritCall = () => {
+  if (!GameState.instance.isGameStarted) return;
   player.spiritBark();
   hud.showToast('Spirit Call Resonated!', '🔔');
 
@@ -99,6 +141,7 @@ input.onSpiritCall = () => {
 };
 
 input.onTogglePhotoMode = () => {
+  if (!GameState.instance.isGameStarted) return;
   hud.togglePhotoMode();
 };
 
@@ -107,16 +150,7 @@ GameState.instance.on('game_won', () => {
   audio.playSound('fanfare');
 });
 
-// Show initial welcome story dialogue
-setTimeout(() => {
-  hud.showDialogue(
-    'Grove Elder Owl',
-    '🦉',
-    'Welcome to the Ancient Grove, little Fox! Use the on-screen joystick or WASD to explore, leap across stepping stones, and ring the chime monoliths [🔔] to awaken the spirits!'
-  );
-}, 600);
-
-// --- 5. Main Game Loop ---
+// --- 6. Main Game Loop ---
 app.onUpdate((dt: number) => {
   const now = performance.now();
   const timeSeconds = (now - GameState.instance.gameStartTime) * 0.001;
@@ -126,38 +160,46 @@ app.onUpdate((dt: number) => {
   world.update(dt, timeSeconds);
 
   // 2. Mobile Multi-Touch & Key Input
-  const moveInput = input.update();
-  if (input.isPouncing) {
-    player.isPouncing = true;
-  }
-
-  // 3. Player Physics & Locomotion
-  player.update(dt, moveInput.x, moveInput.y, (x, z) => world.getTerrainHeight(x, z));
-  hud.updateStamina(GameState.instance.stamina, GameState.instance.maxStamina);
-
-  // 4. Bouncy Mushrooms Collision
-  mushrooms.checkPlayerBounce(player.position, now, force => {
-    player.velocity.y = force;
-    player.isGrounded = false;
-    hud.showToast('🍄 Super Mushroom Bounce!', '🚀');
-  });
-
-  // 5. Sun Acorns Attraction & Collection
-  acorns.update(dt, timeSeconds, player.position, count => {
-    hud.showToast(`Gathered Sun Acorn (${count}/${GameState.instance.totalAcorns})`, '🌰');
-    if (count >= GameState.instance.totalAcorns) {
-      hud.showToast('🌟 All Sun Acorns Gathered!', '🌟');
-      audio.playSound('fanfare');
+  if (GameState.instance.isGameStarted) {
+    const moveInput = input.update();
+    if (input.isPouncing) {
+      player.isPouncing = true;
     }
-  });
 
-  // 6. Lost Spirit Wisps Update & Follow
-  wisps.update(dt, timeSeconds, player.position, wisp => {
-    hud.showToast(`Awakened ${wisp.name}! (${GameState.instance.wispsCollectedCount}/5)`, '✨');
-  });
+    // 3. Player Physics & Locomotion
+    player.update(dt, moveInput.x, moveInput.y, (x, z) => world.getTerrainHeight(x, z));
+    hud.updateStamina(GameState.instance.stamina, GameState.instance.maxStamina);
 
-  // 7. Duck Companions Follow Pack
-  ducks.update(dt, player.position, player.rotationY);
+    // 4. Bouncy Mushrooms Collision
+    mushrooms.checkPlayerBounce(player.position, now, force => {
+      player.velocity.y = force;
+      player.isGrounded = false;
+      hud.showToast('🍄 Super Mushroom Bounce!', '🚀');
+    });
+
+    // 5. Sun Acorns Attraction & Collection
+    acorns.update(dt, timeSeconds, player.position, count => {
+      hud.showToast(`Gathered Sun Acorn (${count}/${GameState.instance.totalAcorns})`, '🌰');
+      if (count >= GameState.instance.totalAcorns) {
+        hud.showToast('🌟 All Sun Acorns Gathered!', '🌟');
+        audio.playSound('fanfare');
+      }
+    });
+
+    // 6. Lost Spirit Wisps Update & Follow
+    wisps.update(dt, timeSeconds, player.position, wisp => {
+      hud.showToast(`Awakened ${wisp.name}! (${GameState.instance.wispsCollectedCount}/5)`, '✨');
+    });
+
+    // 7. Duck Companions Follow Pack
+    ducks.update(dt, player.position, player.rotationY);
+
+    // Periodic position auto-save every 4 seconds
+    if (now - lastSaveTime > 4000) {
+      lastSaveTime = now;
+      GameState.instance.saveGame([player.position.x, player.position.y, player.position.z]);
+    }
+  }
 
   // 8. Camera Follow Tracking (with mobile touch drag support in photo mode)
   if (!GameState.instance.isPhotoMode) {
@@ -180,4 +222,4 @@ app.onUpdate((dt: number) => {
 
 // Launch Engine
 app.start();
-console.log('🦊 Fox Odyssey (Modular Mobile-Ready Architecture) initialized.');
+console.log('🦊 Fox Odyssey (Mobile-First Architecture + LocalStorage Save System) active.');

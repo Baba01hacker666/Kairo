@@ -1,6 +1,16 @@
 import { GameState } from '../state.ts';
 
 export class GameHUD {
+  // Start Screen Elements
+  private startScreenEl = document.getElementById('start-screen')!;
+  private startNewBtnEl = document.getElementById('start-new-btn')!;
+  private startContinueBtnEl = document.getElementById('start-continue-btn')!;
+  private saveInfoPreviewEl = document.getElementById('save-info-preview')!;
+  private saveWispsCountEl = document.getElementById('save-wisps-count')!;
+  private saveAcornsCountEl = document.getElementById('save-acorns-count')!;
+  private startResetSaveBtnEl = document.getElementById('start-reset-save-btn')!;
+
+  // HUD Elements
   private acornValEl = document.getElementById('acorn-val')!;
   private staminaFillEl = document.getElementById('stamina-fill')!;
   private questTextEl = document.getElementById('quest-text')!;
@@ -27,9 +37,37 @@ export class GameHUD {
   private toastTimeout: any = null;
 
   constructor(
+    onStartGame: (isContinue: boolean) => void,
     onCaptureScreenshot: () => void,
     onPlayClickSound: () => void
   ) {
+    this.checkSavedGame();
+
+    // Start Screen New Game
+    this.startNewBtnEl.addEventListener('click', () => {
+      this.startScreenEl.classList.add('hidden');
+      GameState.instance.isGameStarted = true;
+      onPlayClickSound();
+      onStartGame(false);
+    });
+
+    // Start Screen Continue Game
+    this.startContinueBtnEl.addEventListener('click', () => {
+      this.startScreenEl.classList.add('hidden');
+      GameState.instance.isGameStarted = true;
+      onPlayClickSound();
+      onStartGame(true);
+    });
+
+    // Reset Saved Game
+    this.startResetSaveBtnEl.addEventListener('click', () => {
+      if (confirm('Clear saved progress and start fresh?')) {
+        GameState.instance.clearSaveData();
+        this.checkSavedGame();
+        this.showToast('Saved data cleared', '🗑️');
+      }
+    });
+
     // Sound Button
     this.soundBtnEl.addEventListener('click', () => {
       const enabled = GameState.instance.toggleSound();
@@ -73,6 +111,41 @@ export class GameHUD {
     GameState.instance.on('game_won', () => {
       this.showVictoryModal();
     });
+
+    GameState.instance.on('saved', () => {
+      // Subtle auto-save notification
+    });
+  }
+
+  public checkSavedGame() {
+    if (GameState.instance.hasSaveData()) {
+      const save = GameState.instance.loadGame();
+      if (save && (save.acornsCollected > 0 || save.collectedWispIds.length > 0)) {
+        this.startContinueBtnEl.style.display = 'flex';
+        this.saveInfoPreviewEl.style.display = 'block';
+        this.startResetSaveBtnEl.style.display = 'inline-block';
+        this.saveWispsCountEl.innerText = String(save.collectedWispIds.length);
+        this.saveAcornsCountEl.innerText = String(save.acornsCollected);
+      } else {
+        this.startContinueBtnEl.style.display = 'none';
+        this.saveInfoPreviewEl.style.display = 'none';
+        this.startResetSaveBtnEl.style.display = 'none';
+      }
+    }
+  }
+
+  public syncSavedUI() {
+    this.acornValEl.innerText = `${GameState.instance.acornsCollected} / ${GameState.instance.totalAcorns}`;
+    for (let i = 0; i < 5; i++) {
+      const dotEl = document.getElementById(`wisp-dot-${i}`);
+      if (dotEl) {
+        if (GameState.instance.collectedWispIds.has(i)) {
+          dotEl.classList.add('collected');
+        } else {
+          dotEl.classList.remove('collected');
+        }
+      }
+    }
   }
 
   public showToast(text: string, icon = '✨') {
@@ -83,7 +156,7 @@ export class GameHUD {
     if (this.toastTimeout) clearTimeout(this.toastTimeout);
     this.toastTimeout = setTimeout(() => {
       this.actionToastEl.classList.remove('show');
-    }, 2800);
+    }, 2500);
   }
 
   public showDialogue(speaker: string, avatar: string, text: string) {

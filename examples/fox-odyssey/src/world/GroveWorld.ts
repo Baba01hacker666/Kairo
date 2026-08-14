@@ -36,8 +36,8 @@ export class GroveWorld {
 
     // 2. Procedural Water Pond
     this.waterMaterial = ShaderPresets.createWaterShader();
-    this.waterMaterial.setUniform('u_shallowColor', { r: 0.2, g: 0.85, b: 0.95 }, 'color');
-    this.waterMaterial.setUniform('u_deepColor', { r: 0.05, g: 0.3, b: 0.5 }, 'color');
+    this.waterMaterial.setUniform('u_shallowColor', [0.2, 0.85, 0.95, 0.85], 'vec4');
+    this.waterMaterial.setUniform('u_deepColor', [0.05, 0.3, 0.5, 0.95], 'vec4');
     this.waterMaterial.setUniform('u_waveSpeed', 1.8, 'float');
     this.waterMaterial.setUniform('u_waveHeight', 0.08, 'float');
 
