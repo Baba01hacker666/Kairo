@@ -31,6 +31,8 @@ export declare class GameHUD {
     constructor(onStartGame: (isContinue: boolean) => void, onCaptureScreenshot: () => void, onPlayClickSound: () => void);
     checkSavedGame(): void;
     syncSavedUI(): void;
+    updateHearts(hearts: number, maxHearts?: number): void;
+    updateChapterQuestText(chapter: number): void;
     showToast(text: string, icon?: string): void;
     showDialogue(speaker: string, avatar: string, text: string): void;
     togglePhotoMode(): boolean;

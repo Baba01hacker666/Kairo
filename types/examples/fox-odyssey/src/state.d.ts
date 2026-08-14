@@ -7,12 +7,19 @@ export interface SaveData {
     isGoldenForm: boolean;
     playerPos: [number, number, number];
     currentLevel?: number;
+    currentChapter?: number;
+    hearts?: number;
+    beastsDefeated?: number;
     timestamp: number;
 }
 export declare class GameState {
     static instance: GameState;
     isGameStarted: boolean;
     currentLevel: number;
+    currentChapter: number;
+    hearts: number;
+    maxHearts: number;
+    beastsDefeated: number;
     acornsCollected: number;
     totalAcorns: number;
     totalWisps: number;
@@ -34,6 +41,10 @@ export declare class GameState {
     private static readonly SAVE_KEY;
     on(event: string, callback: (data?: any) => void): void;
     emit(event: string, data?: any): void;
+    damagePlayer(amount?: number): number;
+    healPlayer(amount?: number): number;
+    recordBeastDefeat(): void;
+    setChapter(chapter: number): void;
     setLevel(level: number): void;
     collectAcorn(id: number): number;
     collectWisp(id: number, name: string): void;
