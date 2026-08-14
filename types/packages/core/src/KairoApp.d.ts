@@ -6,7 +6,7 @@ import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer
 import { InputManager } from '@kairo/input';
 import { AudioManager } from '@kairo/audio';
 import { UIManager } from '@kairo/ui';
-import { DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline } from '@kairo/tools';
+import { DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline, GameBugDetector } from '@kairo/tools';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
@@ -55,6 +55,7 @@ export declare class KairoApp {
     debug: DebugInspector;
     debugRenderer: DebugRenderer;
     videoTimeline: VideoTimeline;
+    bugDetector: GameBugDetector;
     private sceneObstacles;
     constructor(config?: KairoAppConfig | string);
     /** Native mobile touch joystick & action buttons helper */
@@ -63,7 +64,9 @@ export declare class KairoApp {
     createEntity(name?: string): EntityHandle;
     createSharedContext(id: string, properties: Record<string, any>): import("@kairo/ecs").SharedEntityContext<Record<string, any>>;
     createEntityWithSharedContext(contextId: string, name?: string): EntityHandle;
-    query(q: any): number[];
+    audit(): import("@kairo/tools").BugAuditReport;
+    runFuzzTest(durationSeconds?: number): Promise<import("@kairo/tools").FuzzTestResult>;
+    toggleBugInspector(): void;
     clearObstacles(): void;
     setLighting(options: {
         sunPosition?: [number, number, number];
