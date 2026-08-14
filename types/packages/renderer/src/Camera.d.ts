@@ -18,6 +18,7 @@ export interface CinematicShotConfig {
 export declare class CameraController {
     camera: THREE.PerspectiveCamera | THREE.Camera;
     target: THREE.Vector3;
+    enabled: boolean;
     distance: number;
     minDistance: number;
     maxDistance: number;
