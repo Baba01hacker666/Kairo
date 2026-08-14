@@ -135,6 +135,7 @@ export class GameState {
 
   public lightChime(id: number) {
     this.litChimeIds.add(id);
+    this.emit('chime_lit', this.litChimeIds.size);
     if (this.litChimeIds.size >= 4 && this.currentChapter < 3) {
       this.setChapter(3);
     }

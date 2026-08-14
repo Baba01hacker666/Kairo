@@ -138,6 +138,19 @@ export class GameHUD {
       this.showToast(`Restored Heart! (${hearts}/${GameState.instance.maxHearts} ❤️)`, '💖');
     });
 
+    GameState.instance.on('player_revived', (hearts: number) => {
+      // The fox fainted and revived with full hearts — refresh the UI so it
+      // doesn't stay stuck showing 0 hearts.
+      this.updateHearts(hearts, GameState.instance.maxHearts);
+      this.showToast(`The grove spirit revives you! (${hearts}/${GameState.instance.maxHearts} ❤️)`, '✨');
+    });
+
+    GameState.instance.on('chime_lit', () => {
+      // Keep the chime objective counter live instead of waiting for the
+      // chapter change event.
+      this.renderQuestObjectives();
+    });
+
     GameState.instance.on('chapter_changed', () => {
       this.renderQuestObjectives();
     });

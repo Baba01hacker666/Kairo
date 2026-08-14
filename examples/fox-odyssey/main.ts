@@ -161,7 +161,7 @@ app.camera.position.set(player.position.x, player.position.y + 5.5, player.posit
 app.camera.lookAt(_currentCamLookAt);
 
 const wisps = new WispManager(app.scene, sparkleParticles, audio);
-const acorns = new AcornManager(app.scene, sparkleParticles, audio);
+const acorns = new AcornManager(app.scene, sparkleParticles, audio, (x, z) => worldL1.getTerrainHeight(x, z));
 const chimes = new ChimeManager(app.scene, sparkleParticles, audio);
 const mushrooms = new MushroomManager(app.scene, sparkleParticles, audio);
 const ducks = new DuckManager(app.scene, sparkleParticles);
