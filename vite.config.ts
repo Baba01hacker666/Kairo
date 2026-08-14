@@ -35,7 +35,8 @@ export default defineConfig({
         cutscenedemo: 'examples/cutscene-demo/index.html',
         arrival: 'examples/the-arrival/index.html',
         geometryshowcase: 'examples/geometry-showcase/index.html',
-        easyscriptgame: 'examples/easy-script-game/index.html'
+        easyscriptgame: 'examples/easy-script-game/index.html',
+        foxodyssey: 'examples/fox-odyssey/index.html'
       },
       output: {
         manualChunks(id) {
