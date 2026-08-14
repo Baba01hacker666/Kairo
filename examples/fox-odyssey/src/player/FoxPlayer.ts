@@ -259,8 +259,10 @@ export class FoxPlayer {
     }
 
     // Convert Screen/Joystick inputs to World Space relative to Camera Yaw
-    const worldMoveX = inputX * Math.cos(camYaw) - inputZ * Math.sin(camYaw);
-    const worldMoveZ = -inputX * Math.sin(camYaw) - inputZ * Math.cos(camYaw);
+    // inputX: -1 (Left) / +1 (Right)
+    // inputZ: -1 (Forward) / +1 (Backward)
+    const worldMoveX = inputX * Math.cos(camYaw) + inputZ * Math.sin(camYaw);
+    const worldMoveZ = -inputX * Math.sin(camYaw) + inputZ * Math.cos(camYaw);
 
     const inputMag = Math.hypot(worldMoveX, worldMoveZ);
     const speed = this.isPouncing ? currentPounceSpeed : currentWalkSpeed;
@@ -271,12 +273,12 @@ export class FoxPlayer {
       this.velocity.x = nx * speed;
       this.velocity.z = nz * speed;
 
-      // Smooth Orientation
+      // Smooth Orientation to face movement vector
       const targetAngle = Math.atan2(nx, nz);
       let diff = targetAngle - this.rotationY;
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
-      this.rotationY += diff * Math.min(1.0, dt * 16);
+      this.rotationY += diff * Math.min(1.0, dt * 18);
 
       if (this.animStateMachine) {
         this.animStateMachine.setState(this.isPouncing ? 'Run' : 'Walk');
@@ -286,8 +288,11 @@ export class FoxPlayer {
         this.dustParticles.emitBurst(this.position, isGolden ? 'sparkle' : 'dust_footstep', 2);
       }
     } else {
-      this.velocity.x *= Math.exp(-14 * dt);
-      this.velocity.z *= Math.exp(-14 * dt);
+      // Snappy deceleration so the fox stops immediately when input ceases
+      this.velocity.x *= Math.exp(-22 * dt);
+      this.velocity.z *= Math.exp(-22 * dt);
+      if (Math.abs(this.velocity.x) < 0.02) this.velocity.x = 0;
+      if (Math.abs(this.velocity.z) < 0.02) this.velocity.z = 0;
 
       if (this.animStateMachine && this.isGrounded) {
         this.animStateMachine.setState('Idle');

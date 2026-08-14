@@ -176,7 +176,7 @@ export class MobileInput {
       { passive: false }
     );
 
-    // Touch End
+    // Touch End / Pointer Up Reset
     const resetJoystick = () => {
       this.activeTouchId = null;
       this.isPointerTracking = false;
@@ -205,6 +205,26 @@ export class MobileInput {
         if (touch.identifier === this.activeTouchId) resetJoystick();
         if (touch.identifier === this.cameraTouchId) this.cameraTouchId = null;
       }
+    });
+
+    // Pointer move / up for desktop mouse clicks on joystick
+    window.addEventListener('pointermove', (e: PointerEvent) => {
+      if (this.isPointerTracking && this.activeTouchId === e.pointerId) {
+        this.updateJoystick(e.clientX, e.clientY);
+      }
+    });
+
+    window.addEventListener('pointerup', (e: PointerEvent) => {
+      if (this.activeTouchId === e.pointerId) {
+        resetJoystick();
+      }
+    });
+
+    window.addEventListener('pointercancel', () => resetJoystick());
+    window.addEventListener('blur', () => {
+      resetJoystick();
+      this.cameraTouchId = null;
+      this.keys = {};
     });
 
     // Reset touch tracking on screen rotation & window resize
@@ -258,6 +278,17 @@ export class MobileInput {
     const dx = clientX - this.joystickCenter.x;
     const dy = clientY - this.joystickCenter.y;
     const dist = Math.hypot(dx, dy);
+
+    // Apply deadzone of 4px
+    if (dist < 4) {
+      this.moveVector.x = 0;
+      this.moveVector.y = 0;
+      if (this.joystickKnob) {
+        this.joystickKnob.style.transform = `translate(-50%, -50%)`;
+      }
+      return;
+    }
+
     const clampedDist = Math.min(dist, this.maxRadius);
     const angle = Math.atan2(dy, dx);
 
@@ -309,8 +340,14 @@ export class MobileInput {
   }
 
   public update(): InputVector {
-    let x = this.moveVector.x;
-    let y = this.moveVector.y;
+    let x = 0;
+    let y = 0;
+
+    // Only apply moveVector if active pointer is touching
+    if (this.isPointerTracking) {
+      x = this.moveVector.x;
+      y = this.moveVector.y;
+    }
 
     if (this.keys['KeyW'] || this.keys['ArrowUp']) y -= 1;
     if (this.keys['KeyS'] || this.keys['ArrowDown']) y += 1;

@@ -181,7 +181,13 @@ export class GameHUD {
 
   public updateRealm(level: number) {
     if (this.realmPillEl) {
-      this.realmPillEl.innerText = level === 2 ? '💎 Crystal Peaks' : '🌲 Ancient Grove';
+      const names: Record<number, string> = {
+        1: '🌲 Ancient Grove',
+        2: '💎 Crystal Peaks',
+        3: '💧 Azure Grotto',
+        4: '🌑 Eclipse Citadel'
+      };
+      this.realmPillEl.innerText = names[level] || '🌲 Ancient Grove';
     }
   }
 
