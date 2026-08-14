@@ -29,6 +29,48 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `addVideoTransition(time, duration, transitionType)`: Add transition cut clip.
 - `addVideoColorGrading(time, duration, preset)`: Add color grading preset filter clip.
 - `playVideo()` / `pauseVideo()` / `seekVideo(time)` / `exportVideo(filename)`: Control video timeline playback and export.
+- `app.quests`: `QuestSystem` — declarative quest & objective tracking.
+- `app.dialogue`: `DialogueSystem` — branching dialogue with typewriter & choices.
+- `app.combat`: `CombatSystem` — entity health registry & damage events.
+- `app.tweens`: `TweenManager` — eased tweens for numeric properties (auto-ticked every frame).
+
+### `QuestSystem`
+- `new QuestSystem()`: Quest & objective tracker. Emits `quest_started`, `quest_completed`, `quest_failed`, `objective_progress`, `objective_completed`, `quest_unlocked`.
+- `register({ id, title, description?, objectives, prerequisites?, hidden? })`: Define a quest (`objectives: [{ id, text, target? }]`).
+- `registerAll(defs)`: Register multiple quests at once.
+- `start(id)`: Start a quest (respects prerequisites). Returns `QuestState | null`.
+- `advance(id, objectiveId, amount?)` / `setProgress(id, objectiveId, value)`: Update objective progress; objectives & quests auto-complete.
+- `complete(id)` / `fail(id)`: Force-complete or fail a quest.
+- `get(id)` / `getActive()` / `isActive(id)` / `isCompleted(id)` / `hasUnlocked(id)`: Inspect quest state.
+- `serialize()` / `deserialize(snapshots)`: Save/load quest state (definitions must be registered first).
+
+### `DialogueSystem`
+- `new DialogueSystem()`: Sequential & branching dialogue. Emits `dialogue_started`, `dialogue_line`, `dialogue_ended`, `dialogue_choice_selected`, `dialogue_skipped`.
+- `register(id, lines)` / `registerAll(map)`: Register named scripts (`lines: [{ id?, speaker?, avatar?, text, typewriterCps?, choices?, onStart?, onEnd? }]`).
+- `play(idOrLines)`: Start a named dialogue or play raw lines.
+- `advance()`: Next line (finishes the typewriter effect first if still typing).
+- `selectChoice(index)`: Choose an option; jumps to the targeted line (`next` = line id or index, omit/empty to end).
+- `skipTyping()` / `stop()`: Reveal text instantly / end the dialogue.
+- `update(dt)`: Drive the typewriter effect (auto-ticked via `app.dialogue`).
+- `typewriterCps`: Default typing speed in chars/second (`0` disables typing).
+- Getters: `isPlaying`, `currentLine`, `currentDialogueId`, `isTyping`, `typedCharacters`, `choices`.
+
+### `HealthComponent` & `CombatSystem`
+- `new HealthComponent(max, id?)`: Health pool with events `damaged`, `healed`, `died`, `revived`, `invulnerable_end`.
+- `damage(amount, { source?, invulnerabilityDuration?, ignoreInvulnerability? })`: Apply damage (blocked while invulnerable); returns damage dealt.
+- `heal(amount)` / `revive(health?)` / `reset()` / `setMax(max, keepRatio?)` / `update(dt)`: Manage the pool.
+- `new CombatSystem()`: Named-entity registry. `add(id, max)`, `damage(id, amount)`, `heal(id, amount)`, `revive(id)`, `get(id)`, `unregister(id)`.
+- `combat.events`: Forwards `entity_damaged`, `entity_healed`, `entity_died`, `entity_revived` (payloads include `id`).
+- `combat.update(dt)`: Ticks invulnerability timers (auto-ticked via `app.combat`).
+
+### `Tween` & `TweenManager`
+- `Easing`: Named easings (`linear`, `inQuad`…`inOutBounce`, `outElastic`, `outBack`, …). `getEasing(nameOrFn)` resolves them.
+- `new TweenManager()`: Drives tweens; call `update(dt)` each frame (auto-ticked via `app.tweens`).
+- `tweens.to(target, { prop: value }, options?)`: Tween from current values.
+- `tweens.from(target, { prop: value }, options?)` / `tweens.fromTo(target, from, to, options?)`: Explicit endpoints.
+- `TweenOptions`: `{ duration?, delay?, easing?, repeat?, yoyo?, onUpdate?, onComplete? }`.
+- Supports scalars, arrays, and nested objects (e.g. `THREE.Vector3` / engine `Vector3`).
+- `tween.then(next)`: Chain tweens. `tween.kill()` / `tweens.killAll()`: Cancel.
 
 ---
 

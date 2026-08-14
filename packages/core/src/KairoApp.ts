@@ -13,6 +13,10 @@ import { Serializer } from './Serializer.ts';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
+import { QuestSystem } from './QuestSystem.ts';
+import { DialogueSystem } from './DialogueSystem.ts';
+import { CombatSystem } from './Combat.ts';
+import { TweenManager } from './Tween.ts';
 import { AssetManager } from '@kairo/assets';
 import { animate } from 'motion';
 import * as BABYLON from '@babylonjs/core';
@@ -67,6 +71,12 @@ export class KairoApp {
   public debugRenderer: DebugRenderer;
   public videoTimeline: VideoTimeline;
   public bugDetector: GameBugDetector = GlobalGameBugDetector;
+  
+  // Gameplay systems
+  public quests: QuestSystem;
+  public dialogue: DialogueSystem;
+  public combat: CombatSystem;
+  public tweens: TweenManager;
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig | string = {}) {
@@ -78,6 +88,10 @@ export class KairoApp {
     this.assets = new AssetManager();
     this.videoTimeline = new VideoTimeline(this);
     this.debugRenderer = new DebugRenderer(this);
+    this.quests = new QuestSystem();
+    this.dialogue = new DialogueSystem();
+    this.combat = new CombatSystem();
+    this.tweens = new TweenManager();
     this.engine = new Engine();
     this.world = new World();
     this.world.setApp(this);
@@ -228,6 +242,11 @@ export class KairoApp {
 
     // Core loops
     this.engine.events.on('update', (dt: number) => {
+      // Tick gameplay systems
+      this.tweens.update(dt);
+      this.dialogue.update(dt);
+      this.combat.update(dt);
+      
       this.physics.step(dt);
       if (this.cameraController.enabled) {
         this.cameraController.update(dt, this.sceneObstacles);

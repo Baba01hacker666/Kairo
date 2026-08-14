@@ -24,7 +24,7 @@ npm install
 # Start local dev server
 npm run dev
 
-# Run automated tests (91/91 test suites passing)
+# Run automated tests (119 tests passing)
 npm test
 
 # Run Kairo CLI automated QA bug scanner
@@ -35,7 +35,14 @@ npx kairo audit examples/fox-odyssey
 
 ## 📦 Modular Packages
 
-- **`@kairo/core`**: Game loop (`KairoApp`), math utilities, and save system.
+- **`@kairo/core`**: Game loop (`KairoApp`), math utilities, save system, and gameplay systems — quests, branching dialogue, health/combat, and tweens.
+
+## 🎮 Built-in Gameplay Systems
+
+- **🎯 QuestSystem** (`app.quests`): Declarative quests with objectives, prerequisite gating, automatic completion, events, and save/load snapshots.
+- **💬 DialogueSystem** (`app.dialogue`): Branching dialogue scripts with a typewriter effect, speaker/avatar metadata, and player choices.
+- **❤️ Combat** (`app.combat`): Entity health pools with damage/heal/death/revive events, invulnerability windows, and a named-entity registry.
+- **✨ Tweens** (`app.tweens`): Eased tweens for any numeric property (scalars, arrays, vectors) with delay, repeat, yoyo, and chaining.
 - **`@kairo/renderer`**: WebGL/WebGPU rendering, shaders, and particle systems.
 - **`@kairo/physics`**: 3D rigid bodies, raycasting, and collision detection.
 - **`@kairo/audio`**: Positional 3D spatial audio and procedural sound effects.

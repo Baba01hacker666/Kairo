@@ -11,6 +11,10 @@ export * from './Procedural.ts';
 export * from './Cutscene.ts';
 export * from './SceneManager.ts';
 export * from './Scripting.ts';
+export * from './QuestSystem.ts';
+export * from './DialogueSystem.ts';
+export * from './Combat.ts';
+export * from './Tween.ts';
 
 // Unified Engine Package Exports
 export * from '@kairo/ecs';
