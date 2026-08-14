@@ -108,17 +108,24 @@ const portalGateL2 = new THREE.Mesh(
 portalGateL2.position.set(0, 2.6, 34);
 worldL2.group.add(portalGateL2);
 
-// 3D Camera Orbit & Look Around State
-let camYaw = 0;
-let camPitch = 0.35; // ~20 degrees
-let camDistance = isMobile ? 9.5 : 8.2;
+// 3D Smooth Inertial Camera Orbit & Look Around State
+let targetYaw = 0;
+let currentYaw = 0;
+let targetPitch = 0.38; // ~22 degrees
+let currentPitch = 0.38;
+let targetDistance = isMobile ? 9.2 : 8.0;
+let currentDistance = isMobile ? 9.2 : 8.0;
+
 const _camDesiredPos = new THREE.Vector3();
+const _camTargetLookAt = new THREE.Vector3(player.position.x, player.position.y + 1.2, player.position.z);
+const _currentCamLookAt = new THREE.Vector3(player.position.x, player.position.y + 1.2, player.position.z);
+
 const _portalPosL1 = new THREE.Vector3(0, 2.6, -34);
 const _portalPosL2 = new THREE.Vector3(0, 2.6, 34);
 
 // Initial Camera Placement
-app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + camDistance);
-app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + currentDistance);
+app.camera.lookAt(_currentCamLookAt);
 
 const wisps = new WispManager(app.scene, sparkleParticles, audio);
 const acorns = new AcornManager(app.scene, sparkleParticles, audio);
@@ -173,6 +180,9 @@ function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
     hud.showToast('🌲 Entered Realm: The Ancient Grove (Level 1)', '🦊');
   }
 
+  // Align camera look targets
+  _camTargetLookAt.set(player.position.x, player.position.y + 1.2, player.position.z);
+  _currentCamLookAt.copy(_camTargetLookAt);
   GameState.instance.saveGame([player.position.x, player.position.y, player.position.z]);
 }
 
@@ -196,8 +206,8 @@ const hud = new GameHUD(
 
         if (save.playerPos) {
           player.position.set(save.playerPos[0], save.playerPos[1], save.playerPos[2]);
-          app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + camDistance);
-          app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+          _camTargetLookAt.set(player.position.x, player.position.y + 1.2, player.position.z);
+          _currentCamLookAt.copy(_camTargetLookAt);
         }
         // Restore collected/lit/following state onto the 3D world objects
         acorns.syncWithSave();
@@ -329,7 +339,25 @@ GameState.instance.on('game_won', () => {
   hud.showToast('🌟 Golden Fox Awakened! Triple Jump & Infinite Sprint Unlocked!', '🌟');
 });
 
-// --- 7. Main Game Loop ---
+// --- 7. Screen Orientation & Dynamic Viewport Resize ---
+const updateViewport = () => {
+  if (app.renderer && app.camera) {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    app.renderer.setSize(width, height);
+    const persCam = app.camera as THREE.PerspectiveCamera;
+    if (persCam.isPerspectiveCamera) {
+      persCam.aspect = width / height;
+      persCam.updateProjectionMatrix();
+    }
+  }
+};
+window.addEventListener('resize', updateViewport);
+window.addEventListener('orientationchange', () => {
+  setTimeout(updateViewport, 150);
+});
+
+// --- 8. Main Game Loop ---
 app.onUpdate((dt: number) => {
   const now = performance.now();
   const timeSeconds = (now - GameState.instance.gameStartTime) * 0.001;
@@ -352,7 +380,7 @@ app.onUpdate((dt: number) => {
     player.isPouncing = input.isPouncing;
 
     // 3. Player Physics & Locomotion (Camera Yaw Aligned)
-    player.update(dt, moveInput.x, moveInput.y, (x, z) => activeWorld.getTerrainHeight(x, z), camYaw);
+    player.update(dt, moveInput.x, moveInput.y, (x, z) => activeWorld.getTerrainHeight(x, z), currentYaw);
     hud.updateStamina(GameState.instance.stamina, GameState.instance.maxStamina);
 
     // 4. Elder Owl Companion & Story Interaction (Level 1)
@@ -446,27 +474,38 @@ app.onUpdate((dt: number) => {
     }
   }
 
-  // 12. Touch & Mouse 3D Camera Look & Orbit Follow Camera
+  // 12. Silky-Smooth Inertial Orbit & Follow Camera
   if (!GameState.instance.isPhotoMode) {
     const look = input.consumeLookDelta();
     if (look.x !== 0 || look.y !== 0) {
-      camYaw -= look.x * 0.0055;
-      camPitch = Math.max(0.08, Math.min(1.25, camPitch + look.y * 0.0045));
+      // Natural, ultra-smooth orbital drag
+      targetYaw -= look.x * (isMobile ? 0.0038 : 0.0030);
+      targetPitch = Math.max(0.10, Math.min(1.20, targetPitch + look.y * (isMobile ? 0.0032 : 0.0026)));
     }
     if (look.zoom !== 0) {
-      camDistance = Math.max(4.5, Math.min(18.0, camDistance + look.zoom));
+      targetDistance = Math.max(4.5, Math.min(18.0, targetDistance + look.zoom));
     }
 
-    const horizontalDist = camDistance * Math.cos(camPitch);
-    const verticalDist = camDistance * Math.sin(camPitch);
+    // Exponential smoothing for silky 60/120 FPS camera motion
+    const smoothFactor = Math.min(1.0, dt * 10.0);
+    currentYaw += (targetYaw - currentYaw) * smoothFactor;
+    currentPitch += (targetPitch - currentPitch) * smoothFactor;
+    currentDistance += (targetDistance - currentDistance) * Math.min(1.0, dt * 8.0);
 
-    const desiredCamX = player.position.x + Math.sin(camYaw) * horizontalDist;
-    const desiredCamY = player.position.y + verticalDist + 1.2;
-    const desiredCamZ = player.position.z + Math.cos(camYaw) * horizontalDist;
+    // Smoothly track look target (fox center)
+    _camTargetLookAt.set(player.position.x, player.position.y + 1.2, player.position.z);
+    _currentCamLookAt.lerp(_camTargetLookAt, Math.min(1.0, dt * 10.0));
+
+    const horizontalDist = currentDistance * Math.cos(currentPitch);
+    const verticalDist = currentDistance * Math.sin(currentPitch);
+
+    const desiredCamX = _currentCamLookAt.x + Math.sin(currentYaw) * horizontalDist;
+    const desiredCamY = _currentCamLookAt.y + verticalDist;
+    const desiredCamZ = _currentCamLookAt.z + Math.cos(currentYaw) * horizontalDist;
 
     _camDesiredPos.set(desiredCamX, desiredCamY, desiredCamZ);
-    app.camera.position.lerp(_camDesiredPos, Math.min(1.0, dt * 8.0));
-    app.camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+    app.camera.position.lerp(_camDesiredPos, Math.min(1.0, dt * 12.0));
+    app.camera.lookAt(_currentCamLookAt);
 
     // Track player with sun shadow camera
     sunLight.position.set(player.position.x + 30, 45, player.position.z + 20);
@@ -483,4 +522,4 @@ app.onUpdate((dt: number) => {
 
 // Launch Engine
 app.start();
-console.log('🦊 Fox Odyssey (Story + Elder Owl + Combat + Levels 1 & 2) active.');
+console.log('🦊 Fox Odyssey (Silky-Smooth Camera Orbit + Story + Elder Owl + Combat) active.');

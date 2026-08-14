@@ -206,6 +206,16 @@ export class MobileInput {
         if (touch.identifier === this.cameraTouchId) this.cameraTouchId = null;
       }
     });
+
+    // Reset touch tracking on screen rotation & window resize
+    const handleLayoutChange = () => {
+      resetJoystick();
+      this.cameraTouchId = null;
+      this.lookDelta.x = 0;
+      this.lookDelta.y = 0;
+    };
+    window.addEventListener('resize', handleLayoutChange);
+    window.addEventListener('orientationchange', handleLayoutChange);
   }
 
   private initMouseCameraControls() {
