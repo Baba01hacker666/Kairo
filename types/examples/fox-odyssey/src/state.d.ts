@@ -1,3 +1,4 @@
+import type { HealthComponent } from '@kairo/core';
 export interface SaveData {
     acornsCollected: number;
     collectedAcornIds: number[];
@@ -20,6 +21,12 @@ export declare class GameState {
     hearts: number;
     maxHearts: number;
     beastsDefeated: number;
+    /**
+     * Engine HealthComponent backing the spirit hearts. Wired up by the game
+     * bootstrap (main.ts); when present, damagePlayer/healPlayer delegate to it
+     * and the component's events drive the player_damaged/player_healed/… emits.
+     */
+    health?: HealthComponent;
     acornsCollected: number;
     totalAcorns: number;
     totalWisps: number;

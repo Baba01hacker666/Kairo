@@ -1,9 +1,8 @@
+import type { QuestSystem, DialogueSystem } from '@kairo/core';
 export interface ObjectiveItem {
     id: string;
     text: string;
     isCompleted: boolean;
-    currentCount?: number;
-    totalCount?: number;
 }
 export declare class GameHUD {
     private startScreenEl;
@@ -38,8 +37,9 @@ export declare class GameHUD {
     private npcTextEl;
     private dialogueCloseBtnEl;
     private toastTimeout;
-    private hasTalkedToOwl;
-    constructor(onStartGame: (isContinue: boolean) => void, onCaptureScreenshot: () => void, onPlayClickSound: () => void);
+    private quests?;
+    private dialogue?;
+    constructor(onStartGame: (isContinue: boolean) => void, onCaptureScreenshot: () => void, onPlayClickSound: () => void, quests?: QuestSystem, dialogue?: DialogueSystem);
     checkSavedGame(): void;
     syncSavedUI(): void;
     updateRealm(level: number): void;
@@ -47,6 +47,7 @@ export declare class GameHUD {
     renderQuestObjectives(): void;
     showToast(text: string, icon?: string): void;
     showDialogue(speaker: string, avatar: string, text: string): void;
+    hideDialogue(): void;
     togglePhotoMode(): boolean;
     updateStamina(stamina: number, maxStamina: number): void;
     showVictoryModal(): void;
