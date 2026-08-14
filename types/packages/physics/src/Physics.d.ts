@@ -78,6 +78,7 @@ export declare class PhysicsWorld {
     private bodies;
     private cannonWorld;
     private static _raycastTempBox;
+    private static _raycastTempResult;
     private bodyLookup;
     private collisionListeners;
     private triggerListeners;

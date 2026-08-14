@@ -91,13 +91,23 @@ export declare class Ray {
         y: number;
         z: number;
     });
-    intersectBox(box: BoundingBox): {
+    intersectBox(box: BoundingBox, targetResult?: {
+        hasHit: boolean;
+        distance: number;
+        point: Vector3;
+        normal: Vector3;
+    }): {
         hasHit: boolean;
         distance: number;
         point: Vector3;
         normal: Vector3;
     };
-    intersectSphere(center: Vector3, radius: number): {
+    intersectSphere(center: Vector3, radius: number, targetResult?: {
+        hasHit: boolean;
+        distance: number;
+        point: Vector3;
+        normal: Vector3;
+    }): {
         hasHit: boolean;
         distance: number;
         point: Vector3;
