@@ -6,13 +6,18 @@ export declare class AudioManager {
     private bgmGain;
     private sfxGain;
     private uiGain;
+    private isUnlocked;
+    private gestureListenersAttached;
     private currentBgmSource;
+    constructor();
+    setupUserGestureUnlock(): void;
     init(): void;
+    resume(): Promise<void>;
     setMasterVolume(vol: number): void;
     setBGMVolume(vol: number): void;
     setSFXVolume(vol: number): void;
     setUIVolume(vol: number): void;
     playSynthesizedSound(type: SynthesizedSFXType, pos?: Vector3): void;
-    updateListenerPosition(pos: Vector3, forward?: Vector3): void;
+    playBGM(url: string, loop?: boolean): void;
 }
 export declare const GlobalAudio: AudioManager;

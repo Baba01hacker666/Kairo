@@ -1,9 +1,24 @@
+export interface SaveData {
+    acornsCollected: number;
+    collectedAcornIds: number[];
+    collectedWispIds: number[];
+    litChimeIds: number[];
+    ducksFollowing: boolean;
+    isGoldenForm: boolean;
+    playerPos: [number, number, number];
+    timestamp: number;
+}
 export declare class GameState {
     static instance: GameState;
+    isGameStarted: boolean;
     acornsCollected: number;
     totalAcorns: number;
     totalWisps: number;
     wispsCollectedCount: number;
+    collectedAcornIds: Set<number>;
+    collectedWispIds: Set<number>;
+    litChimeIds: Set<number>;
+    ducksFollowing: boolean;
     stamina: number;
     maxStamina: number;
     isGoldenForm: boolean;
@@ -12,10 +27,16 @@ export declare class GameState {
     isPhotoMode: boolean;
     gameStartTime: number;
     private listeners;
+    private static readonly SAVE_KEY;
     on(event: string, callback: (data?: any) => void): void;
     emit(event: string, data?: any): void;
-    collectAcorn(): number;
+    collectAcorn(id: number): number;
     collectWisp(id: number, name: string): void;
+    lightChime(id: number): void;
     toggleSound(): boolean;
     togglePhotoMode(): boolean;
+    saveGame(playerPos?: [number, number, number]): void;
+    loadGame(): SaveData | null;
+    hasSaveData(): boolean;
+    clearSaveData(): void;
 }

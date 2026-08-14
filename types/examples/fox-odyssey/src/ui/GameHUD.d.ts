@@ -1,4 +1,11 @@
 export declare class GameHUD {
+    private startScreenEl;
+    private startNewBtnEl;
+    private startContinueBtnEl;
+    private saveInfoPreviewEl;
+    private saveWispsCountEl;
+    private saveAcornsCountEl;
+    private startResetSaveBtnEl;
     private acornValEl;
     private staminaFillEl;
     private questTextEl;
@@ -21,7 +28,9 @@ export declare class GameHUD {
     private npcTextEl;
     private dialogueCloseBtnEl;
     private toastTimeout;
-    constructor(onCaptureScreenshot: () => void, onPlayClickSound: () => void);
+    constructor(onStartGame: (isContinue: boolean) => void, onCaptureScreenshot: () => void, onPlayClickSound: () => void);
+    checkSavedGame(): void;
+    syncSavedUI(): void;
     showToast(text: string, icon?: string): void;
     showDialogue(speaker: string, avatar: string, text: string): void;
     togglePhotoMode(): boolean;
