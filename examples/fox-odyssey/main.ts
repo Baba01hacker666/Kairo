@@ -7,6 +7,7 @@ import { MobileInput } from './src/input/MobileInput.ts';
 import { ForestAudio } from './src/audio/ForestAudio.ts';
 import { FoxPlayer } from './src/player/FoxPlayer.ts';
 import { GroveWorld } from './src/world/GroveWorld.ts';
+import { CrystalPeaksWorld } from './src/world/CrystalPeaksWorld.ts';
 import { WispManager } from './src/entities/Wisps.ts';
 import { AcornManager } from './src/entities/Acorns.ts';
 import { ChimeManager } from './src/entities/Chimes.ts';
@@ -59,14 +60,57 @@ app.scene.add(splashParticles.mesh);
 // --- 3. Subsystem Modules Initialization ---
 const audio = new ForestAudio(app.audio);
 const input = new MobileInput();
-const world = new GroveWorld(app.scene);
+const worldL1 = new GroveWorld(app.scene);
+const worldL2 = new CrystalPeaksWorld(app.scene);
 const player = new FoxPlayer(app.scene, dustParticles, sparkleParticles, audio);
+
+// Portal Archway in Level 1 leading to Level 2
+const portalArchL1 = new THREE.Mesh(
+  new THREE.TorusGeometry(2.6, 0.35, 16, 32),
+  new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    emissive: 0x0284c7,
+    emissiveIntensity: 2.5,
+    roughness: 0.2
+  })
+);
+portalArchL1.position.set(0, 2.6, -34);
+worldL1.group.add(portalArchL1);
+
+const portalGateL1 = new THREE.Mesh(
+  new THREE.CircleGeometry(2.3, 32),
+  new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.65, side: THREE.DoubleSide })
+);
+portalGateL1.position.set(0, 2.6, -34);
+worldL1.group.add(portalGateL1);
+
+// Portal Archway in Level 2 leading back to Level 1
+const portalArchL2 = new THREE.Mesh(
+  new THREE.TorusGeometry(2.6, 0.35, 16, 32),
+  new THREE.MeshStandardMaterial({
+    color: 0x34d399,
+    emissive: 0x059669,
+    emissiveIntensity: 2.5,
+    roughness: 0.2
+  })
+);
+portalArchL2.position.set(0, 2.6, 34);
+worldL2.group.add(portalArchL2);
+
+const portalGateL2 = new THREE.Mesh(
+  new THREE.CircleGeometry(2.3, 32),
+  new THREE.MeshBasicMaterial({ color: 0x059669, transparent: true, opacity: 0.65, side: THREE.DoubleSide })
+);
+portalGateL2.position.set(0, 2.6, 34);
+worldL2.group.add(portalGateL2);
 
 // 3D Camera Orbit & Look Around State
 let camYaw = 0;
 let camPitch = 0.35; // ~20 degrees
 let camDistance = isMobile ? 9.5 : 8.2;
 const _camDesiredPos = new THREE.Vector3();
+const _portalPosL1 = new THREE.Vector3(0, 2.6, -34);
+const _portalPosL2 = new THREE.Vector3(0, 2.6, 34);
 
 // Initial Camera Placement
 app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + camDistance);
@@ -79,7 +123,55 @@ const mushrooms = new MushroomManager(app.scene, sparkleParticles, audio);
 const ducks = new DuckManager(app.scene, sparkleParticles);
 const endgameShrine = new EndgameShrineManager(app.scene, sparkleParticles, audio);
 
-// --- 4. HUD & Start Screen Wireup ---
+// --- 4. Level Switcher Routine ---
+function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
+  GameState.instance.currentLevel = targetLevel;
+
+  if (targetLevel === 2) {
+    worldL1.group.visible = false;
+    worldL2.group.visible = true;
+    app.scene.background = new THREE.Color(0x070919);
+    if (app.scene.fog) {
+      (app.scene.fog as THREE.Fog).color.setHex(0x0e1329);
+    }
+    sunLight.color.setHex(0x818cf8);
+    sunLight.intensity = 1.6;
+
+    if (spawnAtPortal) {
+      player.position.set(0, 0.6, 28);
+    }
+    sparkleParticles.emitBurst(player.position, 'sparkle', 60);
+    audio.playSound('teleport');
+    hud.showToast('❄️ Entered Realm: Moonlit Crystal Peaks (Level 2)', '💎');
+    setTimeout(() => {
+      hud.showDialogue(
+        'Moon Spirit Wolf',
+        '🐺',
+        'Welcome to the Crystal Peaks, Fox! Beware the icy winds, leap onto bouncy crystal geysers 💨, and explore the alpine spires!'
+      );
+    }, 400);
+  } else {
+    worldL1.group.visible = true;
+    worldL2.group.visible = false;
+    app.scene.background = new THREE.Color(0x09120c);
+    if (app.scene.fog) {
+      (app.scene.fog as THREE.Fog).color.setHex(0x12241a);
+    }
+    sunLight.color.setHex(0xfff3d6);
+    sunLight.intensity = 1.8;
+
+    if (spawnAtPortal) {
+      player.position.set(0, 0.6, -28);
+    }
+    sparkleParticles.emitBurst(player.position, 'sparkle', 60);
+    audio.playSound('teleport');
+    hud.showToast('🌲 Entered Realm: The Ancient Grove (Level 1)', '🦊');
+  }
+
+  GameState.instance.saveGame([player.position.x, player.position.y, player.position.z]);
+}
+
+// --- 5. HUD & Start Screen Wireup ---
 let lastSaveTime = 0;
 
 const hud = new GameHUD(
@@ -91,6 +183,12 @@ const hud = new GameHUD(
     if (isContinue) {
       const save = GameState.instance.loadGame();
       if (save) {
+        if (save.currentLevel && save.currentLevel === 2) {
+          switchLevel(2, false);
+        } else {
+          switchLevel(1, false);
+        }
+
         if (save.playerPos) {
           player.position.set(save.playerPos[0], save.playerPos[1], save.playerPos[2]);
           app.camera.position.set(player.position.x, player.position.y + 5.5, player.position.z + camDistance);
@@ -116,6 +214,7 @@ const hud = new GameHUD(
       }, 500);
     } else {
       GameState.instance.clearSaveData();
+      switchLevel(1, false);
       // Reset world objects to fresh (uncollected) state
       acorns.syncWithSave();
       wisps.syncWithSave();
@@ -127,7 +226,7 @@ const hud = new GameHUD(
         hud.showDialogue(
           'Grove Elder Owl',
           '🦉',
-          'Welcome to the Ancient Grove, little Fox! Swipe anywhere on the right to look around, leap across stepping stones, and ring the chime monoliths 🔔 to awaken the spirits!'
+          'Welcome to the Ancient Grove, little Fox! Swipe anywhere on the right to look around, leap across stepping stones, and step through the ancient northern portal to visit the Moonlit Crystal Peaks!'
         );
       }, 500);
     }
@@ -142,7 +241,7 @@ wisps.syncWithSave();
 chimes.syncWithSave();
 ducks.syncWithSave();
 
-// --- 5. Action Input Handlers ---
+// --- 6. Action Input Handlers ---
 input.onJump = () => {
   if (!GameState.instance.isGameStarted) return;
   player.jump();
@@ -166,7 +265,7 @@ input.onSpiritCall = () => {
       audio.playSound('fanfare');
       const treeLight = new THREE.PointLight(0xfde047, 5, 30);
       treeLight.position.set(0, 5, 0);
-      world.shrineGroup.add(treeLight);
+      worldL1.shrineGroup.add(treeLight);
     }
   });
 
@@ -207,17 +306,25 @@ input.onTogglePhotoMode = () => {
 GameState.instance.on('game_won', () => {
   player.setGoldenAura();
   audio.playSound('fanfare');
-  hud.showToast('🌟 Golden Fox Awakened! Triple Jump & Spirit Sprint Unlocked!', '🌟');
+  hud.showToast('🌟 Golden Fox Awakened! Triple Jump & Infinite Sprint Unlocked!', '🌟');
 });
 
-// --- 6. Main Game Loop ---
+// --- 7. Main Game Loop ---
 app.onUpdate((dt: number) => {
   const now = performance.now();
   const timeSeconds = (now - GameState.instance.gameStartTime) * 0.001;
 
+  // Active Realm World Object
+  const activeWorld = GameState.instance.currentLevel === 2 ? worldL2 : worldL1;
+
   // 1. Audio and Shader Updates
   audio.update(timeSeconds);
-  world.update(dt, timeSeconds);
+  if (worldL1.group.visible) worldL1.update(dt, timeSeconds);
+  if (worldL2.group.visible) worldL2.update(dt, timeSeconds);
+
+  // Rotate portal gateway rings
+  portalArchL1.rotation.z += dt * 0.8;
+  portalArchL2.rotation.z += dt * 0.8;
 
   // 2. Mobile Multi-Touch & Key Input
   if (GameState.instance.isGameStarted) {
@@ -225,17 +332,39 @@ app.onUpdate((dt: number) => {
     player.isPouncing = input.isPouncing;
 
     // 3. Player Physics & Locomotion (Camera Yaw Aligned)
-    player.update(dt, moveInput.x, moveInput.y, (x, z) => world.getTerrainHeight(x, z), camYaw);
+    player.update(dt, moveInput.x, moveInput.y, (x, z) => activeWorld.getTerrainHeight(x, z), camYaw);
     hud.updateStamina(GameState.instance.stamina, GameState.instance.maxStamina);
 
-    // 4. Bouncy Mushrooms Collision
-    mushrooms.checkPlayerBounce(player.position, now, force => {
-      player.velocity.y = force;
-      player.isGrounded = false;
-      hud.showToast('🍄 Super Mushroom Bounce!', '🚀');
-    });
+    // 4. Realm Portal Transitions
+    if (GameState.instance.currentLevel === 1) {
+      if (player.position.distanceTo(_portalPosL1) < 3.2) {
+        switchLevel(2);
+      }
+    } else {
+      if (player.position.distanceTo(_portalPosL2) < 3.2) {
+        switchLevel(1);
+      }
 
-    // 5. Sun Acorns Attraction & Collection (Snappy & Responsive)
+      // Level 2: Thermal Crystal Geysers
+      worldL2.checkGeyserBounce(player.position, now, force => {
+        player.velocity.y = force;
+        player.isGrounded = false;
+        sparkleParticles.emitBurst(player.position, 'sparkle', 35);
+        audio.playSound('teleport');
+        hud.showToast('💨 Crystal Geyser Launch!', '🚀');
+      });
+    }
+
+    // 5. Bouncy Mushrooms Collision (Level 1)
+    if (worldL1.group.visible) {
+      mushrooms.checkPlayerBounce(player.position, now, force => {
+        player.velocity.y = force;
+        player.isGrounded = false;
+        hud.showToast('🍄 Super Mushroom Bounce!', '🚀');
+      });
+    }
+
+    // 6. Sun Acorns Attraction & Collection
     acorns.update(dt, timeSeconds, player.position, count => {
       hud.showToast(`Gathered Sun Acorn (${count}/${GameState.instance.totalAcorns})`, '🌰');
       if (count >= GameState.instance.totalAcorns) {
@@ -244,15 +373,15 @@ app.onUpdate((dt: number) => {
       }
     });
 
-    // 6. Lost Spirit Wisps Update & Follow
+    // 7. Lost Spirit Wisps Update & Follow
     wisps.update(dt, timeSeconds, player.position, wisp => {
       hud.showToast(`Awakened ${wisp.name}! (${GameState.instance.wispsCollectedCount}/5)`, '✨');
     });
 
-    // 7. Duck Companions Follow Pack
+    // 8. Duck Companions Follow Pack
     ducks.update(dt, player.position, player.rotationY);
 
-    // 8. Endgame Spirit Sprint Time Trial
+    // 9. Endgame Spirit Sprint Time Trial
     endgameShrine.update(
       dt,
       timeSeconds,
@@ -277,7 +406,7 @@ app.onUpdate((dt: number) => {
     }
   }
 
-  // 9. Touch & Mouse 3D Camera Look & Orbit Follow Camera
+  // 10. Touch & Mouse 3D Camera Look & Orbit Follow Camera
   if (!GameState.instance.isPhotoMode) {
     const look = input.consumeLookDelta();
     if (look.x !== 0 || look.y !== 0) {
@@ -305,7 +434,7 @@ app.onUpdate((dt: number) => {
     sunLight.target.updateMatrixWorld();
   }
 
-  // 10. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
+  // 11. Particle Lifecycles (advance sim, update instanced matrices, compact dead particles)
   leafParticles.update(dt);
   sparkleParticles.update(dt);
   dustParticles.update(dt);
@@ -314,4 +443,4 @@ app.onUpdate((dt: number) => {
 
 // Launch Engine
 app.start();
-console.log('🦊 Fox Odyssey (3D Camera Orbit + Endgame Activities + Responsive Collection) active.');
+console.log('🦊 Fox Odyssey (Level 1: Ancient Grove + Level 2: Moonlit Crystal Peaks) active.');

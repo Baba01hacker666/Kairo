@@ -6,6 +6,7 @@ export interface SaveData {
   ducksFollowing: boolean;
   isGoldenForm: boolean;
   playerPos: [number, number, number];
+  currentLevel?: number;
   timestamp: number;
 }
 
@@ -13,6 +14,7 @@ export class GameState {
   public static instance: GameState = new GameState();
 
   public isGameStarted: boolean = false;
+  public currentLevel: number = 1; // 1 = Ancient Grove, 2 = Moonlit Crystal Peaks
   public acornsCollected: number = 0;
   public totalAcorns: number = 20;
   public totalWisps: number = 5;
@@ -23,8 +25,9 @@ export class GameState {
   public litChimeIds: Set<number> = new Set();
   public ducksFollowing: boolean = false;
 
-  public stamina: number = 100;
-  public maxStamina: number = 100;
+  // Generous Double Stamina (200 max) for fast, free exploration!
+  public stamina: number = 200;
+  public maxStamina: number = 200;
   public isGoldenForm: boolean = false;
   public isGameWon: boolean = false;
   public soundEnabled: boolean = true;
@@ -48,6 +51,12 @@ export class GameState {
     if (list) {
       list.forEach(cb => cb(data));
     }
+  }
+
+  public setLevel(level: number) {
+    this.currentLevel = level;
+    this.emit('level_changed', level);
+    this.saveGame();
   }
 
   public collectAcorn(id: number): number {
@@ -104,6 +113,7 @@ export class GameState {
         ducksFollowing: this.ducksFollowing,
         isGoldenForm: this.isGoldenForm,
         playerPos: this.lastPlayerPos,
+        currentLevel: this.currentLevel,
         timestamp: Date.now()
       };
       localStorage.setItem(GameState.SAVE_KEY, JSON.stringify(data));
@@ -128,6 +138,7 @@ export class GameState {
       this.isGoldenForm = data.isGoldenForm || false;
       this.wispsCollectedCount = this.collectedWispIds.size;
       this.isGameWon = this.wispsCollectedCount >= this.totalWisps;
+      this.currentLevel = data.currentLevel || 1;
       if (data.playerPos) {
         this.lastPlayerPos = data.playerPos;
       }
@@ -155,6 +166,9 @@ export class GameState {
     this.isGoldenForm = false;
     this.isGameWon = false;
     this.ducksFollowing = false;
+    this.currentLevel = 1;
+    this.stamina = 200;
+    this.maxStamina = 200;
     this.lastPlayerPos = [0, 0.5, 8];
   }
 }

@@ -174,10 +174,10 @@ export class FoxPlayer {
 
   public pounce(): boolean {
     const state = GameState.instance;
-    if (state.isGoldenForm || state.stamina > 20) {
+    if (state.isGoldenForm || state.stamina > 5) {
       this.isPouncing = true;
       if (!state.isGoldenForm) {
-        state.stamina = Math.max(0, state.stamina - 25);
+        state.stamina = Math.max(0, state.stamina - 10);
       }
       this.audio.playSound('push');
       this.dustParticles.emitBurst(this.position, 'dust_footstep', 20);
@@ -223,13 +223,13 @@ export class FoxPlayer {
     const currentWalkSpeed = isGolden ? this.walkSpeed * 1.25 : this.walkSpeed;
     const currentPounceSpeed = isGolden ? this.pounceSpeed * 1.35 : this.pounceSpeed;
 
-    // Stamina Regeneration & Decay
+    // Stamina Regeneration & Decay (Super Fast Recharge, Long Lasting Sprint)
     if (isGolden) {
       state.stamina = state.maxStamina;
     } else if (!this.isPouncing) {
-      state.stamina = Math.min(state.maxStamina, state.stamina + dt * 25);
+      state.stamina = Math.min(state.maxStamina, state.stamina + dt * 65.0);
     } else {
-      state.stamina = Math.max(0, state.stamina - dt * 30);
+      state.stamina = Math.max(0, state.stamina - dt * 14.0);
       if (state.stamina <= 0) this.isPouncing = false;
     }
 
