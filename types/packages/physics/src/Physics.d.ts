@@ -88,7 +88,7 @@ export declare class PhysicsWorld {
     private collisionListeners;
     private triggerListeners;
     private activePairs;
-    private collisionEvents;
+    private _nextPairs;
     private static readonly FIXED_TIMESTEP;
     private static readonly MAX_SUBSTEPS;
     constructor(backend?: PhysicsBackendType);
