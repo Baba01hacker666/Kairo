@@ -199,7 +199,7 @@ export class PhysicsWorld {
   private collisionListeners: Array<(event: CollisionEvent) => void> = [];
   private triggerListeners: Array<(event: CollisionEvent) => void> = [];
   private activePairs: Map<number, [BodyEntry, BodyEntry]> = new Map();
-  private collisionEvents: CollisionEvent[] = [];
+  private _nextPairs: Map<number, [BodyEntry, BodyEntry]> = new Map();
 
   private static readonly FIXED_TIMESTEP = 1 / 60;
   private static readonly MAX_SUBSTEPS = 3;
@@ -227,7 +227,7 @@ export class PhysicsWorld {
     this.collisionListeners = [];
     this.triggerListeners = [];
     this.activePairs.clear();
-    this.collisionEvents = [];
+    this._nextPairs.clear();
   }
 
   registerBody(body: RigidBody, collider: Collider, position: Vector3 = new Vector3()): void {
@@ -468,8 +468,8 @@ export class PhysicsWorld {
   }
 
   private collectCollisionEvents(): void {
-    const nextPairs = new Map<number, [BodyEntry, BodyEntry]>();
-    this.collisionEvents = [];
+    const nextPairs = this._nextPairs;
+    nextPairs.clear();
     for (const contact of this.cannonWorld.contacts) {
       const a = this.bodyLookup.get(contact.bi);
       const b = this.bodyLookup.get(contact.bj);
@@ -487,19 +487,23 @@ export class PhysicsWorld {
         }
       }
     }
+    this._nextPairs = this.activePairs;
     this.activePairs = nextPairs;
   }
 
   private emitCollision(phase: CollisionPhase, a: BodyEntry, b: BodyEntry): void {
-    const events: CollisionEvent[] = [
-      { phase, body: a.body, other: b.body, collider: a.collider, otherCollider: b.collider },
-      { phase, body: b.body, other: a.body, collider: b.collider, otherCollider: a.collider }
-    ];
-    this.collisionEvents.push(...events);
-    for (const event of events) {
-      for (const listener of this.collisionListeners) listener(event);
-      if (event.collider.isTrigger || event.otherCollider.isTrigger) {
-        for (const listener of this.triggerListeners) listener(event);
+    const eventA: CollisionEvent = { phase, body: a.body, other: b.body, collider: a.collider, otherCollider: b.collider };
+    const eventB: CollisionEvent = { phase, body: b.body, other: a.body, collider: b.collider, otherCollider: a.collider };
+
+    for (let i = 0; i < this.collisionListeners.length; i++) {
+      this.collisionListeners[i](eventA);
+      this.collisionListeners[i](eventB);
+    }
+
+    if (eventA.collider.isTrigger || eventA.otherCollider.isTrigger) {
+      for (let i = 0; i < this.triggerListeners.length; i++) {
+        this.triggerListeners[i](eventA);
+        this.triggerListeners[i](eventB);
       }
     }
   }
