@@ -103,8 +103,8 @@ export declare class PhysicsWorld {
     onTrigger(listener: (event: CollisionEvent) => void): void;
     raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance?: number): RaycastHit;
     sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance?: number): RaycastHit;
-    overlapSphere(center: Vector3, radius: number): RigidBody[];
-    overlapBox(center: Vector3, halfExtentsOrSize: Vector3, isHalfExtents?: boolean): RigidBody[];
+    overlapSphere(center: Vector3, radius: number, target?: RigidBody[]): RigidBody[];
+    overlapBox(center: Vector3, halfExtentsOrSize: Vector3, isHalfExtents?: boolean, target?: RigidBody[]): RigidBody[];
     private createShape;
     private syncKinematicAndStaticBodies;
     private syncDynamicBodies;
