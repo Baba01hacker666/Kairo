@@ -43,3 +43,7 @@
 ## 2024-12-09 - [Eliminate GC Allocations in Physics Collision Tracking]
 **Learning:** During physics simulation, the `collectCollisionEvents` function runs every frame and tracks active collisions. Previously, it instantiated a new `Map` for tracking next active pairs (`new Map()`), allocated an empty array (`this.collisionEvents = []`), and pushed newly allocated arrays of objects per collision into it. This resulted in constant GC churn (Maps and Arrays) every single tick, even though the `collisionEvents` array was never read or used outside of the internal step.
 **Action:** Use a pre-allocated class property for tracking next active pairs (e.g. `_nextPairs`), clear it instead of instantiating it, swap map references (`this._nextPairs = this.activePairs`), and avoid building/pushing intermediate arrays for broadcasting events directly to listeners.
+
+## 2024-12-10 - [Eliminate GC Allocations in Spatial Query Methods]
+**Learning:** High-frequency spatial query functions like `overlapSphere` and `overlapBox` were instantiating and returning new arrays (`[]`) on every call, leading to continuous garbage collection churn in physics and AI systems during runtime.
+**Action:** Add optional `target` array parameters to spatial queries and helper methods to allow callers to pass and reuse pre-allocated array buffers instead of allocating new arrays implicitly on each call.

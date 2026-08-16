@@ -387,8 +387,9 @@ export class PhysicsWorld {
     return hit;
   }
 
-  overlapSphere(center: Vector3, radius: number): RigidBody[] {
-    const results: RigidBody[] = [];
+  overlapSphere(center: Vector3, radius: number, target?: RigidBody[]): RigidBody[] {
+    const results: RigidBody[] = target || [];
+    if (target) results.length = 0;
 
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
@@ -420,7 +421,7 @@ export class PhysicsWorld {
     return results;
   }
 
-  overlapBox(center: Vector3, halfExtentsOrSize: Vector3, isHalfExtents: boolean = true): RigidBody[] {
+  overlapBox(center: Vector3, halfExtentsOrSize: Vector3, isHalfExtents: boolean = true, target?: RigidBody[]): RigidBody[] {
     const hx = isHalfExtents ? halfExtentsOrSize.x : halfExtentsOrSize.x * 0.5;
     const hy = isHalfExtents ? halfExtentsOrSize.y : halfExtentsOrSize.y * 0.5;
     const hz = isHalfExtents ? halfExtentsOrSize.z : halfExtentsOrSize.z * 0.5;
@@ -432,7 +433,8 @@ export class PhysicsWorld {
     const minZ = center.z - hz;
     const maxZ = center.z + hz;
 
-    const results: RigidBody[] = [];
+    const results: RigidBody[] = target || [];
+    if (target) results.length = 0;
 
     // ⚡ Bolt Optimization:
     // Avoid intermediate BoundingBox allocations and .filter().map() chaining in hot path.
