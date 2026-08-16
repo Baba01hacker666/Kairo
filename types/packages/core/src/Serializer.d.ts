@@ -34,4 +34,9 @@ export declare class Serializer {
      * Lightweight Run-Length Encoding (RLE) Payload Compression
      */
     static compressRLE(str: string): string;
+    /**
+     * Decode a string produced by compressRLE. Note: the RLE format is ambiguous
+     * for payloads containing raw digit characters (digits are parsed as run counts).
+     */
+    static decompressRLE(str: string): string;
 }

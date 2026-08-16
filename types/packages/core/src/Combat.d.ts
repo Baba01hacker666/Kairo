@@ -21,6 +21,11 @@ export interface HealEvent {
     current: number;
     max: number;
 }
+export interface ReviveEvent {
+    id: string;
+    current: number;
+    max: number;
+}
 /**
  * ❤️ HealthComponent
  * A self-contained health pool with damage/heal/death/revive semantics,
@@ -31,7 +36,7 @@ export interface HealEvent {
  *  - 'damaged'   ({ id, amount, current, max, source, killed })
  *  - 'healed'    ({ id, amount, current, max })
  *  - 'died'      ({ id })
- *  - 'revived'   ({ id })
+ *  - 'revived'   ({ id, current, max })
  *  - 'invulnerable_end' ({ id })
  */
 export declare class HealthComponent extends EventEmitter {
@@ -68,10 +73,14 @@ export declare class HealthComponent extends EventEmitter {
  *  - 'entity_damaged'  DamageEvent
  *  - 'entity_healed'   HealEvent
  *  - 'entity_died'     { id }
- *  - 'entity_revived'  { id }
+ *  - 'entity_revived'  ReviveEvent
  */
 export declare class CombatSystem {
     private entities;
+    /** Registered ids per component, so one component is forwarded exactly once. */
+    private forwarderIds;
+    /** Unsubscribe handles for a component's forwarding listeners. */
+    private forwarderOffs;
     events: EventEmitter;
     register(id: string, health: HealthComponent): HealthComponent;
     /** Convenience: create + register a health component in one call. */
