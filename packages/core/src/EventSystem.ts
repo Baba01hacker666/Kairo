@@ -15,12 +15,14 @@ export class EventEmitter {
     return () => this.off(event, handler);
   }
 
-  once<T = any>(event: string, handler: EventHandler<T>): void {
+  once<T = any>(event: string, handler: EventHandler<T>): () => void {
     const wrapper: EventHandler<T> = (data: T) => {
-      handler(data);
+      // Detach before invoking so a throwing handler can't leak the wrapper.
       this.off(event, wrapper);
+      handler(data);
     };
     this.on(event, wrapper);
+    return () => this.off(event, wrapper);
   }
 
   off<T = any>(event: string, handler: EventHandler<T>): void {

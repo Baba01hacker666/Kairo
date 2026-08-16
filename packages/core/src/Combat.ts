@@ -25,6 +25,12 @@ export interface HealEvent {
   max: number;
 }
 
+export interface ReviveEvent {
+  id: string;
+  current: number;
+  max: number;
+}
+
 /**
  * ❤️ HealthComponent
  * A self-contained health pool with damage/heal/death/revive semantics,
@@ -35,7 +41,7 @@ export interface HealEvent {
  *  - 'damaged'   ({ id, amount, current, max, source, killed })
  *  - 'healed'    ({ id, amount, current, max })
  *  - 'died'      ({ id })
- *  - 'revived'   ({ id })
+ *  - 'revived'   ({ id, current, max })
  *  - 'invulnerable_end' ({ id })
  */
 export class HealthComponent extends EventEmitter {
@@ -61,6 +67,7 @@ export class HealthComponent extends EventEmitter {
   /** Apply damage. Returns the amount actually dealt (0 if invulnerable/dead). */
   public damage(amount: number, options: DamageOptions = {}): number {
     if (this.isDead) return 0;
+    if (!(amount > 0)) return 0; // zero/negative/NaN would heal or emit bogus hits
     if (!options.ignoreInvulnerability && this.isInvulnerable) return 0;
 
     const dealt = Math.min(amount, this.current);
@@ -100,16 +107,21 @@ export class HealthComponent extends EventEmitter {
 
   /** Resize the max health pool. */
   public setMax(max: number, keepCurrentRatio: boolean = true): void {
-    const ratio = keepCurrentRatio ? this.current / this.max : 1;
+    const oldMax = this.max;
     this.max = Math.max(1, max);
-    this.current = Math.round(this.max * ratio);
+    if (keepCurrentRatio) {
+      const ratio = oldMax > 0 ? this.current / oldMax : 1;
+      this.current = Math.round(this.max * ratio);
+    } else {
+      this.current = Math.min(this.current, this.max);
+    }
   }
 
   /** Revive with full (or partial) health. */
   public revive(health?: number): void {
     this.isDead = false;
-    this.current = health ?? this.max;
-    this.emit('revived', { id: this.id });
+    this.current = Math.max(0, Math.min(health ?? this.max, this.max));
+    this.emit('revived', { id: this.id, current: this.current, max: this.max } satisfies ReviveEvent);
   }
 
   /** Reset to full health and clear invulnerability. */
@@ -141,19 +153,31 @@ export class HealthComponent extends EventEmitter {
  *  - 'entity_damaged'  DamageEvent
  *  - 'entity_healed'   HealEvent
  *  - 'entity_died'     { id }
- *  - 'entity_revived'  { id }
+ *  - 'entity_revived'  ReviveEvent
  */
 export class CombatSystem {
   private entities: Map<string, HealthComponent> = new Map();
+  /** Registered ids per component, so one component is forwarded exactly once. */
+  private forwarderIds: Map<HealthComponent, Set<string>> = new Map();
+  /** Unsubscribe handles for a component's forwarding listeners. */
+  private forwarderOffs: Map<HealthComponent, Array<() => void>> = new Map();
   public events: EventEmitter = new EventEmitter();
 
   public register(id: string, health: HealthComponent): HealthComponent {
     this.entities.set(id, health);
+    const ids = this.forwarderIds.get(health);
+    if (ids) {
+      ids.add(id); // already forwarding — don't duplicate listeners
+      return health;
+    }
     // Forward component events with the entity id included.
-    health.on('damaged', e => this.events.emit('entity_damaged', e));
-    health.on('healed', e => this.events.emit('entity_healed', e));
-    health.on('died', e => this.events.emit('entity_died', e));
-    health.on('revived', e => this.events.emit('entity_revived', e));
+    this.forwarderIds.set(health, new Set([id]));
+    this.forwarderOffs.set(health, [
+      health.on('damaged', e => this.events.emit('entity_damaged', e)),
+      health.on('healed', e => this.events.emit('entity_healed', e)),
+      health.on('died', e => this.events.emit('entity_died', e)),
+      health.on('revived', e => this.events.emit('entity_revived', e))
+    ]);
     return health;
   }
 
@@ -163,7 +187,17 @@ export class CombatSystem {
   }
 
   public unregister(id: string): void {
+    const health = this.entities.get(id);
+    if (!health) return;
     this.entities.delete(id);
+    const ids = this.forwarderIds.get(health);
+    if (!ids) return;
+    ids.delete(id);
+    if (ids.size === 0) {
+      this.forwarderIds.delete(health);
+      this.forwarderOffs.get(health)?.forEach(off => off());
+      this.forwarderOffs.delete(health);
+    }
   }
 
   public get(id: string): HealthComponent | undefined {

@@ -127,3 +127,63 @@ test('CombatSystem - registry with entity-scoped damage and forwarded events', (
   cs.unregister('minion');
   assert.strictEqual(cs.has('minion'), false);
 });
+
+test('HealthComponent - revive payload carries current/max and clamps (regression)', () => {
+  const hp = new HealthComponent(10, 'hero');
+  hp.damage(10);
+  assert.strictEqual(hp.isDead, true);
+
+  let payload = null;
+  hp.on('revived', e => payload = e);
+  hp.revive(6);
+  assert.deepStrictEqual(payload, { id: 'hero', current: 6, max: 10 });
+
+  hp.damage(10);
+  hp.revive(999); // clamps to max
+  assert.strictEqual(hp.current, 10);
+});
+
+test('HealthComponent - setMax without ratio keeps clamped current instead of full-healing (regression)', () => {
+  const hp = new HealthComponent(100);
+  hp.damage(70); // current 30
+  hp.setMax(200, false);
+  assert.strictEqual(hp.max, 200);
+  assert.strictEqual(hp.current, 30);
+
+  hp.setMax(10, false); // shrink below current → clamp
+  assert.strictEqual(hp.max, 10);
+  assert.strictEqual(hp.current, 10);
+});
+
+test('HealthComponent - zero and negative damage are rejected (regression)', () => {
+  const hp = new HealthComponent(10);
+  let damagedEvents = 0;
+  hp.on('damaged', () => damagedEvents++);
+
+  assert.strictEqual(hp.damage(0), 0);
+  assert.strictEqual(hp.damage(-5), 0);
+  assert.strictEqual(hp.current, 10);
+  assert.strictEqual(damagedEvents, 0);
+  assert.strictEqual(hp.isInvulnerable, false);
+});
+
+test('CombatSystem - re-register does not duplicate events; unregister stops forwarding (regression)', () => {
+  const cs = new CombatSystem();
+  const events = [];
+  cs.events.on('entity_damaged', e => events.push(e.id));
+
+  const hero = cs.add('hero', 10);
+  cs.register('hero_alias', hero); // same component under a second id
+  cs.damage('hero', 1);
+  assert.deepStrictEqual(events, ['hero']); // exactly one forwarded event
+
+  cs.unregister('hero');
+  cs.unregister('hero_alias');
+  cs.damage('hero', 1); // unregistered → no-op
+  assert.deepStrictEqual(events, ['hero']);
+
+  // Component-level listeners were detached: direct damage emits nothing new.
+  const before = events.length;
+  hero.damage(1);
+  assert.strictEqual(events.length, before);
+});

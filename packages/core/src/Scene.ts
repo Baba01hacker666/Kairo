@@ -117,8 +117,12 @@ export class Scene {
   }
 
   remove(node: SceneNode): void {
-    this.root.removeChild(node);
-    this.events.emit('nodeRemoved', node);
+    const parent = node.parent ?? this.root;
+    const childCount = parent.children.length;
+    parent.removeChild(node);
+    if (parent.children.length !== childCount) {
+      this.events.emit('nodeRemoved', node);
+    }
   }
 
   findByName(name: string): SceneNode | null {

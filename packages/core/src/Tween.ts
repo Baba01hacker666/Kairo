@@ -84,6 +84,15 @@ function isTweenable(value: unknown): value is Tweenable {
   return false;
 }
 
+/** Snapshot a tweenable value so from/to anchors never alias the live target. */
+function cloneTweenable(value: Tweenable): Tweenable {
+  if (typeof value === 'number') return value;
+  if (Array.isArray(value)) return value.slice();
+  const copy: Record<string, number> = {};
+  for (const key of Object.keys(value)) copy[key] = (value as Record<string, number>)[key];
+  return copy;
+}
+
 /**
  * ✨ Tween
  * Interpolates numeric properties of a target object (scalars, arrays, and
@@ -130,8 +139,8 @@ export class Tween {
       const toVal = to[key];
       if (!isTweenable(fromVal) || !isTweenable(toVal)) continue;
       if (typeof fromVal !== typeof toVal) continue;
-      this.fromValues[key] = fromVal;
-      this.toValues[key] = toVal;
+      this.fromValues[key] = cloneTweenable(fromVal);
+      this.toValues[key] = cloneTweenable(toVal);
     }
   }
 
@@ -163,7 +172,9 @@ export class Tween {
 
     if (this.delay > 0) {
       this.delay -= dt;
-      return false;
+      if (this.delay > 0) return false;
+      dt = -this.delay; // carry the overshoot into the tween's first frame
+      this.delay = 0;
     }
 
     this.elapsed += dt;

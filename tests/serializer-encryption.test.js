@@ -19,3 +19,13 @@ test('Serializer RLE Compression', () => {
   const compressed = Serializer.compressRLE(repeatedStr);
   assert.strictEqual(compressed, '5A5B5C5D');
 });
+
+test('Serializer RLE Decompression round trip', () => {
+  const original = 'AAAAABBBBBCCCCCDDDDD';
+  const compressed = Serializer.compressRLE(original);
+  assert.strictEqual(Serializer.decompressRLE(compressed), original);
+
+  // Singletons are stored bare
+  assert.strictEqual(Serializer.decompressRLE(Serializer.compressRLE('abc')), 'abc');
+  assert.strictEqual(Serializer.decompressRLE(''), '');
+});

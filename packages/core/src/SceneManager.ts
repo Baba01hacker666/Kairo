@@ -59,6 +59,14 @@ export class SceneManager {
       toRemove.push(node);
     });
 
+    const disposeMaterial = (mat: THREE.Material) => {
+      // Dispose any textures attached to the material to avoid GPU leaks.
+      for (const value of Object.values(mat)) {
+        if (value instanceof THREE.Texture) value.dispose();
+      }
+      mat.dispose();
+    };
+
     for (const node of toRemove) {
       if ((node as any).geometry) {
         (node as any).geometry.dispose();
@@ -66,9 +74,9 @@ export class SceneManager {
       if ((node as any).material) {
         const mat = (node as any).material;
         if (Array.isArray(mat)) {
-          mat.forEach((m: any) => m.dispose());
+          mat.forEach(disposeMaterial);
         } else {
-          mat.dispose();
+          disposeMaterial(mat);
         }
       }
       if (node.parent) {
@@ -76,7 +84,14 @@ export class SceneManager {
       }
     }
 
-    // 5. Run the new Scene Setup logic
+    // 5. Reset frame-driven gameplay systems so the old scene's dialogue,
+    // tweens, and camera FX don't carry into the new scene.
+    this.app.tweens.killAll();
+    this.app.dialogue.stop();
+    this.app.cameraFX.stopShake();
+    this.app.cameraFX.stopLookAt();
+
+    // 6. Run the new Scene Setup logic
     await setupFn(this.app);
     
     console.log(`[SceneManager] Loaded scene '${name}'`);

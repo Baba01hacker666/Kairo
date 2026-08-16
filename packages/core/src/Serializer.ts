@@ -139,4 +139,26 @@ export class Serializer {
     }
     return compressed;
   }
+
+  /**
+   * Decode a string produced by compressRLE. Note: the RLE format is ambiguous
+   * for payloads containing raw digit characters (digits are parsed as run counts).
+   */
+  public static decompressRLE(str: string): string {
+    if (!str) return '';
+    let decompressed = '';
+    let index = 0;
+    while (index < str.length) {
+      let digits = '';
+      while (index < str.length && str[index] >= '0' && str[index] <= '9') {
+        digits += str[index];
+        index++;
+      }
+      const count = digits ? parseInt(digits, 10) : 1;
+      if (index >= str.length) break;
+      decompressed += str[index].repeat(count);
+      index++;
+    }
+    return decompressed;
+  }
 }

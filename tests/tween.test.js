@@ -161,3 +161,56 @@ test('Easing - named easings exist and map endpoints correctly', () => {
   assert.strictEqual(getEasing('not-a-thing')(0.5), 0.5);
   assert.ok(Easing.inOutElastic(1), 1);
 });
+
+test('Tween - nested object props keep correct eased values across many frames (regression: from aliasing)', () => {
+  const manager = new TweenManager();
+  const obj = { pos: { x: 0 } };
+  manager.to(obj, { pos: { x: 10 } }, { duration: 1, easing: 'linear' });
+
+  manager.update(0.25);
+  assert.strictEqual(obj.pos.x, 2.5);
+  manager.update(0.25);
+  assert.strictEqual(obj.pos.x, 5); // was 6.25 when from aliased the target
+  manager.update(0.25);
+  assert.strictEqual(obj.pos.x, 7.5); // was 9.0625
+  manager.update(0.25);
+  assert.strictEqual(obj.pos.x, 10);
+});
+
+test('Tween - yoyo on array props returns exactly to start (regression: from aliasing)', () => {
+  const manager = new TweenManager();
+  const obj = { color: [0, 0] };
+  manager.to(obj, { color: [10, 10] }, { duration: 1, easing: 'linear', yoyo: true });
+
+  manager.update(1);   // forward
+  assert.strictEqual(obj.color[0], 10);
+  manager.update(0.5); // reverse halfway
+  assert.strictEqual(obj.color[0], 5); // was stuck at 10
+  manager.update(0.5); // reverse done
+  assert.strictEqual(obj.color[0], 0);
+  assert.strictEqual(obj.color[1], 0);
+  assert.strictEqual(manager.count, 0);
+});
+
+test('Tween - from() with nested object ends at the original current value (regression: to aliasing)', () => {
+  const manager = new TweenManager();
+  const obj = { pos: { x: 10 } };
+  manager.from(obj, { pos: { x: 0 } }, { duration: 1, easing: 'linear' });
+
+  manager.update(0.5);
+  assert.strictEqual(obj.pos.x, 5);
+  manager.update(0.5);
+  assert.strictEqual(obj.pos.x, 10); // was stuck at 5 when to aliased the target
+});
+
+test('Tween - delay overshoot carries into the first tween frame', () => {
+  const manager = new TweenManager();
+  const obj = { x: 0 };
+  manager.to(obj, { x: 10 }, { duration: 1, delay: 0.25, easing: 'linear' });
+
+  manager.update(0.5); // 0.25 consumed by delay, 0.25 applied to the tween
+  assert.strictEqual(obj.x, 2.5);
+  manager.update(0.75);
+  assert.strictEqual(obj.x, 10);
+  assert.strictEqual(manager.count, 0);
+});

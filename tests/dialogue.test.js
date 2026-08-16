@@ -130,3 +130,40 @@ test('DialogueSystem - per-line typewriter override and onStart/onEnd hooks', ()
   ds.advance();
   assert.strictEqual(ds.isPlaying, false);
 });
+
+test('DialogueSystem - advance() while idle does not re-emit dialogue_ended (regression)', () => {
+  const ds = new DialogueSystem();
+  ds.typewriterCps = 0;
+  let ended = 0;
+  ds.on('dialogue_ended', () => ended++);
+
+  ds.advance(); // idle — no dialogue ever started
+  assert.strictEqual(ended, 0);
+
+  ds.play([{ text: 'a' }]);
+  ds.advance(); // closes the only line → ends
+  assert.strictEqual(ended, 1);
+
+  ds.advance(); // idle again — must not re-emit
+  ds.advance();
+  assert.strictEqual(ended, 1);
+});
+
+test('DialogueSystem - stop() and choice-end fire the current line onEnd (regression)', () => {
+  const ds = new DialogueSystem();
+  ds.typewriterCps = 0;
+  const hooks = [];
+
+  ds.register('d', [
+    { id: 'a', text: 'hi', onEnd: () => hooks.push('end:a'), choices: [{ text: 'Leave', next: '' }] }
+  ]);
+
+  ds.play('d');
+  ds.selectChoice(0); // choice ends the dialogue → onEnd must fire
+  assert.deepStrictEqual(hooks, ['end:a']);
+
+  hooks.length = 0;
+  ds.play([{ id: 'x', text: 'x', onEnd: () => hooks.push('end:x') }]);
+  ds.stop(); // interrupted line must end
+  assert.deepStrictEqual(hooks, ['end:x']);
+});

@@ -70,6 +70,7 @@ export class DialogueSystem extends EventEmitter {
 
     if (this.isPlaying) {
       // Already in a conversation — restart with the new script.
+      if (this.current?.onEnd) this.current.onEnd();
       this.emit('dialogue_skipped');
     }
 
@@ -88,6 +89,7 @@ export class DialogueSystem extends EventEmitter {
    * finishes the typewriter effect instead.
    */
   public advance(): void {
+    if (!this.isPlaying) return;
     if (this.isTyping) {
       this.finishTyping();
       return;
@@ -123,6 +125,7 @@ export class DialogueSystem extends EventEmitter {
 
     // Explicit end sentinel — note: `next: 0` is a valid line index and must NOT end.
     if (choice.next === undefined || choice.next === null || choice.next === '') {
+      if (this.current?.onEnd) this.current.onEnd();
       this.finish();
       return;
     }
@@ -146,6 +149,7 @@ export class DialogueSystem extends EventEmitter {
   /** Stop the dialogue immediately. */
   public stop(): void {
     if (!this.isPlaying) return;
+    if (this.current?.onEnd) this.current.onEnd();
     const id = this.currentId;
     this.queue = [];
     this.script = null;

@@ -115,3 +115,44 @@ test('QuestSystem - unknown quest throws on progress, getActive lists started qu
   const active = qs.getActive().map(q => q.id);
   assert.deepStrictEqual(active, ['a']);
 });
+
+test('QuestSystem - objectives completed before start still complete the quest (regression)', () => {
+  const qs = new QuestSystem();
+  qs.register({ id: 'q', title: 'Q', objectives: [{ id: 'a', target: 2 }, { id: 'b', target: 1 }] });
+
+  // Progress accumulates while the quest is still locked (e.g. save re-derivation)
+  qs.advance('q', 'a', 2);
+  qs.advance('q', 'b', 1);
+
+  const events = [];
+  qs.on('quest_started', id => events.push(['started', id]));
+  qs.on('quest_completed', id => events.push(['completed', id]));
+
+  qs.start('q');
+  assert.strictEqual(qs.isCompleted('q'), true);
+  assert.deepStrictEqual(events, [['started', 'q'], ['completed', 'q']]);
+});
+
+test('QuestSystem - start on a completed quest is a no-op; failed quest restarts fresh', () => {
+  const qs = new QuestSystem();
+  qs.register({ id: 'q', title: 'Q', objectives: [{ id: 'o', target: 1 }] });
+  qs.start('q');
+  qs.advance('q', 'o', 1);
+  assert.strictEqual(qs.isCompleted('q'), true);
+
+  let completes = 0;
+  qs.on('quest_completed', () => completes++);
+  const quest = qs.start('q'); // already completed — must not reactivate
+  assert.strictEqual(quest.status, 'completed');
+  assert.strictEqual(qs.isActive('q'), false);
+  assert.strictEqual(completes, 0);
+
+  // Failed quests restart with clean objective progress
+  qs.register({ id: 'f', title: 'F', objectives: [{ id: 'o', target: 2 }] });
+  qs.start('f');
+  qs.advance('f', 'o', 1);
+  qs.fail('f');
+  qs.start('f');
+  assert.strictEqual(qs.isActive('f'), true);
+  assert.strictEqual(qs.get('f').objectives[0].progress, 0);
+});

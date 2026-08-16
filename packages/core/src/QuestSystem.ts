@@ -108,10 +108,27 @@ export class QuestSystem extends EventEmitter {
       quest = this.buildState(def);
       this.quests.set(id, quest);
     }
+    if (quest.status === 'completed') {
+      return quest; // already finished — call reset() to replay a quest
+    }
+    if (quest.status === 'failed') {
+      // Restarting a failed quest is a fresh attempt: clear objective progress.
+      quest.objectives.forEach(obj => {
+        obj.progress = 0;
+        obj.completed = false;
+      });
+    }
     if (quest.status !== 'active') {
       quest.status = 'active';
       quest.startedAt = Date.now();
       this.emit('quest_started', id);
+    }
+    // Objectives can be completed before the quest starts (progress accumulates
+    // while locked, or is restored from a save) — re-check so the quest completes.
+    if (quest.objectives.every(o => o.completed)) {
+      quest.status = 'completed';
+      quest.completedAt = Date.now();
+      this.emit('quest_completed', id);
     }
     return quest;
   }
