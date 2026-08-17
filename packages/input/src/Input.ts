@@ -70,7 +70,10 @@ export class InputManager {
     });
 
     window.addEventListener('mousemove', (e) => {
-      this.mouseDelta.set(e.movementX, e.movementY);
+      // Accumulate: several mousemove events can fire within one frame, and
+      // overwriting would drop all but the last event's motion.
+      this.mouseDelta.x += e.movementX;
+      this.mouseDelta.y += e.movementY;
       this.mousePosition.set(e.clientX, e.clientY);
     });
 

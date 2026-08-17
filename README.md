@@ -24,7 +24,7 @@ npm install
 # Start local dev server
 npm run dev
 
-# Run automated tests (119 tests passing)
+# Run automated tests (144 tests passing)
 npm test
 
 # Run Kairo CLI automated QA bug scanner

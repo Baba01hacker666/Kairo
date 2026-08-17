@@ -172,8 +172,12 @@ export class RenderPipeline {
     // Native high-resolution rendering with maximum visual crispness
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    const ratio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1;
-    this.renderer.setPixelRatio(ratio);
+    // Respect a pixel ratio the host app already configured (e.g. KairoApp sets
+    // min(devicePixelRatio, 2)); only upgrade the renderer's default 1x.
+    if (this.renderer.getPixelRatio() <= 1) {
+      const ratio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1;
+      this.renderer.setPixelRatio(ratio);
+    }
 
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = this.config.exposure;
