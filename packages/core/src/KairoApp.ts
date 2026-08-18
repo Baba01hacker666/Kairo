@@ -18,6 +18,7 @@ import { DialogueSystem } from './DialogueSystem.ts';
 import { CombatSystem } from './Combat.ts';
 import { TweenManager } from './Tween.ts';
 import { CameraFX } from './CameraFX.ts';
+import { InventorySystem } from './Inventory.ts';
 import { AssetManager } from '@kairo/assets';
 import { animate } from 'motion';
 import * as BABYLON from '@babylonjs/core';
@@ -79,6 +80,7 @@ export class KairoApp {
   public combat: CombatSystem;
   public tweens: TweenManager;
   public cameraFX: CameraFX;
+  public inventory: InventorySystem;
   private sceneObstacles: THREE.Object3D[] = [];
 
   constructor(config: KairoAppConfig | string = {}) {
@@ -94,6 +96,7 @@ export class KairoApp {
     this.dialogue = new DialogueSystem();
     this.combat = new CombatSystem();
     this.tweens = new TweenManager();
+    this.inventory = new InventorySystem();
     this.engine = new Engine();
     this.world = new World();
     this.world.setApp(this);

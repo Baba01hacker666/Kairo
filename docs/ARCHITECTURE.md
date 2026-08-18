@@ -41,3 +41,9 @@ graph TD
 
 4. **Ahead-of-Time (AOT) Engine Compiler**:
    Pre-bakes O(1) spatial collision grid hashes, minifies EasyScript ASTs, quantizes geometry buffers, and compiles 1-click standalone HTML5 games.
+
+5. **Modular Gameplay & Systems Engine**:
+   - **`InventorySystem` & `InventoryBag`**: Multi-container inventory architecture with automatic item stacking, equipment slots, combined stat bonus aggregation, and save/load serialization.
+   - **`StateMachine` (FSM)**: Universal finite state machine for AI, character locomotion, boss phases, lifecycle hooks (`onEnter`, `onUpdate`, `onExit`), conditional triggers, and history rollback.
+   - **`ComboDetector`**: High-performance input sequence and timing pattern recognition for fighting combos, double-tap dashes, and cheat codes.
+   - **`FloatingTextManager`**: 3D world-to-screen HUD projection pipeline for combat damage numbers, critical strike popups, and billboarded floating health bars.

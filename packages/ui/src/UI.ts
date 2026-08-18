@@ -4,6 +4,7 @@
  */
 
 import { GlobalCinematicOverlay } from './CinematicOverlay.ts';
+import { GlobalFloatingText, FloatingTextManager, FloatingTextOptions, FloatingHealthBarOptions, FloatingHealthBarHandle } from './FloatingText.ts';
 
 export interface UITheme {
   primaryColor: string;
@@ -497,6 +498,19 @@ export class UIManager {
 
   public setColorGrading(preset: any): void {
     GlobalCinematicOverlay.setColorGrading(preset);
+  }
+
+  // --- FLOATING COMBAT NUMBERS & 3D HUD HELPERS ---
+
+  public showFloatingNumber(options: FloatingTextOptions): HTMLElement | null {
+    return GlobalFloatingText.spawnFloatingNumber(options);
+  }
+
+  public createFloatingHealthBar(
+    targetPos: { x: number; y: number; z: number } | any,
+    options?: FloatingHealthBarOptions
+  ): FloatingHealthBarHandle {
+    return GlobalFloatingText.createFloatingHealthBar(targetPos, options);
   }
 }
 

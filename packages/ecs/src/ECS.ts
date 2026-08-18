@@ -722,6 +722,16 @@ export class BehaviorComponent {
   }
 }
 
+export class InventoryComponent {
+  public bagId?: string;
+  public capacity: number;
+
+  constructor(capacity: number = 20, bagId?: string) {
+    this.capacity = capacity;
+    this.bagId = bagId;
+  }
+}
+
 /**
  * Ergonomic Fluent Entity Builder
  * Enables single-line entity creation with default values and optional function value overrides.
@@ -1041,6 +1051,15 @@ export class EntityBuilder {
     if (world.app?.input) {
       world.app.input.setupMobileControls();
     }
+    return this;
+  }
+
+  /** Attach an inventory bag / component to the entity */
+  public inventory(capacity: number = 20, bagId?: string): this {
+    const existing = this._world.getComponent(this._entity, InventoryComponent) || new InventoryComponent(capacity, bagId);
+    existing.capacity = capacity;
+    if (bagId) existing.bagId = bagId;
+    this._world.addComponent(this._entity, existing);
     return this;
   }
 

@@ -82,6 +82,20 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `lookAt({x, y, z}, duration?, easing?)`: Smoothly rotates to face a target using the camera's own `lookAt`.
 - `stopShake()` / `stopLookAt()` / `update(dt)`: Control and tick (auto-ticked via `app.cameraFX`).
 
+### `InventorySystem` & `InventoryBag`
+- `app.inventory`: Global `InventorySystem` managing item definitions, multi-bag containers, and player inventory.
+- `defineItem(def)` / `defineItems(defs)`: Register item definitions (`{ id, name, type, maxStack?, slotType?, stats?, onUse?, metadata? }`).
+- `createBag(id, options)`: Create or retrieve an `InventoryBag` (`options: { capacity?, maxWeight? }`). Default player bag accessible via `app.inventory.player`.
+- `bag.addItem(itemId, count?, customData?)`: Add items with automatic stack merging and empty slot allocation.
+- `bag.removeItem(itemId, count?)` / `bag.removeItemAt(slotIndex, count?)`: Remove items from bag or specific slot.
+- `bag.swapSlots(fromSlot, toSlot)`: Swap slots or merge identical stackable items.
+- `bag.splitStack(fromSlot, toSlot, count)`: Split item stacks across slots.
+- `bag.equip(slotIndex, targetSlotType?)` / `bag.unequip(slotType, targetSlotIndex?)`: Equip/unequip items into designated equipment slots (`'weapon'`, `'head'`, `'chest'`, etc.).
+- `bag.getTotalStats()`: Sum of all numeric stat bonuses provided by currently equipped gear.
+- `bag.useItem(slotIndex, entityId?)`: Execute item `onUse` handler and consume if not cancelled.
+- `transferItem(fromBagId, toBagId, fromSlot, count?)`: Transfer items between containers (e.g. looting chests or bank deposits).
+- `serialize()` / `deserialize(snapshot)`: Save/load full inventory and equipment state.
+
 ---
 
 ## 2. `@kairo/tools`
@@ -114,6 +128,11 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `setLetterbox(enabled, barHeightPercent)`: 21:9 Widescreen letterbox black bars.
 - `transitionCut(type, durationMs)`: Video transition cuts (`wipeLeft`, `wipeRight`, `circleWipe`, `glitch`).
 - `setColorGrading(preset)`: Color grading filter presets (`cinematicWarm`, `cyberpunkNeon`, `noir`, `vintage`).
+
+### `FloatingTextManager` & 3D HUD
+- `app.ui.showFloatingNumber({ text, position, color?, isCrit?, fontSize?, durationMs?, camera? })`: Spawn animated 3D-to-screen projected damage/healing numbers with critical strike scaling and upward fade animation.
+- `app.ui.createFloatingHealthBar(target3D, options)`: Create an interactive floating health bar billboarded over a 3D target (`options: { max?, current?, width?, height?, color?, offsetY?, camera? }`).
+- `handle.setHealth(current, max?)` / `handle.updatePosition(pos)` / `handle.remove()`: Control live floating health bar instances.
 
 ---
 
@@ -195,5 +214,36 @@ Fluent, chainable builder for concise, single-line entity creation with two-tier
 - `sharedContexts.attachEntityToContext(entity, contextId)`: Associate entity with shared context.
 - `sharedContexts.forEachInContext(contextId, callback)`: High-speed batch iteration over all entities sharing context (5.56x faster execution, 18.1% heap memory savings).
 - `sharedContexts.getStats()`: Compute memory savings bytes and shared entity counts.
+
+---
+
+## 6. `@kairo/input`
+
+### `InputManager` & `ComboDetector`
+- `app.input`: Unified keyboard, mouse, pointer, touch joystick, and combo system.
+- `isKeyDown(code)` / `isActionPressed(action)` / `isActionJustPressed(action)`: Inspect key and action states.
+- `app.input.registerCombo(name, sequence, onTrigger?, maxDelayMs?)`: Register fighting game sequences, double-taps, dash triggers, and cheat codes (`sequence: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'KeyB', 'KeyA']`).
+- `combos.feed(inputKey, timestamp?)`: Feed input into pattern matcher.
+- `combos.events`: Emits `combo_triggered` with matched combo name and sequence.
+- `touchJoystickVector`: Real-time normalized 2D movement vector from mobile touch joystick overlay.
+
+---
+
+## 7. `@kairo/ai`
+
+### `StateMachine` (Finite State Machine)
+- `new StateMachine(context, options?)`: High-performance Finite State Machine for character controllers, AI behaviors, boss phases, and game loops.
+- `fsm.state(name, { onEnter?, onUpdate?, onExit? })`: Register state with lifecycle hooks.
+- `fsm.transition(from, to, conditionOrTrigger?, onTransition?)`: Define automatic continuous condition transitions or named event triggers.
+- `fsm.setState(name, force?)`: Directly transition between states with validation.
+- `fsm.trigger(eventName)`: Fire named event trigger to transition to matching state.
+- `fsm.revertToPreviousState()`: Rollback to previous state in history.
+- `fsm.update(dt)`: Automatic condition evaluation and active state tick.
+- `fsm.timeInState` / `fsm.previousState` / `fsm.history`: State duration and history inspection.
+
+### `PathfindingGrid` & NavMesh
+- `new PathfindingGrid(width, height, nodeSize)`: 2D/3D grid pathfinding with obstacle avoidance.
+- `findPath(startPos, endPos, options?)`: Supports `'astar'`, `'weighted_astar'`, `'dijkstra'`, `'bidirectional_astar'`, and `'bidirectional_dijkstra'` algorithms with optional diagonal movement.
+- `setObstacle(x, z, walkable)`: Toggle grid cell traversability.
 
 

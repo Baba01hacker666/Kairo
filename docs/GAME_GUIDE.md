@@ -150,6 +150,54 @@ app.cutscene.runSequence(async () => {
 
 ---
 
+## 🎒 6. Inventory & Equipment System
+
+Easily manage player loot, equipment slots, and stat bonuses:
+
+```typescript
+// 1. Define items
+app.inventory.defineItem({
+  id: 'ancient_sword',
+  name: 'Ancient Sword',
+  slotType: 'weapon',
+  stats: { attack: 25 }
+});
+
+// 2. Add to player bag and equip
+app.inventory.player.addItem('ancient_sword', 1);
+app.inventory.player.equip(0); // Equips item from slot 0 to weapon slot
+
+// 3. Read aggregated stats
+const totalStats = app.inventory.player.getTotalStats();
+console.log(totalStats.attack); // 25
+```
+
+---
+
+## 🤖 7. Finite State Machines & Combo Inputs
+
+Create clean, bug-free enemy and character controllers:
+
+```typescript
+import { StateMachine } from '@kairo/ai';
+
+// Finite State Machine
+const fsm = new StateMachine(enemy)
+  .state('patrol', { onUpdate: (e, dt) => e.patrol() })
+  .state('chase', { onUpdate: (e, dt) => e.chasePlayer(dt) })
+  .state('attack', { onEnter: (e) => e.playAttackAnim() })
+  .transition('patrol', 'chase', (e) => e.canSeePlayer)
+  .transition('chase', 'attack', (e) => e.distanceToPlayer < 2)
+  .transition('*', 'dead', (e) => e.health <= 0);
+
+// Fighting Game Combos & Dash Sequences
+app.input.registerCombo('double_dash', ['KeyD', 'KeyD'], () => {
+  player.dash(15);
+});
+```
+
+---
+
 ## 📋 Best Practices Summary
 
 | Goal | Principle | Code Example |
@@ -157,3 +205,4 @@ app.cutscene.runSequence(async () => {
 | **Less Code** | Use `buildEntity()` and `EasyScript` | `world.buildEntity('Hero').with(comp).tag('player').build()` |
 | **High Performance** | Use `spawnBatch()` and pre-allocate vectors | `world.spawnBatch(100, (b, i) => ...)` |
 | **Versatility** | Separate Data from System Logic | Systems query components, logic never hardcoded into meshes |
+| **Clean Locomotion** | Use `StateMachine` and `ComboDetector` | `fsm.transition('idle', 'run', (ctx) => ctx.speed > 0)` |

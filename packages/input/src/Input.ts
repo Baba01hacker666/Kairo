@@ -1,4 +1,5 @@
 import { Vector2 } from '../../core/src/Math.ts';
+import { ComboDetector, InputCombo } from './ComboDetector.ts';
 
 export enum MouseButton {
   Left = 0,
@@ -33,6 +34,8 @@ export class InputManager {
   public touchJoystickActive: boolean = false;
   public touchJoystickVector: Vector2 = new Vector2(0, 0);
 
+  public readonly combos: ComboDetector = new ComboDetector();
+
   private actionBindings: Map<InputAction, string[]> = new Map();
 
   constructor() {
@@ -60,6 +63,7 @@ export class InputManager {
     window.addEventListener('keydown', (e) => {
       if (!this.keysPressed.has(e.code)) {
         this.keysJustPressed.add(e.code);
+        this.combos.feed(e.code);
       }
       this.keysPressed.add(e.code);
     });
@@ -295,6 +299,25 @@ export class InputManager {
     jumpBtn.addEventListener('touchend', (e) => {
       this.keysPressed.delete('Space');
     });
+  }
+
+  public registerCombo(
+    nameOrCombo: string | InputCombo,
+    sequence?: string[],
+    onTrigger?: () => void,
+    maxDelayMs?: number
+  ): this {
+    if (typeof nameOrCombo === 'object') {
+      this.combos.register(nameOrCombo);
+    } else if (sequence) {
+      this.combos.register({
+        name: nameOrCombo,
+        sequence,
+        onTrigger,
+        maxDelayMs
+      });
+    }
+    return this;
   }
 
   public endFrame(): void {
