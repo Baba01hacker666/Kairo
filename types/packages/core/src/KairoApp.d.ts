@@ -16,6 +16,8 @@ import { CombatSystem } from './Combat.ts';
 import { TweenManager } from './Tween.ts';
 import { CameraFX } from './CameraFX.ts';
 import { InventorySystem } from './Inventory.ts';
+import { TextManager } from './TextManager.ts';
+import { VoiceManager } from '@kairo/audio';
 import { AssetManager } from '@kairo/assets';
 import * as BABYLON from '@babylonjs/core';
 export interface KairoAppConfig {
@@ -70,6 +72,8 @@ export declare class KairoApp {
     tweens: TweenManager;
     cameraFX: CameraFX;
     inventory: InventorySystem;
+    text: TextManager;
+    voices: VoiceManager;
     private sceneObstacles;
     constructor(config?: KairoAppConfig | string);
     /** Native mobile touch joystick & action buttons helper */
