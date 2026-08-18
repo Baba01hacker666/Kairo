@@ -193,6 +193,11 @@ export declare class BehaviorComponent {
     options: Record<string, any>;
     constructor(behaviorName?: string, options?: Record<string, any>);
 }
+export declare class InventoryComponent {
+    bagId?: string;
+    capacity: number;
+    constructor(capacity?: number, bagId?: string);
+}
 /**
  * Ergonomic Fluent Entity Builder
  * Enables single-line entity creation with default values and optional function value overrides.
@@ -282,6 +287,8 @@ export declare class EntityBuilder {
     jump(force?: number): this;
     /** Native mobile touch joystick & action button trait */
     mobileControls(): this;
+    /** Attach an inventory bag / component to the entity */
+    inventory(capacity?: number, bagId?: string): this;
     /** Destroy entity from world */
     destroy(): void;
     build(): EntityId;

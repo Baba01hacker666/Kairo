@@ -2,6 +2,7 @@
  * Kairo High-Performance Web UI Framework
  * Provides responsive, animated, themeable HUD overlays, menus, modals, toasts, and settings controls.
  */
+import { FloatingTextOptions, FloatingHealthBarOptions, FloatingHealthBarHandle } from './FloatingText.ts';
 export interface UITheme {
     primaryColor: string;
     accentColor: string;
@@ -56,5 +57,11 @@ export declare class UIManager {
     setLetterbox(enabled: boolean, barHeightPercent?: number): void;
     transitionCut(type?: any, durationMs?: number): Promise<void>;
     setColorGrading(preset: any): void;
+    showFloatingNumber(options: FloatingTextOptions): HTMLElement | null;
+    createFloatingHealthBar(targetPos: {
+        x: number;
+        y: number;
+        z: number;
+    } | any, options?: FloatingHealthBarOptions): FloatingHealthBarHandle;
 }
 export declare const GlobalUI: UIManager;

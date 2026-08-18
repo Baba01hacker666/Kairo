@@ -1,4 +1,5 @@
 import { Vector2 } from '../../core/src/Math.ts';
+import { ComboDetector, InputCombo } from './ComboDetector.ts';
 export declare enum MouseButton {
     Left = 0,
     Middle = 1,
@@ -15,6 +16,7 @@ export declare class InputManager {
     private mouseButtonsJustPressed;
     touchJoystickActive: boolean;
     touchJoystickVector: Vector2;
+    readonly combos: ComboDetector;
     private actionBindings;
     constructor();
     private setupDefaultBindings;
@@ -30,6 +32,7 @@ export declare class InputManager {
      * Inject native mobile touch joystick & action buttons into DOM
      */
     setupMobileControls(container?: HTMLElement): void;
+    registerCombo(nameOrCombo: string | InputCombo, sequence?: string[], onTrigger?: () => void, maxDelayMs?: number): this;
     endFrame(): void;
 }
 export declare const GlobalInput: InputManager;

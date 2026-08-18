@@ -1,1 +1,2 @@
-export * from './Input.js';
+export * from './Input.ts';
+export * from './ComboDetector.ts';

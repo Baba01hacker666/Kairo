@@ -16,6 +16,7 @@ export * from './DialogueSystem.ts';
 export * from './Combat.ts';
 export * from './Tween.ts';
 export * from './CameraFX.ts';
+export * from './Inventory.ts';
 export * from '@kairo/ecs';
 export * from '@kairo/renderer';
 export * from '@kairo/physics';
