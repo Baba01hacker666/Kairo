@@ -17,6 +17,7 @@ export * from './Combat.ts';
 export * from './Tween.ts';
 export * from './CameraFX.ts';
 export * from './Inventory.ts';
+export * from './TextManager.ts';
 
 // Unified Engine Package Exports
 export * from '@kairo/ecs';

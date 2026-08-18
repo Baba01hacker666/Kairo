@@ -198,6 +198,42 @@ app.input.registerCombo('double_dash', ['KeyD', 'KeyD'], () => {
 
 ---
 
+## 🎙️ 8. Character Voices & Text Line Management
+
+Give characters unique procedural typewriter voices (Undertale / Animal Crossing style) and manage localization:
+
+```typescript
+// 1. Register speaker profile with custom voice
+app.text.registerSpeaker({
+  id: 'elder_owl',
+  name: 'Elder Owl',
+  avatar: 'assets/owl.png',
+  voice: 'owl', // Built-in preset ('owl', 'fox', 'wisp', 'duck', 'robot', 'chime')
+  color: '#a855f7'
+});
+
+// 2. Register localized string table
+app.text.registerStrings('en', {
+  shrine: {
+    welcome: 'Welcome, {player}! The <color=#10b981>Ancient Shrine</color> is restored.'
+  }
+});
+
+// 3. Play dialogue with typewriter sound blips and rich formatting
+app.dialogue.play([
+  {
+    speakerId: 'elder_owl',
+    text: app.text.t('shrine.welcome', { player: 'Fox' }),
+    typewriterCps: 35
+  }
+]);
+
+// 4. Voice narration / Text-to-Speech (optional)
+await app.voices.speak('Welcome to the Ancient Grove!', 'fox');
+```
+
+---
+
 ## 📋 Best Practices Summary
 
 | Goal | Principle | Code Example |
@@ -206,3 +242,4 @@ app.input.registerCombo('double_dash', ['KeyD', 'KeyD'], () => {
 | **High Performance** | Use `spawnBatch()` and pre-allocate vectors | `world.spawnBatch(100, (b, i) => ...)` |
 | **Versatility** | Separate Data from System Logic | Systems query components, logic never hardcoded into meshes |
 | **Clean Locomotion** | Use `StateMachine` and `ComboDetector` | `fsm.transition('idle', 'run', (ctx) => ctx.speed > 0)` |
+| **Immersive Audio** | Speaker Profiles & Voice Blips | `app.text.registerSpeaker({ id: 'owl', voice: 'owl' })` |

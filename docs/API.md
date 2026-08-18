@@ -47,15 +47,25 @@ Unified, beginner-friendly single-line API unifying all Kairo Engine packages & 
 - `serialize()` / `deserialize(snapshots)`: Save/load quest state (definitions must be registered first).
 
 ### `DialogueSystem`
-- `new DialogueSystem()`: Sequential & branching dialogue. Emits `dialogue_started`, `dialogue_line`, `dialogue_ended`, `dialogue_choice_selected`, `dialogue_skipped`.
-- `register(id, lines)` / `registerAll(map)`: Register named scripts (`lines: [{ id?, speaker?, avatar?, text, typewriterCps?, choices?, onStart?, onEnd? }]`).
+- `new DialogueSystem()`: Sequential & branching dialogue with procedural voice blips, speaker auto-resolution, and rich tag parsing. Emits `dialogue_started`, `dialogue_line`, `dialogue_char`, `dialogue_ended`, `dialogue_choice_selected`, `dialogue_skipped`.
+- `register(id, lines)` / `registerAll(map)`: Register named scripts (`lines: [{ id?, speaker?, speakerId?, avatar?, voice?, audioClip?, text, typewriterCps?, choices?, onStart?, onEnd? }]`).
 - `play(idOrLines)`: Start a named dialogue or play raw lines.
 - `advance()`: Next line (finishes the typewriter effect first if still typing).
 - `selectChoice(index)`: Choose an option; jumps to the targeted line (`next` = line id or index, omit/empty to end).
 - `skipTyping()` / `stop()`: Reveal text instantly / end the dialogue.
-- `update(dt)`: Drive the typewriter effect (auto-ticked via `app.dialogue`).
+- `update(dt)`: Drive the typewriter effect and emit `dialogue_char` voice blips (auto-ticked via `app.dialogue`).
 - `typewriterCps`: Default typing speed in chars/second (`0` disables typing).
 - Getters: `isPlaying`, `currentLine`, `currentDialogueId`, `isTyping`, `typedCharacters`, `choices`.
+
+### `TextManager` (String Tables & Localization)
+- `app.text`: Centralized text, string table, and speaker registry.
+- `setLocale(locale)` / `getLocale()`: Switch active localization language (e.g. `'en'`, `'ja'`, `'es'`).
+- `registerStrings(locale, table)`: Register flat or nested translation dictionaries.
+- `t(key, vars?)`: Lookup localized text with dynamic variable interpolation (`{player}`, `{count}`).
+- `registerSpeaker(profile)` / `getSpeaker(id)`: Register character profiles (`{ id, name, avatar?, color?, voice?, metadata? }`).
+- `registerLine(id, text)` / `getLine(id, vars?)`: Manage named text repository strings.
+- `parseTags(rawText)`: Parse rich control tags (`<color=#ff0000>`, `<speed=60>`, `<pause=0.5>`, `<voice=owl>`).
+- `formatPlural(count, singular, plural)`: Numeric pluralization formatting.
 
 ### `HealthComponent` & `CombatSystem`
 - `new HealthComponent(max, id?)`: Health pool with events `damaged`, `healed`, `died`, `revived`, `invulnerable_end`.
@@ -245,5 +255,22 @@ Fluent, chainable builder for concise, single-line entity creation with two-tier
 - `new PathfindingGrid(width, height, nodeSize)`: 2D/3D grid pathfinding with obstacle avoidance.
 - `findPath(startPos, endPos, options?)`: Supports `'astar'`, `'weighted_astar'`, `'dijkstra'`, `'bidirectional_astar'`, and `'bidirectional_dijkstra'` algorithms with optional diagonal movement.
 - `setObstacle(x, z, walkable)`: Toggle grid cell traversability.
+
+---
+
+## 8. `@kairo/audio`
+
+### `AudioManager`
+- `app.audio`: Web Audio API audio engine with master, BGM, SFX, and UI gain channels.
+- `playSynthesizedSound(type, options?)`: Procedural synthesizer for SFX (`'jump'`, `'coin'`, `'laser'`, `'explosion'`, `'click'`, `'fanfare'`, `'undo'`).
+- `setMasterVolume(vol)` / `setBGMVolume(vol)` / `setSFXVolume(vol)`: Control audio channel volume levels.
+
+### `VoiceManager` (Procedural Character Voices & Speech Synthesis)
+- `app.voices`: Character voice synthesizer and Text-to-Speech manager.
+- `BuiltInVoicePresets`: Standard voice profiles (`'owl'`, `'fox'`, `'wisp'`, `'duck'`, `'robot'`, `'chime'`).
+- `registerProfile(name, profile)`: Register custom voice profile (`{ pitch, pitchVariation, oscillatorType, blipDuration, characterInterval, volume, ttsVoice, ttsRate, ttsPitch }`).
+- `playVoiceBlip(char, profileOrName?, charIndex?)`: Synthesize procedural character typewriter voice blips with organic pitch variations.
+- `speak(text, profileOrName?)`: Narration and accessibility voice acting via the browser Web Speech API.
+- `cancelSpeech()`: Halt active speech synthesis playback.
 
 

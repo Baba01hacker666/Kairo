@@ -1,4 +1,5 @@
 import { EventEmitter } from './EventSystem.ts';
+import { TextManager, SpeakerProfile, ParsedText } from './TextManager.ts';
 
 export interface DialogueChoice {
   text: string;
@@ -11,8 +12,13 @@ export interface DialogueLine {
   /** Optional unique id so choices can target this line. */
   id?: string;
   speaker?: string;
+  speakerId?: string;
   avatar?: string;
   text: string;
+  /** Voice preset name or custom VoiceProfile for typewriter blips / speech. */
+  voice?: any;
+  /** Audio clip file path for full voice acting playback. */
+  audioClip?: string;
   /** Typewriter speed override for this line (chars per second). */
   typewriterCps?: number;
   choices?: DialogueChoice[];
@@ -23,17 +29,19 @@ export interface DialogueLine {
 export interface DialogueLineEvent {
   line: DialogueLine;
   index: number;
+  speakerProfile?: SpeakerProfile;
+  parsedText?: ParsedText;
 }
 
 /**
  * 💬 DialogueSystem
- * Sequential & branching dialogue with a typewriter effect, speaker/avatar
- * metadata, choices, and event hooks. Engine-agnostic (no DOM) — pair it with
- * your own UI layer via the emitted events.
+ * Sequential & branching dialogue with a typewriter effect, procedural voice blips,
+ * speaker/avatar metadata, choices, and event hooks.
  *
  * Events:
  *  - 'dialogue_started' ({ id, length })
- *  - 'dialogue_line'    ({ line, index })
+ *  - 'dialogue_line'    ({ line, index, speakerProfile, parsedText })
+ *  - 'dialogue_char'    ({ char, charIndex, line })
  *  - 'dialogue_ended'   ({ id })
  *  - 'dialogue_choice_selected' ({ choice, line })
  *  - 'dialogue_skipped' ()       – play() called while already playing
@@ -46,6 +54,11 @@ export class DialogueSystem extends EventEmitter {
   private current: DialogueLine | null = null;
   private currentIndex: number = 0;
   private currentId: string | null = null;
+  private lastRevealedChars: number = 0;
+
+  public textManager?: TextManager;
+  public voiceManager?: any;
+  public voiceBlipsEnabled: boolean = true;
 
   /** Default typewriter speed in characters per second (0 disables typing). */
   public typewriterCps: number = 40;
@@ -84,6 +97,18 @@ export class DialogueSystem extends EventEmitter {
     this.advance();
   }
 
+  /** Attach a TextManager for speaker profiles and localization. */
+  public setTextManager(tm: TextManager): this {
+    this.textManager = tm;
+    return this;
+  }
+
+  /** Attach a VoiceManager for procedural typewriter blips. */
+  public setVoiceManager(vm: any): this {
+    this.voiceManager = vm;
+    return this;
+  }
+
   /**
    * Advance to the next line. If the current line is still typing, this first
    * finishes the typewriter effect instead.
@@ -105,8 +130,30 @@ export class DialogueSystem extends EventEmitter {
     this.current = line;
     this.currentIndex++;
     this.typingTime = 0;
+    this.lastRevealedChars = 0;
+
+    // Resolve speaker profile from TextManager if available
+    let speakerProfile: SpeakerProfile | undefined;
+    const speakerKey = line.speakerId || line.speaker;
+    if (speakerKey && this.textManager) {
+      speakerProfile = this.textManager.getSpeaker(speakerKey);
+      if (speakerProfile) {
+        if (!line.speaker) line.speaker = speakerProfile.name;
+        if (!line.avatar && speakerProfile.avatar) line.avatar = speakerProfile.avatar;
+        if (!line.voice && speakerProfile.voice) line.voice = speakerProfile.voice;
+      }
+    }
+
+    // Parse rich-text tags if text manager available
+    const parsedText = this.textManager ? this.textManager.parseTags(line.text) : undefined;
+
     if (line.onStart) line.onStart();
-    this.emit('dialogue_line', { line, index: this.currentIndex } satisfies DialogueLineEvent);
+    this.emit('dialogue_line', {
+      line,
+      index: this.currentIndex,
+      speakerProfile,
+      parsedText
+    } satisfies DialogueLineEvent);
   }
 
   /** Finish the typewriter effect instantly for the current line. */
@@ -142,8 +189,28 @@ export class DialogueSystem extends EventEmitter {
     // Continue from the line after the jump target within the same script.
     this.queue = this.script.slice(targetIndex + 1);
     this.typingTime = 0;
+    this.lastRevealedChars = 0;
+
+    let speakerProfile: SpeakerProfile | undefined;
+    const speakerKey = target.speakerId || target.speaker;
+    if (speakerKey && this.textManager) {
+      speakerProfile = this.textManager.getSpeaker(speakerKey);
+      if (speakerProfile) {
+        if (!target.speaker) target.speaker = speakerProfile.name;
+        if (!target.avatar && speakerProfile.avatar) target.avatar = speakerProfile.avatar;
+        if (!target.voice && speakerProfile.voice) target.voice = speakerProfile.voice;
+      }
+    }
+
+    const parsedText = this.textManager ? this.textManager.parseTags(target.text) : undefined;
+
     if (target.onStart) target.onStart();
-    this.emit('dialogue_line', { line: target, index: this.currentIndex } satisfies DialogueLineEvent);
+    this.emit('dialogue_line', {
+      line: target,
+      index: this.currentIndex,
+      speakerProfile,
+      parsedText
+    } satisfies DialogueLineEvent);
   }
 
   /** Stop the dialogue immediately. */
@@ -156,6 +223,7 @@ export class DialogueSystem extends EventEmitter {
     this.current = null;
     this.currentId = null;
     this.typingTime = 0;
+    this.lastRevealedChars = 0;
     this.emit('dialogue_ended', { id });
   }
 
@@ -163,6 +231,20 @@ export class DialogueSystem extends EventEmitter {
   public update(dt: number): void {
     if (!this.isTyping || !this.current) return;
     this.typingTime += dt;
+
+    const currentChars = this.typedCharacters;
+    if (currentChars > this.lastRevealedChars) {
+      for (let i = this.lastRevealedChars; i < currentChars; i++) {
+        const char = this.current.text[i];
+        this.emit('dialogue_char', { char, charIndex: i, line: this.current });
+
+        if (this.voiceBlipsEnabled && this.voiceManager && typeof this.voiceManager.playVoiceBlip === 'function') {
+          const voiceProfile = this.current.voice || this.current.speakerId || this.current.speaker;
+          this.voiceManager.playVoiceBlip(char, voiceProfile, i);
+        }
+      }
+      this.lastRevealedChars = currentChars;
+    }
   }
 
   public get isPlaying(): boolean {
