@@ -47,3 +47,7 @@
 ## 2024-12-10 - [Eliminate GC Allocations in Spatial Query Methods]
 **Learning:** High-frequency spatial query functions like `overlapSphere` and `overlapBox` were instantiating and returning new arrays (`[]`) on every call, leading to continuous garbage collection churn in physics and AI systems during runtime.
 **Action:** Add optional `target` array parameters to spatial queries and helper methods to allow callers to pass and reuse pre-allocated array buffers instead of allocating new arrays implicitly on each call.
+
+## 2024-12-11 - [Eliminate Array Allocations in High-Frequency Event Registrations]
+**Learning:** During event registration and unregistration, particularly in hot paths like ECS component additions or physics contact tracking, using `Array.prototype.filter()` to remove event listeners creates unnecessary garbage collection churn by implicitly allocating new arrays on every call.
+**Action:** Replace `array = array.filter(item => item !== target)` with in-place array modification using `array.splice(array.indexOf(target), 1)` inside event unbind mechanisms (like `EventBus.off()` and `EventBus.emit()` cleanup) to avoid unnecessary allocations.

@@ -73,12 +73,18 @@ export class EventBus {
 
   public off<T = any>(event: string, handler: EventHandler<T>): void {
     if (event === '*') {
-      this.wildcardListeners = this.wildcardListeners.filter(l => l.handler !== handler);
+      const idx = this.wildcardListeners.findIndex(l => l.handler === handler);
+      if (idx !== -1) {
+        this.wildcardListeners.splice(idx, 1);
+      }
       return;
     }
     const list = this.listeners.get(event);
     if (list) {
-      this.listeners.set(event, list.filter(l => l.handler !== handler));
+      const idx = list.findIndex(l => l.handler === handler);
+      if (idx !== -1) {
+        list.splice(idx, 1);
+      }
     }
   }
 
@@ -94,14 +100,18 @@ export class EventBus {
     // Direct event listeners
     const list = this.listeners.get(event);
     if (list) {
-      const toRemove: ListenerEntry[] = [];
-      for (const entry of [...list]) {
+      // Create a shallow copy to iterate over so modifications don't break iteration
+      const currentList = [...list];
+      for (const entry of currentList) {
         const result = entry.handler(data);
         if (result === false) cancelled = true;
-        if (entry.once) toRemove.push(entry);
-      }
-      if (toRemove.length > 0) {
-        this.listeners.set(event, list.filter(l => !toRemove.includes(l)));
+
+        if (entry.once) {
+          const idx = list.indexOf(entry);
+          if (idx !== -1) {
+            list.splice(idx, 1);
+          }
+        }
       }
     }
 
@@ -164,10 +174,12 @@ export class KeyEventTrigger {
     if (!eventToLaunch) {
       this.keyBindings.delete(keyCode);
     } else if (this.keyBindings.has(keyCode)) {
-      const events = this.keyBindings.get(keyCode)!.filter(e => e !== eventToLaunch);
-      if (events.length > 0) {
-        this.keyBindings.set(keyCode, events);
-      } else {
+      const events = this.keyBindings.get(keyCode)!;
+      const idx = events.indexOf(eventToLaunch);
+      if (idx !== -1) {
+        events.splice(idx, 1);
+      }
+      if (events.length === 0) {
         this.keyBindings.delete(keyCode);
       }
     }
