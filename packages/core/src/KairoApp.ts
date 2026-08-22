@@ -10,6 +10,7 @@ import { GlobalAudio, AudioManager } from '@kairo/audio';
 import { GlobalUI, UIManager } from '@kairo/ui';
 import { GlobalDebugInspector, DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline, GlobalGameBugDetector, GameBugDetector } from '@kairo/tools';
 import { Serializer } from './Serializer.ts';
+import { Time } from './Time.ts';
 import { SaveSystem } from './SaveSystem.ts';
 import { SceneManager } from './SceneManager.ts';
 import { CutsceneManager } from './Cutscene.ts';
@@ -266,14 +267,20 @@ export class KairoApp {
     });
 
     // Core loops
+    this.engine.events.on('fixedUpdate', () => {
+      // Physics advances on the fixed-timestep accumulator so it stays
+      // deterministic and consistent with fixedUpdate gameplay systems.
+      // The wrapper steps cannon internally at FIXED_TIMESTEP.
+      this.physics.step(Time.fixedDeltaTime);
+    });
+
     this.engine.events.on('update', (dt: number) => {
       // Tick gameplay systems
       this.tweens.update(dt);
       this.dialogue.update(dt);
       this.combat.update(dt);
       this.cameraFX.update(dt);
-      
-      this.physics.step(dt);
+
       if (this.cameraController.enabled) {
         this.cameraController.update(dt, this.sceneObstacles);
       }

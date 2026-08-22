@@ -549,9 +549,16 @@ export class PhysicsWorld {
     this.activePairs = nextPairs;
   }
 
+  private static _eventA: CollisionEvent = { phase: 'enter', body: null as any, other: null as any, collider: null as any, otherCollider: null as any };
+  private static _eventB: CollisionEvent = { phase: 'enter', body: null as any, other: null as any, collider: null as any, otherCollider: null as any };
+
   private emitCollision(phase: CollisionPhase, a: BodyEntry, b: BodyEntry): void {
-    const eventA: CollisionEvent = { phase, body: a.body, other: b.body, collider: a.collider, otherCollider: b.collider };
-    const eventB: CollisionEvent = { phase, body: b.body, other: a.body, collider: b.collider, otherCollider: a.collider };
+    // Reused event objects: listeners must not retain references past the
+    // callback (copy out any data they need).
+    const eventA = PhysicsWorld._eventA;
+    const eventB = PhysicsWorld._eventB;
+    eventA.phase = phase; eventA.body = a.body; eventA.other = b.body; eventA.collider = a.collider; eventA.otherCollider = b.collider;
+    eventB.phase = phase; eventB.body = b.body; eventB.other = a.body; eventB.collider = b.collider; eventB.otherCollider = a.collider;
 
     for (let i = 0; i < this.collisionListeners.length; i++) {
       this.collisionListeners[i](eventA);
