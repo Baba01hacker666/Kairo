@@ -157,15 +157,34 @@ window.addEventListener('resize', () => {
 
 // Controls
 const keys = { w: false, a: false, s: false, d: false };
+// Map arrow keys onto WASD so both control schemes work
+const keyAlias: Record<string, keyof typeof keys> = {
+  arrowup: 'w', arrowdown: 's', arrowleft: 'a', arrowright: 'd'
+};
 document.addEventListener('keydown', (e) => {
-  if (keys.hasOwnProperty(e.key.toLowerCase())) {
-    keys[e.key.toLowerCase() as keyof typeof keys] = true;
-  }
+  const k = e.key.toLowerCase();
+  const aliased = keyAlias[k] || (keys.hasOwnProperty(k) ? k as keyof typeof keys : null);
+  if (aliased) keys[aliased] = true;
 });
 document.addEventListener('keyup', (e) => {
-  if (keys.hasOwnProperty(e.key.toLowerCase())) {
-    keys[e.key.toLowerCase() as keyof typeof keys] = false;
+  const k = e.key.toLowerCase();
+  const aliased = keyAlias[k] || (keys.hasOwnProperty(k) ? k as keyof typeof keys : null);
+  if (aliased) keys[aliased] = false;
+});
+
+// Flip/respawn reset: R puts the car back on its wheels at the spawn point
+function resetCar(): void {
+  if (!chassisBody.cannonBody) return;
+  chassisBody.teleport(new Vector3(0, 2, 0));
+  chassisBody.velocity = new Vector3(0, 0, 0);
+  chassisBody.angularVelocity = new Vector3(0, 0, 0);
+  if (chassisBody.cannonBody) {
+    chassisBody.cannonBody.quaternion.set(0, 0, 0, 1);
+    chassisBody.cannonBody.initPosition.set(0, 2, 0);
   }
+}
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyR') resetCar();
 });
 
 

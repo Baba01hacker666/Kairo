@@ -203,6 +203,7 @@
         <div class="modal-subtitle">You hit a hazard and lost your health.</div>
       </div>
       <button class="restart-btn" onclick="window.resetGame()">Play Again</button>
+      <!-- Title/subtitle are set dynamically by showGameOver()/showVictory() -->
     </div>
   </div>
 
@@ -217,6 +218,18 @@
     window.showGameOver = () => {
       const modal = document.getElementById('game-over-modal');
       const card = document.getElementById('modal-card');
+      document.querySelector('#modal-card .modal-title').textContent = 'GAME OVER';
+      document.querySelector('#modal-card .modal-subtitle').textContent = 'You hit a hazard and lost your health.';
+      modal.style.display = 'flex';
+      animate(modal, { opacity: [0, 1] }, { duration: 0.3 });
+      animate(card, { scale: [0.9, 1], opacity: [0, 1] }, { duration: 0.5, type: "spring", stiffness: 400, damping: 25 });
+    };
+
+    window.showVictory = (seconds) => {
+      const modal = document.getElementById('game-over-modal');
+      const card = document.getElementById('modal-card');
+      document.querySelector('#modal-card .modal-title').textContent = 'LEVEL CLEAR!';
+      document.querySelector('#modal-card .modal-subtitle').textContent = `All coins collected in ${seconds}s — nice moves!`;
       modal.style.display = 'flex';
       animate(modal, { opacity: [0, 1] }, { duration: 0.3 });
       animate(card, { scale: [0.9, 1], opacity: [0, 1] }, { duration: 0.5, type: "spring", stiffness: 400, damping: 25 });

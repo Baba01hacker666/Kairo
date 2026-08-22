@@ -578,9 +578,10 @@ function updateLasers(): void {
 
         // Laser reflection / hit detection
         let hitObject = false;
-        for (const targetElem of currentLevel.elements) {
+        for (let ti = 0; ti < currentLevel.elements.length; ti++) {
+          const targetElem = currentLevel.elements[ti];
           if (targetElem.pos[0] === currX && targetElem.pos[1] === currY) {
-            const elemId = targetElem.id || `elem_${index}_${targetElem.type}`;
+            const elemId = targetElem.id || `elem_${ti}_${targetElem.type}`;
 
             if (targetElem.type === 'mirror') {
               const mRot = mirrorRotations.get(elemId) ?? (targetElem.rotation || 0);
@@ -756,30 +757,37 @@ function performInteract(): void {
 
   if (grabbedAny) return;
 
-  // Check adjacent mirrors/prisms to rotate
-  let rotatedAny = false;
+  // Check adjacent mirrors/prisms to rotate (only the nearest one)
+  let nearestMirror: { id: string; type: string; dist: number } | null = null;
   currentLevel.elements.forEach((elem, index) => {
-    const elemId = elem.id || `elem_${index}_${elem.type}`;
-    if (elem.type === 'mirror' || elem.type === 'prism') {
-      const dx = Math.abs(elem.pos[0] - playerGridPos[0]);
-      const dy = Math.abs(elem.pos[1] - playerGridPos[1]);
-      if (dx <= 1 && dy <= 1) {
-        pushUndoState();
-        const currentRot = mirrorRotations.get(elemId) || 0;
-        const newRot = (currentRot + 45) % 360;
-        mirrorRotations.set(elemId, newRot);
-
-        const mirrorMesh = elementMeshMap.get(elemId);
-        if (mirrorMesh) {
-          mirrorMesh.rotation.y = (newRot * Math.PI) / 180;
-        }
-        app.audio.playSynthesizedSound('switch');
-        app.ui.showToast(`Rotated ${elem.type === 'prism' ? 'Prism' : 'Mirror'} to ${newRot}°! 🔄`, 1500, 'info');
-        rotatedAny = true;
-        updateLasers();
+    if (elem.type !== 'mirror' && elem.type !== 'prism') return;
+    const dx = Math.abs(elem.pos[0] - playerGridPos[0]);
+    const dy = Math.abs(elem.pos[1] - playerGridPos[1]);
+    if (dx <= 1 && dy <= 1) {
+      const dist = dx + dy;
+      if (!nearestMirror || dist < nearestMirror.dist) {
+        nearestMirror = { id: elem.id || `elem_${index}_${elem.type}`, type: elem.type, dist };
       }
     }
   });
+
+  let rotatedAny = false;
+  if (nearestMirror) {
+    const target = nearestMirror as { id: string; type: string; dist: number };
+    pushUndoState();
+    const currentRot = mirrorRotations.get(target.id) || 0;
+    const newRot = (currentRot + 45) % 360;
+    mirrorRotations.set(target.id, newRot);
+
+    const mirrorMesh = elementMeshMap.get(target.id);
+    if (mirrorMesh) {
+      mirrorMesh.rotation.y = (newRot * Math.PI) / 180;
+    }
+    app.audio.playSynthesizedSound('switch');
+    app.ui.showToast(`Rotated ${target.type === 'prism' ? 'Prism' : 'Mirror'} to ${newRot}°! 🔄`, 1500, 'info');
+    rotatedAny = true;
+    updateLasers();
+  }
 
   if (!rotatedAny) {
     app.ui.showToast('Nothing nearby to interact with! (Stand next to a crate to Grab 📦)', 1500, 'info');
