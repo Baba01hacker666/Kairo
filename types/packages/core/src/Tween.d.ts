@@ -42,6 +42,8 @@ export declare class Tween {
     private onUpdateCb?;
     private onCompleteCb?;
     manager: TweenManager | null;
+    private propKeys;
+    private nestedKeys;
     constructor(target: any, to: Record<string, unknown>, from?: Record<string, unknown>, options?: TweenOptions);
     /** Chain: run `next` after this tween completes. */
     then(next: Tween): Tween;

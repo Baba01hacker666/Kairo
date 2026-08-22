@@ -66,6 +66,8 @@ export declare class RigidBody {
     lockLinearAxis: [boolean, boolean, boolean];
     lockAngularAxis: [boolean, boolean, boolean];
     cannonBody: CANNON.Body | null;
+    private static _forceTemp;
+    private static _pointTemp;
     applyForce(force: Vector3, point?: Vector3): void;
     applyImpulse(impulse: Vector3, point?: Vector3): void;
     applyTorque(torque: Vector3): void;
@@ -74,6 +76,10 @@ export declare class RigidBody {
     set velocity(v: Vector3);
     get angularVelocity(): Vector3;
     set angularVelocity(v: Vector3);
+    /** Zero-allocation velocity read into an optional target vector. */
+    getVelocity(target?: Vector3): Vector3;
+    /** Zero-allocation angular velocity read into an optional target vector. */
+    getAngularVelocity(target?: Vector3): Vector3;
 }
 export type PhysicsBackendType = 'cannon' | 'havok' | 'go-wasm';
 export declare class PhysicsWorld {
@@ -101,8 +107,10 @@ export declare class PhysicsWorld {
     private cancelGravityForNonGravityBodies;
     onCollision(listener: (event: CollisionEvent) => void): void;
     onTrigger(listener: (event: CollisionEvent) => void): void;
-    raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance?: number): RaycastHit;
-    sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance?: number): RaycastHit;
+    private static _defaultRayDir;
+    private static _tempRay;
+    raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance?: number, target?: RaycastHit): RaycastHit;
+    sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance?: number, target?: RaycastHit): RaycastHit;
     overlapSphere(center: Vector3, radius: number, target?: RigidBody[]): RigidBody[];
     overlapBox(center: Vector3, halfExtentsOrSize: Vector3, isHalfExtents?: boolean, target?: RigidBody[]): RigidBody[];
     private createShape;

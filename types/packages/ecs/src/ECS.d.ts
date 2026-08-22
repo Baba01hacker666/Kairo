@@ -80,7 +80,12 @@ export declare class World {
     addTag(entity: EntityId, tag: string): void;
     hasTag(entity: EntityId, tag: string): boolean;
     removeTag(entity: EntityId, tag: string): void;
-    query(queryDesc: Query): EntityId[];
+    query(queryDesc: Query, out?: EntityId[]): EntityId[];
+    /**
+     * Zero-allocation cached-query iteration. Invokes `fn` for every entity
+     * matching the query without copying the cached result array.
+     */
+    queryEach(queryDesc: Query, fn: (entity: EntityId) => void): void;
     /**
      * Ultra-High Performance Direct Dual-Component Fast Iterator
      * Avoids query array allocations and map lookup overheads for 100,000+ entities
