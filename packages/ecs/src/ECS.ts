@@ -59,14 +59,23 @@ export class Query {
   }
 
   matches(world: World, entity: EntityId): boolean {
-    const hasAll = this.all.every(c => world.hasComponent(entity, c));
-    if (!hasAll) return false;
-
-    const hasAny = this.any.length === 0 || this.any.some(c => world.hasComponent(entity, c));
-    if (!hasAny) return false;
-
-    const hasNone = !this.none.some(c => world.hasComponent(entity, c));
-    return hasNone;
+    for (let i = 0; i < this.all.length; i++) {
+      if (!world.hasComponent(entity, this.all[i])) return false;
+    }
+    if (this.any.length > 0) {
+      let hasAny = false;
+      for (let i = 0; i < this.any.length; i++) {
+        if (world.hasComponent(entity, this.any[i])) {
+          hasAny = true;
+          break;
+        }
+      }
+      if (!hasAny) return false;
+    }
+    for (let i = 0; i < this.none.length; i++) {
+      if (world.hasComponent(entity, this.none[i])) return false;
+    }
+    return true;
   }
 
 }
@@ -384,10 +393,15 @@ export class World {
 
 
 
-  query(queryDesc: Query): EntityId[] {
+  query(queryDesc: Query, out?: EntityId[]): EntityId[] {
     const key = this.getQueryCacheKey(queryDesc);
     const cached = this.queryCache.get(key);
     if (cached) {
+      if (out) {
+        out.length = 0;
+        for (let i = 0; i < cached.length; i++) out.push(cached[i]);
+        return out;
+      }
       return cached.slice();
     }
 
@@ -400,8 +414,10 @@ export class World {
       for (const compType of queryDesc.all) {
         const storage = this.components.get(compType);
         if (!storage || storage.size === 0) {
+          const empty: EntityId[] = out || [];
+          if (out) out.length = 0;
           this.queryCache.set(key, []);
-          return [];
+          return empty;
         }
         if (storage.size < minSize) {
           minSize = storage.size;
@@ -420,7 +436,27 @@ export class World {
       }
     }
     this.queryCache.set(key, results);
+    if (out) {
+      out.length = 0;
+      for (let i = 0; i < results.length; i++) out.push(results[i]);
+      return out;
+    }
     return results.slice();
+  }
+
+  /**
+   * Zero-allocation cached-query iteration. Invokes `fn` for every entity
+   * matching the query without copying the cached result array.
+   */
+  queryEach(queryDesc: Query, fn: (entity: EntityId) => void): void {
+    const key = this.getQueryCacheKey(queryDesc);
+    let cached = this.queryCache.get(key);
+    if (!cached) {
+      cached = this.query(queryDesc);
+    }
+    for (let i = 0; i < cached.length; i++) {
+      fn(cached[i]);
+    }
   }
 
   /**
@@ -436,18 +472,15 @@ export class World {
     const storageB = this.components.get(CompB);
     if (!storageA || !storageB) return;
 
-    const [smaller, larger, isASmaller] = storageA.size <= storageB.size
-      ? [storageA, storageB, true]
-      : [storageB, storageA, false];
-
-    for (const [entity, item] of smaller) {
-      const other = larger.get(entity);
-      if (other !== undefined) {
-        if (isASmaller) {
-          callback(entity, item as A, other as B);
-        } else {
-          callback(entity, other as A, item as B);
-        }
+    if (storageA.size <= storageB.size) {
+      for (const [entity, item] of storageA) {
+        const other = storageB.get(entity);
+        if (other !== undefined) callback(entity, item as A, other as B);
+      }
+    } else {
+      for (const [entity, item] of storageB) {
+        const other = storageA.get(entity);
+        if (other !== undefined) callback(entity, other as A, item as B);
       }
     }
   }
@@ -562,7 +595,6 @@ export class World {
     for (const entity of Array.from(this.activeEntities)) {
       this.destroyEntity(entity);
     }
-    this.nextEntityId = 1;
   }
 
   serialize(): any {

@@ -247,9 +247,9 @@ export class FastSoAWorld {
       pz[i] = z;
 
       // Bitwise Hash Insertion
-      const cx = (x * invCell) | 0;
-      const cy = (y * invCell) | 0;
-      const cz = (z * invCell) | 0;
+      const cx = Math.floor(x * invCell);
+      const cy = Math.floor(y * invCell);
+      const cz = Math.floor(z * invCell);
       const key = ((cx * 73856093) ^ (cy * 19349663) ^ (cz * 83492791)) & tableMask;
 
       if (tag[key] !== frameId) {
@@ -271,9 +271,9 @@ export class FastSoAWorld {
       const az = pz[a];
       const ar = rad[a];
 
-      const cx = (ax * invCell) | 0;
-      const cy = (ay * invCell) | 0;
-      const cz = (az * invCell) | 0;
+      const cx = Math.floor(ax * invCell);
+      const cy = Math.floor(ay * invCell);
+      const cz = Math.floor(az * invCell);
 
       // Query Self Cell (k=0) and 13 Forward Neighbor Cells (k=1..13)
       for (let k = 0; k < 14; k++) {
