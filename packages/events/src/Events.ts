@@ -28,6 +28,16 @@ export interface KeyEventData {
   timestamp: number;
 }
 
+function removeHandlerInPlace(list: ListenerEntry[], handler: EventHandler<any>): void {
+  let write = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].handler !== handler) {
+      list[write++] = list[i];
+    }
+  }
+  list.length = write;
+}
+
 /**
  * Advanced Priority Event Bus with Wildcard Matching and Cancellable Events
  */
@@ -73,12 +83,12 @@ export class EventBus {
 
   public off<T = any>(event: string, handler: EventHandler<T>): void {
     if (event === '*') {
-      this.wildcardListeners = this.wildcardListeners.filter(l => l.handler !== handler);
+      removeHandlerInPlace(this.wildcardListeners, handler);
       return;
     }
     const list = this.listeners.get(event);
     if (list) {
-      this.listeners.set(event, list.filter(l => l.handler !== handler));
+      removeHandlerInPlace(list, handler);
     }
   }
 
@@ -94,14 +104,18 @@ export class EventBus {
     // Direct event listeners
     const list = this.listeners.get(event);
     if (list) {
-      const toRemove: ListenerEntry[] = [];
-      for (const entry of [...list]) {
+      // Create a shallow copy to iterate over so modifications don't break iteration
+      const currentList = [...list];
+      for (const entry of currentList) {
         const result = entry.handler(data);
         if (result === false) cancelled = true;
-        if (entry.once) toRemove.push(entry);
-      }
-      if (toRemove.length > 0) {
-        this.listeners.set(event, list.filter(l => !toRemove.includes(l)));
+
+        if (entry.once) {
+          const idx = list.indexOf(entry);
+          if (idx !== -1) {
+            list.splice(idx, 1);
+          }
+        }
       }
     }
 
@@ -164,10 +178,12 @@ export class KeyEventTrigger {
     if (!eventToLaunch) {
       this.keyBindings.delete(keyCode);
     } else if (this.keyBindings.has(keyCode)) {
-      const events = this.keyBindings.get(keyCode)!.filter(e => e !== eventToLaunch);
-      if (events.length > 0) {
-        this.keyBindings.set(keyCode, events);
-      } else {
+      const events = this.keyBindings.get(keyCode)!;
+      const idx = events.indexOf(eventToLaunch);
+      if (idx !== -1) {
+        events.splice(idx, 1);
+      }
+      if (events.length === 0) {
         this.keyBindings.delete(keyCode);
       }
     }
@@ -199,7 +215,7 @@ export class KeyEventTrigger {
     // Launch custom bound events for this key
     const boundEvents = this.keyBindings.get(e.code) || this.keyBindings.get(e.key);
     if (boundEvents) {
-      for (const eventName of boundEvents) {
+      for (const eventName of [...boundEvents]) {
         this.eventBus.emit(eventName, eventData);
       }
     }
