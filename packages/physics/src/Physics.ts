@@ -137,21 +137,42 @@ export class RigidBody {
   public lockAngularAxis: [boolean, boolean, boolean] = [false, false, false];
   public cannonBody: CANNON.Body | null = null;
 
+  private static _forceTemp = new CANNON.Vec3();
+  private static _pointTemp = new CANNON.Vec3();
+
   applyForce(force: Vector3, point?: Vector3): void {
     if (this.cannonBody) {
-      this.cannonBody.applyForce(toCannonVec3(force), point ? toCannonVec3(point) : this.cannonBody.position);
+      const f = RigidBody._forceTemp;
+      f.set(force.x, force.y, force.z);
+      if (point) {
+        const p = RigidBody._pointTemp;
+        p.set(point.x - this.cannonBody.position.x, point.y - this.cannonBody.position.y, point.z - this.cannonBody.position.z);
+        this.cannonBody.applyForce(f, p);
+      } else {
+        this.cannonBody.applyForce(f);
+      }
     }
   }
 
   applyImpulse(impulse: Vector3, point?: Vector3): void {
     if (this.cannonBody) {
-      this.cannonBody.applyImpulse(toCannonVec3(impulse), point ? toCannonVec3(point) : this.cannonBody.position);
+      const i = RigidBody._forceTemp;
+      i.set(impulse.x, impulse.y, impulse.z);
+      if (point) {
+        const p = RigidBody._pointTemp;
+        p.set(point.x - this.cannonBody.position.x, point.y - this.cannonBody.position.y, point.z - this.cannonBody.position.z);
+        this.cannonBody.applyImpulse(i, p);
+      } else {
+        this.cannonBody.applyImpulse(i);
+      }
     }
   }
 
   applyTorque(torque: Vector3): void {
     if (this.cannonBody) {
-      this.cannonBody.torque.vadd(toCannonVec3(torque), this.cannonBody.torque);
+      const t = RigidBody._forceTemp;
+      t.set(torque.x, torque.y, torque.z);
+      this.cannonBody.torque.vadd(t, this.cannonBody.torque);
     }
   }
 
@@ -179,6 +200,22 @@ export class RigidBody {
 
   set angularVelocity(v: Vector3) {
     if (this.cannonBody) this.cannonBody.angularVelocity.set(v.x, v.y, v.z);
+  }
+
+  /** Zero-allocation velocity read into an optional target vector. */
+  getVelocity(target?: Vector3): Vector3 {
+    const out = target || new Vector3();
+    if (this.cannonBody) out.set(this.cannonBody.velocity.x, this.cannonBody.velocity.y, this.cannonBody.velocity.z);
+    else out.set(0, 0, 0);
+    return out;
+  }
+
+  /** Zero-allocation angular velocity read into an optional target vector. */
+  getAngularVelocity(target?: Vector3): Vector3 {
+    const out = target || new Vector3();
+    if (this.cannonBody) out.set(this.cannonBody.angularVelocity.x, this.cannonBody.angularVelocity.y, this.cannonBody.angularVelocity.z);
+    else out.set(0, 0, 0);
+    return out;
   }
 }
 
@@ -219,10 +256,10 @@ export class PhysicsWorld {
   }
 
   public clear(): void {
-    for (const entry of [...this.bodies]) {
-      this.unregisterBody(entry.body);
+    while (this.bodies.length > 0) {
+      this.unregisterBody(this.bodies[this.bodies.length - 1].body);
     }
-    this.bodies = [];
+    this.bodies.length = 0;
     this.bodyLookup.clear();
     this.collisionListeners = [];
     this.triggerListeners = [];
@@ -271,7 +308,15 @@ export class PhysicsWorld {
       this.bodyLookup.delete(body.cannonBody);
       body.cannonBody = null;
     }
-    this.bodies = this.bodies.filter(entry => entry.body !== body);
+    for (let i = 0; i < this.bodies.length; i++) {
+      if (this.bodies[i].body === body) {
+        const last = this.bodies.pop()!;
+        if (i < this.bodies.length) {
+          this.bodies[i] = last;
+        }
+        break;
+      }
+    }
   }
 
   step(dt: number): void {
@@ -332,7 +377,10 @@ export class PhysicsWorld {
     this.triggerListeners.push(listener);
   }
 
-  raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance: number = 100): RaycastHit {
+  private static _defaultRayDir = new Vector3(0, 0, -1);
+  private static _tempRay = new Ray(new Vector3(), new Vector3());
+
+  raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance: number = 100, target?: RaycastHit): RaycastHit {
     let ray: Ray;
     let maxDist = maxDistance;
 
@@ -340,11 +388,13 @@ export class PhysicsWorld {
       ray = originOrRay;
       if (typeof directionOrMaxDist === 'number') maxDist = directionOrMaxDist;
     } else {
-      const dir = (directionOrMaxDist instanceof Vector3) ? directionOrMaxDist : new Vector3(0, 0, -1);
-      ray = new Ray(originOrRay, dir);
+      const dir = (directionOrMaxDist instanceof Vector3) ? directionOrMaxDist : PhysicsWorld._defaultRayDir;
+      ray = PhysicsWorld._tempRay;
+      ray.origin.copy(originOrRay);
+      ray.direction.copy(dir);
     }
 
-    let closestHit: RaycastHit = {
+    const closestHit: RaycastHit = target || {
       hasHit: false,
       body: null,
       collider: null,
@@ -352,9 +402,15 @@ export class PhysicsWorld {
       normal: new Vector3(),
       distance: maxDist
     };
+    if (target) {
+      target.hasHit = false;
+      target.body = null;
+      target.collider = null;
+      target.distance = maxDist;
+      if (!target.point) target.point = new Vector3();
+      if (!target.normal) target.normal = new Vector3();
+    }
 
-    // ⚡ Bolt Optimization:
-    // Avoid creating new arrays via mapping and filter arrays.
     for (let i = 0; i < this.bodies.length; i++) {
       const { body, collider, position } = this.bodies[i];
       let hit: { hasHit: boolean; distance: number; point: Vector3; normal: Vector3 };
@@ -379,8 +435,8 @@ export class PhysicsWorld {
     return closestHit;
   }
 
-  sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance: number = 100): RaycastHit {
-    const hit = this.raycast(originOrRay, direction, maxDistance + radius);
+  sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance: number = 100, target?: RaycastHit): RaycastHit {
+    const hit = this.raycast(originOrRay, direction, maxDistance + radius, target);
     if (hit.hasHit) {
       hit.distance = Math.max(0, hit.distance - radius);
     }
@@ -518,7 +574,12 @@ export class PhysicsWorld {
 
 function toCannonVec3(v: Vector3): CANNON.Vec3 { return new CANNON.Vec3(v.x, v.y, v.z); }
 function fromCannonVec3(v: CANNON.Vec3): Vector3 { return new Vector3(v.x, v.y, v.z); }
-function pairKey(a: number, b: number): number { return a < b ? (a * 1000003 + b) : (b * 1000003 + a); }
+function pairKey(a: number, b: number): number {
+  const lo = a < b ? a : b;
+  const hi = a < b ? b : a;
+  const sum = lo + hi;
+  return (sum * (sum + 1)) / 2 + hi;
+}
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
 

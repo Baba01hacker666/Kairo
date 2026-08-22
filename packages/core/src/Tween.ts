@@ -118,6 +118,8 @@ export class Tween {
   private onUpdateCb?: (eased: number, target: any) => void;
   private onCompleteCb?: (target: any) => void;
   public manager: TweenManager | null = null;
+  private propKeys: string[] = [];
+  private nestedKeys: (string[] | null)[] = [];
 
   constructor(
     target: any,
@@ -141,6 +143,17 @@ export class Tween {
       if (typeof fromVal !== typeof toVal) continue;
       this.fromValues[key] = cloneTweenable(fromVal);
       this.toValues[key] = cloneTweenable(toVal);
+    }
+
+    // Hoist key iteration out of apply(): fromValues/toValues are frozen after
+    // construction, so per-frame Object.keys() allocations are pure waste.
+    this.propKeys = Object.keys(this.fromValues);
+    this.nestedKeys = new Array(this.propKeys.length);
+    for (let i = 0; i < this.propKeys.length; i++) {
+      const from = this.fromValues[this.propKeys[i]];
+      this.nestedKeys[i] = (typeof from === 'number' || Array.isArray(from))
+        ? null
+        : Object.keys(from as Record<string, number>);
     }
   }
 
@@ -214,7 +227,9 @@ export class Tween {
   }
 
   private apply(progress: number): void {
-    for (const key of Object.keys(this.fromValues)) {
+    const keys = this.propKeys;
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
       const from = this.fromValues[key];
       const to = this.toValues[key];
       if (typeof from === 'number') {
@@ -222,14 +237,16 @@ export class Tween {
       } else if (Array.isArray(from)) {
         const toArr = to as number[];
         const targetArr = this.target[key] as number[];
-        for (let i = 0; i < from.length; i++) {
-          targetArr[i] = from[i] + (toArr[i] - from[i]) * progress;
+        for (let j = 0; j < from.length; j++) {
+          targetArr[j] = from[j] + (toArr[j] - from[j]) * progress;
         }
       } else {
         const fromObj = from as Record<string, number>;
         const toObj = to as Record<string, number>;
         const targetObj = this.target[key] as Record<string, number>;
-        for (const k of Object.keys(fromObj)) {
+        const objKeys = this.nestedKeys[i]!;
+        for (let j = 0; j < objKeys.length; j++) {
+          const k = objKeys[j];
           if (typeof fromObj[k] === 'number' && typeof toObj[k] === 'number') {
             targetObj[k] = fromObj[k] + (toObj[k] - fromObj[k]) * progress;
           }

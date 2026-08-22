@@ -60,6 +60,10 @@ export class ParticleSystem {
     this.mesh = new THREE.InstancedMesh(geo, mat, maxParticles);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.count = 0;
+    // Particles move independently of the base geometry bounds; Three.js
+    // would frustum-cull the whole system once the emitter origin leaves
+    // the view. Disable culling since instances are repositioned per frame.
+    this.mesh.frustumCulled = false;
 
     // Per-instance color buffer so emitBurst colors actually show up
     this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(maxParticles * 3), 3);

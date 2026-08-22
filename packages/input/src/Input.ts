@@ -91,6 +91,17 @@ export class InputManager {
     window.addEventListener('mouseup', (e) => {
       this.mouseButtonsPressed.delete(e.button);
     });
+
+    // Release everything on focus loss so keys/mouse buttons don't get
+    // stuck "held" after alt-tabbing or switching windows mid-press.
+    window.addEventListener('blur', () => {
+      this.keysPressed.clear();
+      this.keysJustPressed.clear();
+      this.keysJustReleased.clear();
+      this.mouseButtonsPressed.clear();
+      this.mouseButtonsJustPressed.clear();
+      this.combos.reset();
+    });
   }
 
   public isKeyDown(code: string): boolean {
