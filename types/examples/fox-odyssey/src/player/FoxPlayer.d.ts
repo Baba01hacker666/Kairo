@@ -9,6 +9,7 @@ export declare class FoxPlayer {
     airJumpsLeft: number;
     isPouncing: boolean;
     invulnerabilityTimer: number;
+    private _goldenHitToggle;
     container: THREE.Group;
     private loadedModel;
     private fallbackGroup;
