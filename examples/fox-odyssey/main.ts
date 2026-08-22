@@ -92,6 +92,20 @@ foxHealth.on('damaged', e => {
 });
 foxHealth.on('died', () => {
   GameState.instance.emit('player_fainted');
+  hud.showToast('💫 You fainted... waking at the realm entrance', '💫');
+  app.cameraFX.shake(0.6, 0.5);
+
+  // Penalty: drop some acorns on fainting so hearts have stakes
+  const penalty = Math.max(1, Math.floor(GameState.instance.acornsCollected * 0.2));
+  GameState.instance.acornsCollected = Math.max(0, GameState.instance.acornsCollected - penalty);
+  if (penalty > 0) {
+    hud.showToast(`Lost ${penalty} acorns in the shadows 🌰`, '💔');
+  }
+
+  // Respawn at the current realm's entrance
+  respawnAtRealmEntrance();
+  player.invulnerabilityTimer = 2.0;
+
   foxHealth.revive(GameState.instance.maxHearts);
   // Persist the revived hearts (matches the legacy auto-revive save behavior)
   GameState.instance.saveGame();
@@ -230,6 +244,19 @@ const ducks = new DuckManager(app.scene, sparkleParticles);
 const endgameShrine = new EndgameShrineManager(app.scene, sparkleParticles, audio);
 
 // --- 4. Level Switcher Routine ---
+function respawnAtRealmEntrance(): void {
+  const entrances: Record<number, [number, number, number]> = {
+    1: [0, 0.6, -28],  // Grove entrance
+    2: [0, 0.6, 28],   // Crystal Peaks entrance
+    3: [0, 0.6, 26]    // Grotto entrance
+  };
+  const pos = entrances[GameState.instance.currentLevel] || entrances[1];
+  player.position.set(pos[0], pos[1], pos[2]);
+  player.velocity.set(0, 0, 0);
+  player.isGrounded = false;
+  sparkleParticles.emitBurst(player.position, 'sparkle', 50);
+}
+
 function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
   GameState.instance.currentLevel = targetLevel;
   shadowBeasts.onLevelSwitch(targetLevel);
@@ -317,6 +344,14 @@ function switchLevel(targetLevel: number, spawnAtPortal: boolean = true) {
 
 // --- 5. HUD & Start Screen Wireup ---
 let lastSaveTime = 0;
+// Throttled toast for sealed portals (proximity check fires every frame)
+let portalGateToastAt = 0;
+function showPortalGateToast(message: string): void {
+  const now = performance.now();
+  if (now - portalGateToastAt < 2500) return;
+  portalGateToastAt = now;
+  hud.showToast(`🔒 ${message}`, '🚫');
+}
 
 const hud = new GameHUD(
   (isContinue: boolean) => {
@@ -449,10 +484,11 @@ input.onSpiritCall = () => {
     GameState.instance.recordBeastDefeat();
   });
 
-  // Shockwave damage against Bosses
+  // Shockwave damage against Bosses (must be close AND in a vulnerable state,
+  // otherwise Spirit Call would trivialize both fights from across the arena)
   if (brambleGolem.isAlive && GameState.instance.currentLevel === 1) {
     const d = player.position.distanceTo(brambleGolem.position);
-    if (d < 12.0) {
+    if (d < 7.0 && brambleGolem.isVulnerable) {
       brambleGolem.takeDamage(1, () => {
         hud.showToast('🏆 Cleansed Bramblewood Golem! Gateway Opened!', '🌟');
         GameState.instance.setChapter(2);
@@ -462,7 +498,7 @@ input.onSpiritCall = () => {
 
   if (abyssalLeviathan.isAlive && GameState.instance.currentLevel === 3) {
     const d = player.position.distanceTo(abyssalLeviathan.group.position);
-    if (d < 12.0 && abyssalLeviathan.isSurfaced) {
+    if (d < 7.0 && abyssalLeviathan.isSurfaced) {
       abyssalLeviathan.takeDamage(1, () => {
         hud.showToast('🏆 Cleansed Abyssal Leviathan Phantom!', '🌟');
         GameState.instance.setChapter(3);
@@ -621,16 +657,24 @@ app.onUpdate((dt: number) => {
     // 7. Realm Portal Transitions
     if (currentLvl === 1) {
       if (player.position.distanceTo(_portalPosL1) < 3.2) {
-        // Grove -> Grotto
-        switchLevel(3);
+        // Grove -> Grotto (sealed until Act II begins)
+        if (GameState.instance.currentChapter < 2) {
+          showPortalGateToast('The gateway is sealed by ancient magic. Cleanse the Shadow Beasts or wake the Bramblewood Golem first!');
+        } else {
+          switchLevel(3);
+        }
       }
     } else if (currentLvl === 3) {
       if (player.position.distanceTo(_portalPosL3South) < 3.2) {
         // Grotto -> Grove
         switchLevel(1);
       } else if (player.position.distanceTo(_portalPosL3North) < 3.2) {
-        // Grotto -> Crystal Peaks
-        switchLevel(2);
+        // Grotto -> Crystal Peaks (sealed until Act III begins)
+        if (GameState.instance.currentChapter < 3) {
+          showPortalGateToast('A crystalline barrier blocks the pass. Awaken the Abyssal Leviathan\'s song (chimes) first!');
+        } else {
+          switchLevel(2);
+        }
       }
     } else if (currentLvl === 2) {
       if (player.position.distanceTo(_portalPosL2) < 3.2) {

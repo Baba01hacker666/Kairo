@@ -352,6 +352,7 @@ interface Ring {
   mesh: THREE.Mesh;
   baseY: number;
   collected: boolean;
+  respawnAt: number;
 }
 
 const rings: Ring[] = [];
@@ -373,7 +374,7 @@ for (let i = 0; i < RING_COUNT; i++) {
   ring.position.set(rx, baseY, rz);
   ring.castShadow = !isMobile;
   scene.add(ring);
-  rings.push({ mesh: ring, baseY, collected: false });
+  rings.push({ mesh: ring, baseY, collected: false, respawnAt: 0 });
 }
 
 // ---------------------------------------------------------------------------
@@ -550,6 +551,42 @@ let lap = 1;
 let frame = 0;
 let prevCarZ = SPAWN.z;
 
+// Lap validation: accumulate signed angular progress around the oval so a
+// start-line crossing only counts after a real lap (wiggle-proof, and works
+// in either travel direction).
+let lapProgress = 0;      // radians accumulated since last counted lap
+let lapPrevTheta: number | null = null;
+let lapStartTime = 0;
+const MIN_LAP_ARC = 5.0;  // ~286° of the oval required before a crossing counts
+let bestLapMs = Number(localStorage.getItem('kairo-car-best-lap')) || 0;
+let bestScore = Number(localStorage.getItem('kairo-car-best-score')) || 0;
+
+function fmtTime(ms: number): string {
+  const s = ms / 1000;
+  return `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
+}
+
+function rearmRings(): void {
+  const now = performance.now();
+  for (const ring of rings) {
+    ring.collected = false;
+    ring.respawnAt = now;
+    ring.mesh.visible = true;
+  }
+}
+
+function restartRun(): void {
+  score = 0;
+  driftScore = 0;
+  lap = 1;
+  lapProgress = 0;
+  lapPrevTheta = null;
+  lapStartTime = performance.now();
+  rearmRings();
+  respawn();
+  app.ui.showToast('🔄 RUN RESTARTED — Shift+R anytime', 1800, 'info');
+}
+
 let boostBtnHeld = false;
 
 let lastCrashSound = 0;
@@ -561,6 +598,8 @@ const hudDrift = document.getElementById('drift-indicator')!;
 const hudLap = document.getElementById('lap-num')!;
 const hudFps = document.getElementById('fps-num')!;
 const hudDriftScore = document.getElementById('drift-score')!;
+const hudBestLap = document.getElementById('best-lap')!;
+const hudBestScore = document.getElementById('best-score')!;
 
 // ---------------------------------------------------------------------------
 // Input
@@ -607,6 +646,7 @@ function begin(): void {
   started = true;
   engineSound.init();
   startScreen.style.display = 'none';
+  lapStartTime = performance.now();
   app.ui.showToast('GO!', 900, 'info');
 }
 
@@ -700,7 +740,10 @@ app.onUpdate((dt) => {
   // ---- Input ----
   const input = readInput();
 
-  if (app.input.isKeyJustPressed('KeyR')) respawn();
+  if (app.input.isKeyJustPressed('KeyR')) {
+    if (app.isKeyDown('ShiftLeft') || app.isKeyDown('ShiftRight')) restartRun();
+    else respawn();
+  }
 
   // ---- Car dynamics ----
   boosting = input.boostKey && boost > 1 && speed > 0.5;
@@ -818,12 +861,22 @@ app.onUpdate((dt) => {
   }
 
   // ---- Rings ----
+  const nowMs = performance.now();
   for (const ring of rings) {
     ring.mesh.rotation.y += delta * 2;
     ring.mesh.rotation.x = Math.sin(frame * 0.02 + ring.baseY);
     ring.mesh.position.y = ring.baseY + Math.sin(frame * delta * 2 + ring.baseY) * 0.25;
-    if (!ring.collected && ring.mesh.position.distanceTo(car.position) < 2.9) {
+    if (ring.collected) {
+      if (nowMs >= ring.respawnAt) {
+        ring.collected = false;
+        ring.mesh.visible = true;
+        particles.emitBurst(ring.mesh.position, 'sparkle', isMobile ? 8 : 14);
+      }
+      continue;
+    }
+    if (ring.mesh.position.distanceTo(car.position) < 2.9) {
       ring.collected = true;
+      ring.respawnAt = nowMs + 8000;
       ring.mesh.visible = false;
       score += 100;
       boost = Math.min(100, boost + 8);
@@ -846,11 +899,42 @@ app.onUpdate((dt) => {
     }
   }
 
-  // ---- Laps (crossing start line near +Z going forward) ----
-  if (p.z > 13.5 && prevCarZ < 13.5 && Math.abs(p.x) < 3 && speed > 2) {
-    lap++;
-    app.ui.showToast(`LAP ${lap}`, 1400, 'info');
-    particles.emitBurst(v3(0, 1.2, 14), 'sparkle', isMobile ? 12 : 24);
+  // ---- Laps (validated by accumulated angular progress + start-line crossing) ----
+  {
+    // Parametric angle around the oval; accumulate shortest signed step.
+    const theta = Math.atan2(p.x / TRACK_A, p.z / TRACK_B);
+    let d = theta - (lapPrevTheta ?? theta);
+    if (d > Math.PI) d -= Math.PI * 2;
+    else if (d < -Math.PI) d += Math.PI * 2;
+    lapProgress += d;
+    lapPrevTheta = theta;
+
+    if (p.z > 13.5 && prevCarZ < 13.5 && Math.abs(p.x) < 3 && speed > 2) {
+      if (Math.abs(lapProgress) >= MIN_LAP_ARC) {
+        const now = performance.now();
+        let msg = `LAP ${lap}`;
+        if (lapStartTime > 0) {
+          const lapMs = now - lapStartTime;
+          msg += ` — ${fmtTime(lapMs)}`;
+          if (!bestLapMs || lapMs < bestLapMs) {
+            bestLapMs = lapMs;
+            localStorage.setItem('kairo-car-best-lap', String(Math.round(lapMs)));
+            msg = `⭐ BEST LAP ${fmtTime(lapMs)}`;
+          }
+        }
+        lap++;
+        lapStartTime = now;
+        app.ui.showToast(msg, 1600, 'info');
+        particles.emitBurst(v3(0, 1.2, 14), 'sparkle', isMobile ? 12 : 24);
+      }
+      // Reset progress either way so line-wiggling never accumulates credit.
+      lapProgress = 0;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('kairo-car-best-score', String(score));
+    }
   }
   prevCarZ = p.z;
 
@@ -887,6 +971,8 @@ app.onUpdate((dt) => {
   hudDrift.style.opacity = driftAmount > 0.35 ? '1' : '0';
   hudDriftScore.textContent = String(Math.round(driftScore));
   hudLap.textContent = String(lap);
+  hudBestLap.textContent = bestLapMs ? fmtTime(bestLapMs) : '--';
+  hudBestScore.textContent = String(bestScore);
   if (frame % 30 === 0) {
     hudFps.textContent = String(app.pipeline.metrics.fps.toFixed(0));
   }

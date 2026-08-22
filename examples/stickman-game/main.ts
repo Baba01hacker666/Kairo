@@ -39,6 +39,14 @@ function playSfx(type: string) {
       osc.frequency.linearRampToValueAtTime(60, now + 0.2);
       gain.gain.setValueAtTime(0.35, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
       osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'win') {
+      osc.type = 'triangle';
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((f, i) => {
+        osc.frequency.setValueAtTime(f, now + i * 0.12);
+      });
+      gain.gain.setValueAtTime(0.28, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.55);
+      osc.start(now); osc.stop(now + 0.55);
     }
   } catch(e) {}
 }
@@ -191,9 +199,13 @@ bindTouch(document.getElementById('btn-right'), 'right');
 bindTouch(document.getElementById('btn-jump'), 'jump');
 
 let score = 0, health = 100, isGameOver = false, isGrounded = true;
+let isVictory = false;
+let hitCooldown = 0; // i-frames after a spike hit so damage is discrete and legible
+let runStartTime = performance.now();
 
 (window as any).resetGame = function() {
-  score = 0; health = 100; isGameOver = false; 
+  score = 0; health = 100; isGameOver = false; isVictory = false; hitCooldown = 0;
+  runStartTime = performance.now();
   playerPos.set(-6, 3, 0);
   playerRb.velocity = new Vector3(0, 0, 0);
   
@@ -203,7 +215,7 @@ let score = 0, health = 100, isGameOver = false, isGrounded = true;
 };
 
 engine.events.on('update', (dt: number) => {
-  if (!isGameOver) {
+  if (!isGameOver && !isVictory) {
     physics.step(dt);
     
     // Position mesh
@@ -276,15 +288,30 @@ engine.events.on('update', (dt: number) => {
         c.mesh.rotation.z += dt * 3;
         if (Math.abs(pX - c.x) < 0.8 && Math.abs(pY - c.y) < 1.2) {
           c.active = false; c.mesh.visible = false; score += 100; playSfx('coin');
+          if (score >= coinsList.length * 100) {
+            isVictory = true;
+            playSfx('win');
+            const secs = ((performance.now() - runStartTime) / 1000).toFixed(1);
+            if ((window as any).showVictory) (window as any).showVictory(secs);
+          }
         }
       }
     });
 
+    if (hitCooldown > 0) hitCooldown -= dt;
+
     hazardsList.forEach(h => {
-      if (Math.abs(pX - h.x) < 0.6 && pY < 1.0) {
-        health -= 40 * dt;
+      if (hitCooldown <= 0 && Math.abs(pX - h.x) < 0.6 && pY < 1.0) {
+        health -= 25;
+        hitCooldown = 1.0;
+        playSfx('hit');
+        // Knock the player away from the spike so hits read clearly
+        if (playerRb.cannonBody) {
+          playerRb.cannonBody.velocity.y = 8;
+          playerRb.cannonBody.velocity.x = pX < h.x ? -6 : 6;
+        }
         if (health <= 0) { 
-          health = 0; isGameOver = true; playSfx('hit'); 
+          health = 0; isGameOver = true;
           if((window as any).showGameOver) (window as any).showGameOver();
         }
       }

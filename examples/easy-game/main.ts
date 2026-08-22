@@ -1,4 +1,4 @@
-import { KairoApp } from '@kairo/core';
+import { KairoApp, Vector3 } from '@kairo/core';
 
 // 1. Initialize the app magically
 const app = new KairoApp({
@@ -61,6 +61,14 @@ app.onUpdate((dt) => {
   // Jump
   if (app.isKeyDown('Space') && Math.abs(player.rb.cannonBody.velocity.y) < 0.1) {
     player.rb.cannonBody.velocity.y = 10;
+  }
+
+  // Fell off the world? Respawn instead of falling forever.
+  if (player.rb.cannonBody.position.y < -15) {
+    player.rb.teleport(new Vector3(0, 5, 0));
+    player.rb.cannonBody.velocity.set(0, 0, 0);
+    player.rb.cannonBody.angularVelocity.set(0, 0, 0);
+    app.ui.showToast('Respawned! Try the stairs 🪜', 1500, 'info');
   }
 
   // Smooth camera follow

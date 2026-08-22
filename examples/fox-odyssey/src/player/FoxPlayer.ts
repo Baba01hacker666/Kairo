@@ -13,6 +13,7 @@ export class FoxPlayer {
   public airJumpsLeft: number = 1;
   public isPouncing: boolean = false;
   public invulnerabilityTimer: number = 0;
+  private _goldenHitToggle: boolean = false;
 
   public container: THREE.Group;
   private loadedModel: THREE.Object3D | null = null;
@@ -199,7 +200,16 @@ export class FoxPlayer {
   }
 
   public takeDamage(knockbackDir?: THREE.Vector3) {
-    if (this.invulnerabilityTimer > 0 || GameState.instance.isGoldenForm) return;
+    if (this.invulnerabilityTimer > 0) return;
+    if (GameState.instance.isGoldenForm) {
+      // Golden form resists damage (blocks every other hit) instead of
+      // granting total invulnerability.
+      this._goldenHitToggle = !this._goldenHitToggle;
+      if (this._goldenHitToggle) {
+        this.sparkleParticles.emitBurst(this.position, 'sparkle', 12);
+        return;
+      }
+    }
     this.invulnerabilityTimer = 1.2;
     this.audio.playSound('push');
     this.dustParticles.emitBurst(this.position, 'dust_footstep', 30);
