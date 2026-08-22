@@ -28,6 +28,16 @@ export interface KeyEventData {
   timestamp: number;
 }
 
+function removeHandlerInPlace(list: ListenerEntry[], handler: EventHandler<any>): void {
+  let write = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].handler !== handler) {
+      list[write++] = list[i];
+    }
+  }
+  list.length = write;
+}
+
 /**
  * Advanced Priority Event Bus with Wildcard Matching and Cancellable Events
  */
@@ -73,18 +83,12 @@ export class EventBus {
 
   public off<T = any>(event: string, handler: EventHandler<T>): void {
     if (event === '*') {
-      const idx = this.wildcardListeners.findIndex(l => l.handler === handler);
-      if (idx !== -1) {
-        this.wildcardListeners.splice(idx, 1);
-      }
+      removeHandlerInPlace(this.wildcardListeners, handler);
       return;
     }
     const list = this.listeners.get(event);
     if (list) {
-      const idx = list.findIndex(l => l.handler === handler);
-      if (idx !== -1) {
-        list.splice(idx, 1);
-      }
+      removeHandlerInPlace(list, handler);
     }
   }
 
@@ -211,7 +215,7 @@ export class KeyEventTrigger {
     // Launch custom bound events for this key
     const boundEvents = this.keyBindings.get(e.code) || this.keyBindings.get(e.key);
     if (boundEvents) {
-      for (const eventName of boundEvents) {
+      for (const eventName of [...boundEvents]) {
         this.eventBus.emit(eventName, eventData);
       }
     }
