@@ -52,13 +52,29 @@ export declare class World {
     private parents;
     private children;
     private systems;
+    private sharedResourceRefs;
     private componentIdMap;
     private nextComponentTypeId;
     private queryCache;
+    private queryStamps;
+    private componentRevisions;
+    private entitySetRevision;
+    private stampScratch;
+    private stampScratchLen;
     private getComponentTypeId;
     private buildQueryKeyPart;
     private getQueryCacheKey;
     private invalidateQueryCache;
+    /**
+     * Revision-based cache validation: instead of wiping every cached query on
+     * any mutation, each mutation bumps only the revision of the affected
+     * component type (or the entity-set revision). A cached query is reused iff
+     * the revisions it was built against are unchanged.
+     */
+    private touchEntitySet;
+    private bumpComponentRevision;
+    private buildQueryStamp;
+    private stampMatches;
     sharedContexts: SharedEntityContextManager;
     createEntity(name?: string): EntityId;
     createSharedContext<T extends Record<string, any>>(id: string, properties: T): SharedEntityContext<T>;
@@ -130,6 +146,16 @@ export declare class World {
      */
     spawnBatch(count: number, initializer: (builder: EntityBuilder, index: number) => void): EntityId[];
     clear(): void;
+    /**
+     * Mark a geometry/material/texture as shared by multiple entities. Shared
+     * resources are reference-counted: destroying one owning entity only
+     * releases it; the resource is GPU-disposed when the last owner is
+     * destroyed. Untracked resources keep the previous behavior (disposed on
+     * first destroy).
+     */
+    retainSharedResource(resource: object): number;
+    /** Release a shared reference. Returns true when the resource must be disposed. */
+    releaseSharedResource(resource: object): boolean;
     serialize(): any;
     deserialize(data: any, componentRegistry: Record<string, ComponentType>): void;
 }

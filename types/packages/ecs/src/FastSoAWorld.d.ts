@@ -41,6 +41,10 @@ export declare class FastSoAWorld {
     isWasmMode: boolean;
     maxEntities: number;
     activeCount: number;
+    /** Number of currently-alive entities (excludes recycled holes). */
+    liveCount: number;
+    private freeList;
+    private freeCount;
     posX: Float32Array;
     posY: Float32Array;
     posZ: Float32Array;
@@ -61,6 +65,11 @@ export declare class FastSoAWorld {
     static initSyncWasm(wasmBuffer: ArrayBuffer | Uint8Array): boolean;
     constructor(maxEntities?: number, gridCellSize?: number);
     spawnEntity(px: number, py: number, pz: number, vx: number, vy: number, vz: number, r?: number): EntityId;
+    /**
+     * Deactivate an entity and recycle its slot. Iteration loops skip inactive
+     * slots, so despawned entities cost a single branch per tick.
+     */
+    despawnEntity(id: EntityId): boolean;
     /**
      * Ultra-Fast SoA Vector Update & Spatial Grid Collision Resolution
      */

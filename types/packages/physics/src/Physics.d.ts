@@ -117,6 +117,8 @@ export declare class PhysicsWorld {
     private syncKinematicAndStaticBodies;
     private syncDynamicBodies;
     private collectCollisionEvents;
+    private static _eventA;
+    private static _eventB;
     private emitCollision;
     private toRaycastHit;
 }
