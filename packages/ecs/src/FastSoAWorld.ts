@@ -52,6 +52,13 @@ export class FastSoAWorld {
 
   public maxEntities: number;
   public activeCount: number = 0;
+  /** Number of currently-alive entities (excludes recycled holes). */
+  public liveCount: number = 0;
+
+  // Free-list stack of recycled slot indices so long-running spawn/despawn
+  // cycles never grow the iteration watermark beyond the peak live count.
+  private freeList: Int32Array;
+  private freeCount: number = 0;
 
   // Contiguous Structure-of-Arrays (SoA) Buffers
   public posX: Float32Array;
@@ -129,6 +136,8 @@ export class FastSoAWorld {
     this.maxEntities = maxEntities;
     this.gridCellSize = gridCellSize;
     this.invCellSize = 1.0 / gridCellSize;
+    this.freeList = new Int32Array(maxEntities);
+    this.freeCount = 0;
 
     if (FastSoAWorld.wasmExports) {
       const exp = FastSoAWorld.wasmExports;
@@ -172,9 +181,15 @@ export class FastSoAWorld {
   }
 
   public spawnEntity(px: number, py: number, pz: number, vx: number, vy: number, vz: number, r: number = 0.5): EntityId {
-    if (this.activeCount >= this.maxEntities) return -1;
+    let id: number;
+    if (this.freeCount > 0) {
+      id = this.freeList[--this.freeCount];
+    } else {
+      if (this.activeCount >= this.maxEntities) return -1;
+      id = this.activeCount++;
+    }
+    this.liveCount++;
 
-    const id = this.activeCount++;
     this.posX[id] = px;
     this.posY[id] = py;
     this.posZ[id] = pz;
@@ -189,6 +204,18 @@ export class FastSoAWorld {
     }
 
     return id;
+  }
+
+  /**
+   * Deactivate an entity and recycle its slot. Iteration loops skip inactive
+   * slots, so despawned entities cost a single branch per tick.
+   */
+  public despawnEntity(id: EntityId): boolean {
+    if (id < 0 || id >= this.activeCount || this.active[id] === 0) return false;
+    this.active[id] = 0;
+    this.freeList[this.freeCount++] = id;
+    this.liveCount--;
+    return true;
   }
 
   /**
@@ -348,6 +375,8 @@ export class FastSoAWorld {
 
   public clear(): void {
     this.activeCount = 0;
+    this.liveCount = 0;
+    this.freeCount = 0;
     this.active.fill(0);
     if (this.isWasmMode && FastSoAWorld.wasmExports) {
       FastSoAWorld.wasmExports.clear_entities();

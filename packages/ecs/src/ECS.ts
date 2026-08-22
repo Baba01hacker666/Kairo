@@ -93,10 +93,16 @@ export class World {
   private children: Map<EntityId, Set<EntityId>> = new Map();
 
   private systems: System[] = [];
+  private sharedResourceRefs: WeakMap<object, number> = new WeakMap();
 
   private componentIdMap: WeakMap<ComponentType, number> = new WeakMap();
   private nextComponentTypeId: number = 1;
   private queryCache: Map<string, EntityId[]> = new Map();
+  private queryStamps: Map<string, number[]> = new Map();
+  private componentRevisions: WeakMap<ComponentType, number> = new WeakMap();
+  private entitySetRevision: number = 0;
+  private stampScratch: number[] = [];
+  private stampScratchLen: number = 0;
 
   private getComponentTypeId(comp: ComponentType): number {
     let id = this.componentIdMap.get(comp);
@@ -140,13 +146,49 @@ export class World {
   private invalidateQueryCache(): void {
     if (this.queryCache.size > 0) {
       this.queryCache.clear();
+      this.queryStamps.clear();
     }
+  }
+
+  /**
+   * Revision-based cache validation: instead of wiping every cached query on
+   * any mutation, each mutation bumps only the revision of the affected
+   * component type (or the entity-set revision). A cached query is reused iff
+   * the revisions it was built against are unchanged.
+   */
+  private touchEntitySet(): void {
+    this.entitySetRevision++;
+  }
+
+  private bumpComponentRevision(compType: ComponentType): void {
+    this.componentRevisions.set(compType, (this.componentRevisions.get(compType) || 0) + 1);
+  }
+
+  private buildQueryStamp(queryDesc: Query): number[] {
+    const s = this.stampScratch;
+    let n = 0;
+    s[n++] = this.entitySetRevision;
+    for (let i = 0; i < queryDesc.all.length; i++) s[n++] = this.componentRevisions.get(queryDesc.all[i]) || 0;
+    for (let i = 0; i < queryDesc.any.length; i++) s[n++] = this.componentRevisions.get(queryDesc.any[i]) || 0;
+    for (let i = 0; i < queryDesc.none.length; i++) s[n++] = this.componentRevisions.get(queryDesc.none[i]) || 0;
+    this.stampScratchLen = n;
+    return s;
+  }
+
+  private stampMatches(key: string): boolean {
+    const stored = this.queryStamps.get(key);
+    if (!stored || stored.length !== this.stampScratchLen) return false;
+    const scratch = this.stampScratch;
+    for (let i = 0; i < this.stampScratchLen; i++) {
+      if (stored[i] !== scratch[i]) return false;
+    }
+    return true;
   }
 
   public sharedContexts: SharedEntityContextManager = new SharedEntityContextManager();
 
   createEntity(name?: string): EntityId {
-    this.invalidateQueryCache();
+    this.touchEntitySet();
     const id = this.nextEntityId++;
     this.activeEntities.add(id);
     this.tags.set(id, new Set());
@@ -202,13 +244,12 @@ export class World {
         if (this.app?.scene) {
           this.app.scene.remove(mesh);
         }
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach(m => m.dispose());
-          } else {
-            mesh.material.dispose();
-          }
+        // Reference-counted disposal: shared resources survive until their
+        // last owning entity is destroyed.
+        if (mesh.geometry && this.releaseSharedResource(mesh.geometry)) mesh.geometry.dispose();
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const mat of materials) {
+          if (mat && this.releaseSharedResource(mat)) mat.dispose();
         }
         delete (comp as any).threeMesh;
       }
@@ -245,7 +286,7 @@ export class World {
     this.entityNames.delete(entity);
     this.sharedContexts.detachEntity(entity);
     this.activeEntities.delete(entity);
-    this.invalidateQueryCache();
+    this.touchEntitySet();
   }
 
   setParent(child: EntityId, parent: EntityId | null): void {
@@ -283,8 +324,8 @@ export class World {
   }
 
   addComponent<T>(entity: EntityId, component: T): T {
-    this.invalidateQueryCache();
     const cType = (component as any).constructor as ComponentType<T>;
+    this.bumpComponentRevision(cType);
     // Re-adding a component supersedes any disabled instance of the same type,
     // otherwise enableComponent would resurrect the old one and overwrite this.
     this.disabledComponents.get(cType)?.delete(entity);
@@ -309,7 +350,7 @@ export class World {
   }
 
   removeComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
-    this.invalidateQueryCache();
+    this.bumpComponentRevision(componentType);
     const storage = this.components.get(componentType);
     if (storage && storage.has(entity)) {
       const comp = storage.get(entity);
@@ -322,7 +363,7 @@ export class World {
   }
 
   disableComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
-    this.invalidateQueryCache();
+    this.bumpComponentRevision(componentType);
     const storage = this.components.get(componentType);
     if (storage && storage.has(entity)) {
       const comp = storage.get(entity);
@@ -339,7 +380,7 @@ export class World {
   }
 
   enableComponent<T>(entity: EntityId, componentType: ComponentType<T>): void {
-    this.invalidateQueryCache();
+    this.bumpComponentRevision(componentType);
     const disabledStorage = this.disabledComponents.get(componentType);
     if (disabledStorage && disabledStorage.has(entity)) {
       const comp = disabledStorage.get(entity);
@@ -395,8 +436,9 @@ export class World {
 
   query(queryDesc: Query, out?: EntityId[]): EntityId[] {
     const key = this.getQueryCacheKey(queryDesc);
+    this.buildQueryStamp(queryDesc);
     const cached = this.queryCache.get(key);
-    if (cached) {
+    if (cached && this.stampMatches(key)) {
       if (out) {
         out.length = 0;
         for (let i = 0; i < cached.length; i++) out.push(cached[i]);
@@ -417,6 +459,7 @@ export class World {
           const empty: EntityId[] = out || [];
           if (out) out.length = 0;
           this.queryCache.set(key, []);
+          this.queryStamps.set(key, this.stampScratch.slice(0, this.stampScratchLen));
           return empty;
         }
         if (storage.size < minSize) {
@@ -436,6 +479,7 @@ export class World {
       }
     }
     this.queryCache.set(key, results);
+    this.queryStamps.set(key, this.stampScratch.slice(0, this.stampScratchLen));
     if (out) {
       out.length = 0;
       for (let i = 0; i < results.length; i++) out.push(results[i]);
@@ -595,6 +639,32 @@ export class World {
     for (const entity of Array.from(this.activeEntities)) {
       this.destroyEntity(entity);
     }
+    this.touchEntitySet();
+  }
+
+  /**
+   * Mark a geometry/material/texture as shared by multiple entities. Shared
+   * resources are reference-counted: destroying one owning entity only
+   * releases it; the resource is GPU-disposed when the last owner is
+   * destroyed. Untracked resources keep the previous behavior (disposed on
+   * first destroy).
+   */
+  retainSharedResource(resource: object): number {
+    const count = (this.sharedResourceRefs.get(resource) || 0) + 1;
+    this.sharedResourceRefs.set(resource, count);
+    return count;
+  }
+
+  /** Release a shared reference. Returns true when the resource must be disposed. */
+  releaseSharedResource(resource: object): boolean {
+    const count = this.sharedResourceRefs.get(resource);
+    if (count === undefined) return true;
+    if (count <= 1) {
+      this.sharedResourceRefs.delete(resource);
+      return true;
+    }
+    this.sharedResourceRefs.set(resource, count - 1);
+    return false;
   }
 
   serialize(): any {
