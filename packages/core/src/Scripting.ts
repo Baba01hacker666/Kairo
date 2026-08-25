@@ -43,6 +43,22 @@ export class ScriptBehavior {
 
   // Pre-allocated vectors for frame evaluation to prevent GC spikes
   private _tempDir: THREE.Vector3 = new THREE.Vector3();
+  private _evalPos1: THREE.Vector3 = new THREE.Vector3();
+  private _evalPos2: THREE.Vector3 = new THREE.Vector3();
+  private _evalTarget: THREE.Vector3 = new THREE.Vector3();
+
+  private _setVector3(target: THREE.Vector3, prop: THREE.Vector3 | [number, number, number] | any): void {
+    if (!prop) return;
+    if (Array.isArray(prop)) {
+      target.set(prop[0] ?? 0, prop[1] ?? 0, prop[2] ?? 0);
+    } else if (typeof prop === 'object') {
+      if ('x' in prop && typeof prop.x === 'number') {
+        target.set(prop.x, prop.y ?? 0, prop.z ?? 0);
+      } else if (typeof prop[0] === 'number') {
+        target.set(prop[0], prop[1] ?? 0, prop[2] ?? 0);
+      }
+    }
+  }
 
   public attach(object: THREE.Object3D, app?: any): void {
     this.object = object;
@@ -258,8 +274,9 @@ export class ScriptBehavior {
   }
 
   /** Get current 3D position vector */
-  public getPosition(): THREE.Vector3 {
-    return this.object ? this.object.position : new THREE.Vector3();
+  public getPosition(target?: THREE.Vector3): THREE.Vector3 {
+    if (!this.object) return target ? target.set(0,0,0) : new THREE.Vector3();
+    return target ? target.copy(this.object.position) : this.object.position;
   }
 
   /** Distance to another object or vector */
@@ -279,9 +296,9 @@ export class ScriptBehavior {
   /** Hard cut shot immediately to 3D position & lookAt target */
   public cutToShot(pos: THREE.Vector3 | [number, number, number], lookAtTarget: THREE.Vector3 | [number, number, number]): this {
     if (this.app?.cameraController) {
-      const p = Array.isArray(pos) ? new THREE.Vector3(...pos) : pos;
-      const l = Array.isArray(lookAtTarget) ? new THREE.Vector3(...lookAtTarget) : lookAtTarget;
-      this.app.cameraController.cutTo(p, l);
+      this._setVector3(this._evalPos1, pos);
+      this._setVector3(this._evalTarget, lookAtTarget);
+      this.app.cameraController.cutTo(this._evalPos1, this._evalTarget);
     }
     return this;
   }
@@ -289,10 +306,10 @@ export class ScriptBehavior {
   /** Smooth 3D panning camera shot */
   public panCamera(fromPos: THREE.Vector3 | [number, number, number], toPos: THREE.Vector3 | [number, number, number], lookAtTarget: THREE.Vector3 | [number, number, number], durationSeconds: number = 3.0): this {
     if (this.app?.cameraController) {
-      const f = Array.isArray(fromPos) ? new THREE.Vector3(...fromPos) : fromPos;
-      const t = Array.isArray(toPos) ? new THREE.Vector3(...toPos) : toPos;
-      const l = Array.isArray(lookAtTarget) ? new THREE.Vector3(...lookAtTarget) : lookAtTarget;
-      this.app.cameraController.panTo(f, t, l, durationSeconds);
+      this._setVector3(this._evalPos1, fromPos);
+      this._setVector3(this._evalPos2, toPos);
+      this._setVector3(this._evalTarget, lookAtTarget);
+      this.app.cameraController.panTo(this._evalPos1, this._evalPos2, this._evalTarget, durationSeconds);
     }
     return this;
   }
@@ -300,8 +317,8 @@ export class ScriptBehavior {
   /** 360° Orbital Camera Shot around target */
   public orbitCamera(centerTarget: THREE.Vector3 | [number, number, number], radius: number = 8.0, speed: number = 1.0, durationSeconds: number = 5.0): this {
     if (this.app?.cameraController) {
-      const c = Array.isArray(centerTarget) ? new THREE.Vector3(...centerTarget) : centerTarget;
-      this.app.cameraController.orbitShot(c, radius, speed, durationSeconds);
+      this._setVector3(this._evalTarget, centerTarget);
+      this.app.cameraController.orbitShot(this._evalTarget, radius, speed, durationSeconds);
     }
     return this;
   }
@@ -317,9 +334,9 @@ export class ScriptBehavior {
   /** Crane / Jib Camera Shot (Rising or Falling smoothly) */
   public craneShot(startPos: THREE.Vector3 | [number, number, number], endPos: THREE.Vector3 | [number, number, number], durationSeconds: number = 4.0): this {
     if (this.app?.cameraController) {
-      const s = Array.isArray(startPos) ? new THREE.Vector3(...startPos) : startPos;
-      const e = Array.isArray(endPos) ? new THREE.Vector3(...endPos) : endPos;
-      this.app.cameraController.craneShot(s, e, durationSeconds);
+      this._setVector3(this._evalPos1, startPos);
+      this._setVector3(this._evalPos2, endPos);
+      this.app.cameraController.craneShot(this._evalPos1, this._evalPos2, durationSeconds);
     }
     return this;
   }
