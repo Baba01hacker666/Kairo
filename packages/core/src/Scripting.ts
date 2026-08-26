@@ -48,7 +48,10 @@ export class ScriptBehavior {
   private _evalTarget: THREE.Vector3 = new THREE.Vector3();
 
   private _setVector3(target: THREE.Vector3, prop: THREE.Vector3 | [number, number, number] | any): void {
-    if (!prop) return;
+    if (!prop) {
+      target.set(0, 0, 0);
+      return;
+    }
     if (Array.isArray(prop)) {
       target.set(prop[0] ?? 0, prop[1] ?? 0, prop[2] ?? 0);
     } else if (typeof prop === 'object') {
