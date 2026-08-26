@@ -93,8 +93,10 @@ export declare class PhysicsWorld {
     private bodyLookup;
     private collisionListeners;
     private triggerListeners;
-    private activePairs;
-    private _nextPairs;
+    private activePairsA;
+    private activePairsB;
+    private _nextPairsA;
+    private _nextPairsB;
     private static readonly FIXED_TIMESTEP;
     private static readonly MAX_SUBSTEPS;
     constructor(backend?: PhysicsBackendType);
@@ -109,6 +111,9 @@ export declare class PhysicsWorld {
     onTrigger(listener: (event: CollisionEvent) => void): void;
     private static _defaultRayDir;
     private static _tempRay;
+    private static _missResult;
+    private static _closestTempPoint;
+    private static _closestTempNormal;
     raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance?: number, target?: RaycastHit): RaycastHit;
     sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance?: number, target?: RaycastHit): RaycastHit;
     overlapSphere(center: Vector3, radius: number, target?: RigidBody[]): RigidBody[];
