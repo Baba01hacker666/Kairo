@@ -235,8 +235,10 @@ export class PhysicsWorld {
   private bodyLookup: Map<CANNON.Body, BodyEntry> = new Map();
   private collisionListeners: Array<(event: CollisionEvent) => void> = [];
   private triggerListeners: Array<(event: CollisionEvent) => void> = [];
-  private activePairs: Map<number, [BodyEntry, BodyEntry]> = new Map();
-  private _nextPairs: Map<number, [BodyEntry, BodyEntry]> = new Map();
+  private activePairsA: Map<number, BodyEntry> = new Map();
+  private activePairsB: Map<number, BodyEntry> = new Map();
+  private _nextPairsA: Map<number, BodyEntry> = new Map();
+  private _nextPairsB: Map<number, BodyEntry> = new Map();
 
   private static readonly FIXED_TIMESTEP = 1 / 60;
   private static readonly MAX_SUBSTEPS = 3;
@@ -263,8 +265,10 @@ export class PhysicsWorld {
     this.bodyLookup.clear();
     this.collisionListeners = [];
     this.triggerListeners = [];
-    this.activePairs.clear();
-    this._nextPairs.clear();
+    this.activePairsA.clear();
+    this.activePairsB.clear();
+    this._nextPairsA.clear();
+    this._nextPairsB.clear();
   }
 
   registerBody(body: RigidBody, collider: Collider, position: Vector3 = new Vector3()): void {
@@ -379,6 +383,9 @@ export class PhysicsWorld {
 
   private static _defaultRayDir = new Vector3(0, 0, -1);
   private static _tempRay = new Ray(new Vector3(), new Vector3());
+  private static _missResult: RaycastHit = { hasHit: false, body: null, collider: null, point: new Vector3(), normal: new Vector3(), distance: Infinity };
+  private static _closestTempPoint = new Vector3();
+  private static _closestTempNormal = new Vector3();
 
   raycast(originOrRay: Vector3 | Ray, directionOrMaxDist?: Vector3 | number, maxDistance: number = 100, target?: RaycastHit): RaycastHit {
     let ray: Ray;
@@ -394,14 +401,11 @@ export class PhysicsWorld {
       ray.direction.copy(dir);
     }
 
-    const closestHit: RaycastHit = target || {
-      hasHit: false,
-      body: null,
-      collider: null,
-      point: new Vector3(),
-      normal: new Vector3(),
-      distance: maxDist
-    };
+    let foundHit = false;
+    let closestDistance = maxDist;
+    let hitBody: RigidBody | null = null;
+    let hitCollider: Collider | null = null;
+
     if (target) {
       target.hasHit = false;
       target.body = null;
@@ -423,16 +427,42 @@ export class PhysicsWorld {
         hit = ray.intersectBox(bounds, PhysicsWorld._raycastTempResult);
       }
 
-      if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestHit.distance) {
-        closestHit.hasHit = true;
-        closestHit.distance = hit.distance;
-        closestHit.point.copy(hit.point);
-        closestHit.normal.copy(hit.normal);
-        closestHit.body = body;
-        closestHit.collider = collider;
+      if (hit.hasHit && hit.distance <= maxDist && hit.distance < closestDistance) {
+        foundHit = true;
+        closestDistance = hit.distance;
+        PhysicsWorld._closestTempPoint.copy(hit.point);
+        PhysicsWorld._closestTempNormal.copy(hit.normal);
+        hitBody = body;
+        hitCollider = collider;
       }
     }
-    return closestHit;
+
+    if (!foundHit) {
+      if (target) return target;
+      PhysicsWorld._missResult.hasHit = false;
+      PhysicsWorld._missResult.body = null;
+      PhysicsWorld._missResult.collider = null;
+      PhysicsWorld._missResult.distance = maxDist;
+      return PhysicsWorld._missResult;
+    }
+
+    const result = target || {
+      hasHit: true,
+      body: hitBody,
+      collider: hitCollider,
+      point: new Vector3(),
+      normal: new Vector3(),
+      distance: closestDistance
+    };
+
+    result.hasHit = true;
+    result.distance = closestDistance;
+    result.point.copy(PhysicsWorld._closestTempPoint);
+    result.normal.copy(PhysicsWorld._closestTempNormal);
+    result.body = hitBody;
+    result.collider = hitCollider;
+
+    return result;
   }
 
   sphereCast(originOrRay: Vector3 | Ray, radius: number, direction?: Vector3, maxDistance: number = 100, target?: RaycastHit): RaycastHit {
@@ -526,27 +556,32 @@ export class PhysicsWorld {
   }
 
   private collectCollisionEvents(): void {
-    const nextPairs = this._nextPairs;
-    nextPairs.clear();
+    const nextPairsA = this._nextPairsA;
+    const nextPairsB = this._nextPairsB;
+    nextPairsA.clear();
+    nextPairsB.clear();
     for (const contact of this.cannonWorld.contacts) {
       const a = this.bodyLookup.get(contact.bi);
       const b = this.bodyLookup.get(contact.bj);
       if (!a || !b) continue;
       const key = pairKey(contact.bi.id, contact.bj.id);
-      nextPairs.set(key, [a, b]);
-      this.emitCollision(this.activePairs.has(key) ? 'stay' : 'enter', a, b);
+      nextPairsA.set(key, a);
+      nextPairsB.set(key, b);
+      this.emitCollision(this.activePairsA.has(key) ? 'stay' : 'enter', a, b);
     }
-    for (const [key, pair] of this.activePairs.entries()) {
-      if (!nextPairs.has(key)) {
-        const [a, b] = pair;
+    for (const [key, a] of this.activePairsA.entries()) {
+      if (!nextPairsA.has(key)) {
+        const b = this.activePairsB.get(key)!;
         // Verify both bodies are still registered in the physics world
         if (this.bodyLookup.has(a.body.cannonBody!) && this.bodyLookup.has(b.body.cannonBody!)) {
           this.emitCollision('exit', a, b);
         }
       }
     }
-    this._nextPairs = this.activePairs;
-    this.activePairs = nextPairs;
+    this._nextPairsA = this.activePairsA;
+    this._nextPairsB = this.activePairsB;
+    this.activePairsA = nextPairsA;
+    this.activePairsB = nextPairsB;
   }
 
   private static _eventA: CollisionEvent = { phase: 'enter', body: null as any, other: null as any, collider: null as any, otherCollider: null as any };
