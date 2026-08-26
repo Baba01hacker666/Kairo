@@ -439,6 +439,9 @@ export class PhysicsWorld {
 
     if (!foundHit) {
       if (target) return target;
+      PhysicsWorld._missResult.hasHit = false;
+      PhysicsWorld._missResult.body = null;
+      PhysicsWorld._missResult.collider = null;
       PhysicsWorld._missResult.distance = maxDist;
       return PhysicsWorld._missResult;
     }
