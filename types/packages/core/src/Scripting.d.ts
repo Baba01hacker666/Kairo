@@ -32,6 +32,10 @@ export declare class ScriptBehavior {
     private _groundY;
     private _customData;
     private _tempDir;
+    private _evalPos1;
+    private _evalPos2;
+    private _evalTarget;
+    private _setVector3;
     attach(object: THREE.Object3D, app?: any): void;
     onStart(): void;
     onUpdate(dt: number): void;
@@ -78,7 +82,7 @@ export declare class ScriptBehavior {
     /** Change object position */
     setPosition(x: number, y: number, z: number): this;
     /** Get current 3D position vector */
-    getPosition(): THREE.Vector3;
+    getPosition(target?: THREE.Vector3): THREE.Vector3;
     /** Distance to another object or vector */
     getDistanceTo(other: THREE.Object3D | THREE.Vector3): number;
     /** Check if near another object */
