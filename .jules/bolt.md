@@ -66,3 +66,7 @@
 ## 2026-08-26 - [Object Reference Leak in Raycast Loop & Tuple Allocation Elimination]
 **Learning:** When using static/temporary reused objects (like `_raycastTempResult`) to avoid allocations inside a high-frequency loop (e.g. physics queries), copying their object references (e.g. `let hitPoint = hit.point`) is a critical bug. The shared object will be overwritten by the next loop iteration, causing the stored reference to point to wrong data. Also, allocating pair tuples `[BodyEntry, BodyEntry]` in contact tracking creates continuous GC pressure.
 **Action:** Always pre-allocate static `_temp` objects directly on the class and use the `.copy()` method to transfer primitive values out of reused objects before the next loop iteration. Split pair tracking maps into parallel single-value maps (`activePairsA` / `activePairsB`).
+
+## 2024-12-14 - [Eliminate Array Allocations in ShaderMaterial Updates]
+**Learning:** During rendering, custom shader materials are updated via `toThreeMaterial()` and `updateThreeUniforms()`, which iterate over `this.uniforms`. Using `Object.entries(this.uniforms)` inside these update loops implicitly allocates a new array on every frame execution or material sync, generating continuous garbage collection pressure on the hot path.
+**Action:** Replace `Object.entries()` loops with `for...in` loops in material update methods (`ShaderMaterial.ts`) to prevent implicit array allocations, avoiding GC spikes during high-frequency shader variable synchronization.
