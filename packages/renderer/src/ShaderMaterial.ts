@@ -90,8 +90,11 @@ export class CustomShaderMaterial {
     }
 
     const threeUniforms: Record<string, { value: any }> = {};
-    for (const [key, def] of Object.entries(this.uniforms)) {
-      threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
+    for (const key in this.uniforms) {
+      if (Object.prototype.hasOwnProperty.call(this.uniforms, key)) {
+        const def = this.uniforms[key];
+        threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
+      }
     }
 
     let sideEnum: THREE.Side = THREE.FrontSide;
@@ -120,11 +123,14 @@ export class CustomShaderMaterial {
 
   private updateThreeUniforms(): void {
     if (!this.threeMaterial) return;
-    for (const [key, def] of Object.entries(this.uniforms)) {
-      if (!this.threeMaterial.uniforms[key]) {
-        this.threeMaterial.uniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
-      } else {
-        this.threeMaterial.uniforms[key].value = this.formatThreeUniformValue(def.value, def.type);
+    for (const key in this.uniforms) {
+      if (Object.prototype.hasOwnProperty.call(this.uniforms, key)) {
+        const def = this.uniforms[key];
+        if (!this.threeMaterial.uniforms[key]) {
+          this.threeMaterial.uniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
+        } else {
+          this.threeMaterial.uniforms[key].value = this.formatThreeUniformValue(def.value, def.type);
+        }
       }
     }
     this.threeMaterial.vertexShader = this.vertexShader;
@@ -171,11 +177,14 @@ export class CustomShaderMaterial {
 
   public clone(): CustomShaderMaterial {
     const clonedUniforms: Record<string, UniformDefinition> = {};
-    for (const [k, v] of Object.entries(this.uniforms)) {
-      clonedUniforms[k] = {
-        type: v.type,
-        value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
-      };
+    for (const k in this.uniforms) {
+      if (Object.prototype.hasOwnProperty.call(this.uniforms, k)) {
+        const v = this.uniforms[k];
+        clonedUniforms[k] = {
+          type: v.type,
+          value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
+        };
+      }
     }
 
     return new CustomShaderMaterial(`${this.name} Copy`, {
@@ -192,6 +201,17 @@ export class CustomShaderMaterial {
   }
 
   public toJSON(): any {
+    const serializedUniforms: Record<string, any> = {};
+    for (const k in this.uniforms) {
+      if (Object.prototype.hasOwnProperty.call(this.uniforms, k)) {
+        const v = this.uniforms[k];
+        serializedUniforms[k] = {
+          type: v.type,
+          value: v.value instanceof Color ? v.value.toHex() : v.value
+        };
+      }
+    }
+
     return {
       id: this.id,
       name: this.name,
@@ -203,15 +223,7 @@ export class CustomShaderMaterial {
       blending: this.blending,
       depthWrite: this.depthWrite,
       depthTest: this.depthTest,
-      uniforms: Object.fromEntries(
-        Object.entries(this.uniforms).map(([k, v]) => [
-          k,
-          {
-            type: v.type,
-            value: v.value instanceof Color ? v.value.toHex() : v.value
-          }
-        ])
-      )
+      uniforms: serializedUniforms
     };
   }
 
@@ -228,11 +240,15 @@ export class CustomShaderMaterial {
     });
 
     if (json.uniforms) {
-      for (const [k, v] of Object.entries(json.uniforms as Record<string, UniformDefinition>)) {
-        if (v.type === 'color' && typeof v.value === 'string') {
-          mat.setUniform(k, new Color().setHex(v.value), 'color');
-        } else {
-          mat.setUniform(k, v.value, v.type);
+      const uniformsObj = json.uniforms as Record<string, UniformDefinition>;
+      for (const k in uniformsObj) {
+        if (Object.prototype.hasOwnProperty.call(uniformsObj, k)) {
+          const v = uniformsObj[k];
+          if (v.type === 'color' && typeof v.value === 'string') {
+            mat.setUniform(k, new Color().setHex(v.value), 'color');
+          } else {
+            mat.setUniform(k, v.value, v.type);
+          }
         }
       }
     }
