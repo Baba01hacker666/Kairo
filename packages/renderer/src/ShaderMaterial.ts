@@ -102,8 +102,8 @@ export class CustomShaderMaterial {
     const threeUniforms: Record<string, ThreeUniform> = {};
     for (const key in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
+      // eslint-disable-next-line security/detect-object-injection -- `key` is a validated own-property of the internal uniforms map
       const def = this.uniforms[key];
-      // eslint-disable-next-line security/detect-object-injection -- iteration key is a validated own-property of the internal uniforms map
       threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
     }
 
@@ -250,8 +250,8 @@ export class CustomShaderMaterial {
     const clonedUniforms: Record<string, UniformDefinition> = {};
     for (const k in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
-      const v = this.uniforms[k];
       // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key of the internal uniforms map
+      const v = this.uniforms[k];
       clonedUniforms[k] = {
         type: v.type,
         value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
