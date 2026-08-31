@@ -140,8 +140,8 @@ export class CustomShaderMaterial {
     // THREE.Color/Vector* objects are allocated on the per-frame sync.
     for (const key in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
+      // eslint-disable-next-line security/detect-object-injection -- `key` is a validated own-property of the internal uniforms map
       const def = this.uniforms[key];
-      // eslint-disable-next-line security/detect-object-injection -- `threeUniforms` is the internal THREE uniforms map keyed by validated uniform names
       const existing = threeUniforms[key];
       if (existing && existing.value !== undefined) {
         existing.value = this.syncThreeUniformValue(existing.value, def.value, def.type);
@@ -275,8 +275,8 @@ export class CustomShaderMaterial {
     const serializedUniforms: Record<string, { type: UniformType; value: unknown }> = {};
     for (const k in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
-      const v = this.uniforms[k];
       // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key of the internal uniforms map
+      const v = this.uniforms[k];
       serializedUniforms[k] = {
         type: v.type,
         value: v.value instanceof Color ? v.value.toHex() : v.value
