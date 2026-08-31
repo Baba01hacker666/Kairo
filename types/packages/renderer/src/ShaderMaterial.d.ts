@@ -35,6 +35,18 @@ export declare class CustomShaderMaterial {
     update(dt: number, elapsedTime: number): void;
     toThreeMaterial(): THREE.ShaderMaterial;
     private updateThreeUniforms;
+    /**
+     * Returns a THREE-compatible value for the given source value + type.
+     * If `target` is an existing THREE value of the correct type, it is mutated
+     * IN PLACE and returned (zero allocation); otherwise a new THREE object is
+     * allocated (fallback used only when a uniform was just created).
+     *
+     * `any` is required here: shader uniform values are intentionally polymorphic
+     * (number | number[] | Color | THREE.Color | THREE.Vector* | string), and the
+     * helper branches on runtime `instanceof` / `typeof` checks rather than a
+     * single static type.
+     */
+    private syncThreeUniformValue;
     private formatThreeUniformValue;
     clone(): CustomShaderMaterial;
     toJSON(): any;
