@@ -104,6 +104,7 @@ export class CustomShaderMaterial {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
       // eslint-disable-next-line security/detect-object-injection -- `key` is a validated own-property of the internal uniforms map
       const def = this.uniforms[key];
+      // eslint-disable-next-line security/detect-object-injection -- same validated `key` written into the internal THREE uniforms map
       threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
     }
 
@@ -142,6 +143,7 @@ export class CustomShaderMaterial {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
       // eslint-disable-next-line security/detect-object-injection -- `key` is a validated own-property of the internal uniforms map
       const def = this.uniforms[key];
+      // eslint-disable-next-line security/detect-object-injection -- `threeUniforms` is the internal THREE uniforms map keyed by validated uniform names
       const existing = threeUniforms[key];
       if (existing && existing.value !== undefined) {
         existing.value = this.syncThreeUniformValue(existing.value, def.value, def.type);
@@ -252,6 +254,7 @@ export class CustomShaderMaterial {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
       // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key of the internal uniforms map
       const v = this.uniforms[k];
+      // eslint-disable-next-line security/detect-object-injection -- same validated `k` written into the internal cloned map
       clonedUniforms[k] = {
         type: v.type,
         value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
@@ -277,6 +280,7 @@ export class CustomShaderMaterial {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
       // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key of the internal uniforms map
       const v = this.uniforms[k];
+      // eslint-disable-next-line security/detect-object-injection -- same validated `k` as above, written into the internal serialized map
       serializedUniforms[k] = {
         type: v.type,
         value: v.value instanceof Color ? v.value.toHex() : v.value
