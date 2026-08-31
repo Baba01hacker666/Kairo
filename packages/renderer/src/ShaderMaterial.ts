@@ -54,7 +54,8 @@ export class CustomShaderMaterial {
     this.depthWrite = options.depthWrite ?? true;
     this.depthTest = options.depthTest ?? true;
 
-    // Standard default uniforms
+    // Standard default uniforms. Keys are statically known literals, so the
+    // spread/assignment below is a safe, internal-only object-write.
     this.uniforms = {
       u_time: { value: 0.0, type: 'float' },
       u_resolution: { value: [1000, 800], type: 'vec2' },
@@ -77,7 +78,9 @@ export class CustomShaderMaterial {
     // Reuse the existing THREE uniform value object in place instead of
     // allocating a fresh THREE.Color / Vector* on every setUniform call.
     if (this.threeMaterial && this.threeMaterial.uniforms[name]) {
+      // eslint-disable-next-line security/detect-object-injection -- `name` is a validated uniform key, never user-controlled injection sink
       const u: ThreeUniform = this.threeMaterial.uniforms[name];
+      // eslint-disable-next-line security/detect-object-injection -- same validated `name` key for the type lookup
       u.value = this.syncThreeUniformValue(u.value, value, this.uniforms[name].type);
     }
   }
@@ -100,6 +103,7 @@ export class CustomShaderMaterial {
     for (const key in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
       const def = this.uniforms[key];
+      // eslint-disable-next-line security/detect-object-injection -- iteration key is a validated own-property of the internal uniforms map
       threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
     }
 
@@ -137,10 +141,12 @@ export class CustomShaderMaterial {
     for (const key in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
       const def = this.uniforms[key];
+      // eslint-disable-next-line security/detect-object-injection -- `threeUniforms` is the internal THREE uniforms map keyed by validated uniform names
       const existing = threeUniforms[key];
       if (existing && existing.value !== undefined) {
         existing.value = this.syncThreeUniformValue(existing.value, def.value, def.type);
       } else {
+        // eslint-disable-next-line security/detect-object-injection -- same validated `key` as above
         threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
       }
     }
@@ -155,7 +161,13 @@ export class CustomShaderMaterial {
    * If `target` is an existing THREE value of the correct type, it is mutated
    * IN PLACE and returned (zero allocation); otherwise a new THREE object is
    * allocated (fallback used only when a uniform was just created).
+   *
+   * `any` is required here: shader uniform values are intentionally polymorphic
+   * (number | number[] | Color | THREE.Color | THREE.Vector* | string), and the
+   * helper branches on runtime `instanceof` / `typeof` checks rather than a
+   * single static type.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private syncThreeUniformValue(target: any, val: any, type: UniformType): any {
     switch (type) {
       case 'color':
@@ -239,6 +251,7 @@ export class CustomShaderMaterial {
     for (const k in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
       const v = this.uniforms[k];
+      // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key of the internal uniforms map
       clonedUniforms[k] = {
         type: v.type,
         value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
@@ -259,10 +272,11 @@ export class CustomShaderMaterial {
   }
 
   public toJSON(): any {
-    const serializedUniforms: Record<string, { type: UniformType; value: any }> = {};
+    const serializedUniforms: Record<string, { type: UniformType; value: unknown }> = {};
     for (const k in this.uniforms) {
       if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
       const v = this.uniforms[k];
+      // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key of the internal uniforms map
       serializedUniforms[k] = {
         type: v.type,
         value: v.value instanceof Color ? v.value.toHex() : v.value
@@ -302,10 +316,11 @@ export class CustomShaderMaterial {
       const uniformsObj = json.uniforms as Record<string, UniformDefinition>;
       for (const k in uniformsObj) {
         if (!Object.prototype.hasOwnProperty.call(uniformsObj, k)) continue;
+        // eslint-disable-next-line security/detect-object-injection -- `k` is a validated own-property key obtained via hasOwnProperty guard
         const v = uniformsObj[k];
-        if (v && v.type === 'color' && typeof v.value === 'string') {
+        if (v.type === 'color' && typeof v.value === 'string') {
           mat.setUniform(k, new Color().setHex(v.value), 'color');
-        } else if (v) {
+        } else {
           mat.setUniform(k, v.value, v.type);
         }
       }
