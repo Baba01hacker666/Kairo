@@ -21,6 +21,10 @@ export interface CustomShaderMaterialOptions {
   depthTest?: boolean;
 }
 
+interface ThreeUniform {
+  value: any;
+}
+
 export class CustomShaderMaterial {
   public id: string;
   public name: string;
@@ -42,7 +46,7 @@ export class CustomShaderMaterial {
 
     this.vertexShader = options.vertexShader || CustomShaderMaterial.DEFAULT_VERTEX_SHADER;
     this.fragmentShader = options.fragmentShader || CustomShaderMaterial.DEFAULT_FRAGMENT_SHADER;
-    
+
     this.transparent = options.transparent ?? false;
     this.wireframe = options.wireframe ?? false;
     this.side = options.side || 'front';
@@ -70,8 +74,11 @@ export class CustomShaderMaterial {
       if (type) this.uniforms[name].type = type;
     }
 
+    // Reuse the existing THREE uniform value object in place instead of
+    // allocating a fresh THREE.Color / Vector* on every setUniform call.
     if (this.threeMaterial && this.threeMaterial.uniforms[name]) {
-      this.threeMaterial.uniforms[name].value = this.formatThreeUniformValue(value, this.uniforms[name].type);
+      const u: ThreeUniform = this.threeMaterial.uniforms[name];
+      u.value = this.syncThreeUniformValue(u.value, value, this.uniforms[name].type);
     }
   }
 
@@ -89,12 +96,11 @@ export class CustomShaderMaterial {
       return this.threeMaterial;
     }
 
-    const threeUniforms: Record<string, { value: any }> = {};
+    const threeUniforms: Record<string, ThreeUniform> = {};
     for (const key in this.uniforms) {
-      if (Object.prototype.hasOwnProperty.call(this.uniforms, key)) {
-        const def = this.uniforms[key];
-        threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
-      }
+      if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
+      const def = this.uniforms[key];
+      threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
     }
 
     let sideEnum: THREE.Side = THREE.FrontSide;
@@ -123,19 +129,72 @@ export class CustomShaderMaterial {
 
   private updateThreeUniforms(): void {
     if (!this.threeMaterial) return;
+    const threeUniforms = this.threeMaterial.uniforms;
+
+    // Zero-allocation hot path: iterate with for...in + hasOwnProperty and
+    // mutate the existing THREE uniform value in place. No new arrays or
+    // THREE.Color/Vector* objects are allocated on the per-frame sync.
     for (const key in this.uniforms) {
-      if (Object.prototype.hasOwnProperty.call(this.uniforms, key)) {
-        const def = this.uniforms[key];
-        if (!this.threeMaterial.uniforms[key]) {
-          this.threeMaterial.uniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
-        } else {
-          this.threeMaterial.uniforms[key].value = this.formatThreeUniformValue(def.value, def.type);
-        }
+      if (!Object.prototype.hasOwnProperty.call(this.uniforms, key)) continue;
+      const def = this.uniforms[key];
+      const existing = threeUniforms[key];
+      if (existing && existing.value !== undefined) {
+        existing.value = this.syncThreeUniformValue(existing.value, def.value, def.type);
+      } else {
+        threeUniforms[key] = { value: this.formatThreeUniformValue(def.value, def.type) };
       }
     }
+
     this.threeMaterial.vertexShader = this.vertexShader;
     this.threeMaterial.fragmentShader = this.fragmentShader;
     this.threeMaterial.needsUpdate = true;
+  }
+
+  /**
+   * Returns a THREE-compatible value for the given source value + type.
+   * If `target` is an existing THREE value of the correct type, it is mutated
+   * IN PLACE and returned (zero allocation); otherwise a new THREE object is
+   * allocated (fallback used only when a uniform was just created).
+   */
+  private syncThreeUniformValue(target: any, val: any, type: UniformType): any {
+    switch (type) {
+      case 'color':
+        if (target instanceof THREE.Color) {
+          if (val instanceof Color) target.setRGB(val.r, val.g, val.b);
+          else if (val instanceof THREE.Color) target.copy(val);
+          else if (typeof val === 'string') target.set(val);
+          else if (Array.isArray(val)) target.setRGB(val[0], val[1], val[2]);
+          else if (val && typeof val === 'object') target.setRGB(val.r ?? 1, val.g ?? 1, val.b ?? 1);
+          else return this.formatThreeUniformValue(val, type);
+          return target;
+        }
+        break;
+      case 'vec2':
+        if (target instanceof THREE.Vector2) {
+          if (Array.isArray(val)) target.set(val[0], val[1]);
+          else if (val && typeof val === 'object') target.set(val.x ?? val[0] ?? 0, val.y ?? val[1] ?? 0);
+          else return this.formatThreeUniformValue(val, type);
+          return target;
+        }
+        break;
+      case 'vec3':
+        if (target instanceof THREE.Vector3) {
+          if (Array.isArray(val)) target.set(val[0], val[1], val[2]);
+          else if (val && typeof val === 'object') target.set(val.x ?? val.r ?? 0, val.y ?? val.g ?? 0, val.z ?? val.b ?? 0);
+          else return this.formatThreeUniformValue(val, type);
+          return target;
+        }
+        break;
+      case 'vec4':
+        if (target instanceof THREE.Vector4) {
+          if (Array.isArray(val)) target.set(val[0], val[1], val[2], val[3] ?? 1.0);
+          else if (val && typeof val === 'object') target.set(val.x ?? val.r ?? 0, val.y ?? val.g ?? 0, val.z ?? val.b ?? 0, val.w ?? val.a ?? 1.0);
+          else return this.formatThreeUniformValue(val, type);
+          return target;
+        }
+        break;
+    }
+    return this.formatThreeUniformValue(val, type);
   }
 
   private formatThreeUniformValue(val: any, type: UniformType): any {
@@ -178,13 +237,12 @@ export class CustomShaderMaterial {
   public clone(): CustomShaderMaterial {
     const clonedUniforms: Record<string, UniformDefinition> = {};
     for (const k in this.uniforms) {
-      if (Object.prototype.hasOwnProperty.call(this.uniforms, k)) {
-        const v = this.uniforms[k];
-        clonedUniforms[k] = {
-          type: v.type,
-          value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
-        };
-      }
+      if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
+      const v = this.uniforms[k];
+      clonedUniforms[k] = {
+        type: v.type,
+        value: Array.isArray(v.value) ? [...v.value] : v.value instanceof Color ? new Color(v.value.r, v.value.g, v.value.b, v.value.a) : v.value
+      };
     }
 
     return new CustomShaderMaterial(`${this.name} Copy`, {
@@ -201,15 +259,14 @@ export class CustomShaderMaterial {
   }
 
   public toJSON(): any {
-    const serializedUniforms: Record<string, any> = {};
+    const serializedUniforms: Record<string, { type: UniformType; value: any }> = {};
     for (const k in this.uniforms) {
-      if (Object.prototype.hasOwnProperty.call(this.uniforms, k)) {
-        const v = this.uniforms[k];
-        serializedUniforms[k] = {
-          type: v.type,
-          value: v.value instanceof Color ? v.value.toHex() : v.value
-        };
-      }
+      if (!Object.prototype.hasOwnProperty.call(this.uniforms, k)) continue;
+      const v = this.uniforms[k];
+      serializedUniforms[k] = {
+        type: v.type,
+        value: v.value instanceof Color ? v.value.toHex() : v.value
+      };
     }
 
     return {
@@ -239,16 +296,17 @@ export class CustomShaderMaterial {
       depthTest: json.depthTest
     });
 
+    // Iterate defensively with hasOwnProperty so a malicious/odd payload cannot
+    // inject prototype properties (prototype-pollution safe).
     if (json.uniforms) {
       const uniformsObj = json.uniforms as Record<string, UniformDefinition>;
       for (const k in uniformsObj) {
-        if (Object.prototype.hasOwnProperty.call(uniformsObj, k)) {
-          const v = uniformsObj[k];
-          if (v.type === 'color' && typeof v.value === 'string') {
-            mat.setUniform(k, new Color().setHex(v.value), 'color');
-          } else {
-            mat.setUniform(k, v.value, v.type);
-          }
+        if (!Object.prototype.hasOwnProperty.call(uniformsObj, k)) continue;
+        const v = uniformsObj[k];
+        if (v && v.type === 'color' && typeof v.value === 'string') {
+          mat.setUniform(k, new Color().setHex(v.value), 'color');
+        } else if (v) {
+          mat.setUniform(k, v.value, v.type);
         }
       }
     }
@@ -272,7 +330,7 @@ export class CustomShaderMaterial {
       vLocalPosition = position;
       vNormal = normalize(normalMatrix * normal);
       vWorldNormal = normalize(mat3(modelMatrix) * normal);
-      
+
       // Local Space -> World Space Matrix Transform
       vec4 worldPos = modelMatrix * vec4(position, 1.0);
       vWorldPosition = worldPos.xyz;
@@ -292,8 +350,8 @@ export class CustomShaderMaterial {
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vWorldNormal;
-    varying vec3 vWorldPosition;
     varying vec3 vLocalPosition;
+    varying vec3 vWorldPosition;
 
     void main() {
       vec3 lightDir = normalize(vec3(1.0, 2.0, 1.0));
