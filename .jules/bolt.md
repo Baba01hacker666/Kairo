@@ -66,3 +66,7 @@
 ## 2026-08-26 - [Object Reference Leak in Raycast Loop & Tuple Allocation Elimination]
 **Learning:** When using static/temporary reused objects (like `_raycastTempResult`) to avoid allocations inside a high-frequency loop (e.g. physics queries), copying their object references (e.g. `let hitPoint = hit.point`) is a critical bug. The shared object will be overwritten by the next loop iteration, causing the stored reference to point to wrong data. Also, allocating pair tuples `[BodyEntry, BodyEntry]` in contact tracking creates continuous GC pressure.
 **Action:** Always pre-allocate static `_temp` objects directly on the class and use the `.copy()` method to transfer primitive values out of reused objects before the next loop iteration. Split pair tracking maps into parallel single-value maps (`activePairsA` / `activePairsB`).
+
+## 2026-08-31 - [Zero-Allocation Iteration in Shader Materials]
+**Learning:** High-frequency rendering systems updating dynamic shader properties (like CustomShaderMaterial converting uniforms to THREE.js) often iterate over uniform dictionaries. Using Object.entries() implicitly allocates new arrays on every frame, generating continuous GC pressure and slowing down rendering loops.
+**Action:** Replaced Object.entries() with standard for...in loops and Object.prototype.hasOwnProperty.call() to perform zero-allocation iteration on hot paths like updateThreeUniforms() and toThreeMaterial().
