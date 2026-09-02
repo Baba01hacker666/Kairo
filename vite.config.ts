@@ -36,7 +36,8 @@ export default defineConfig({
         arrival: 'examples/the-arrival/index.html',
         geometryshowcase: 'examples/geometry-showcase/index.html',
         easyscriptgame: 'examples/easy-script-game/index.html',
-        foxodyssey: 'examples/fox-odyssey/index.html'
+        foxodyssey: 'examples/fox-odyssey/index.html',
+        neonblitz: 'examples/neon-blitz/index.html'
       },
       output: {
         manualChunks(id) {
