@@ -28,10 +28,10 @@ function buildBox(spec: BoxSpec, shadows: boolean): THREE.Mesh {
   return mesh;
 }
 
-export function getRandomArenaPosition(clearance: number, y: number): THREE.Vector3 {
+export function getRandomArenaPosition(clearance: number, height: number): THREE.Vector3 {
   return new THREE.Vector3(
     (Math.random() - 0.5) * (ARENA_R * 2 - clearance),
-    y,
+    height,
     (Math.random() - 0.5) * (ARENA_R * 2 - clearance)
   );
 }
@@ -51,12 +51,13 @@ export function buildWorld(app: KairoApp, shadows: boolean) {
   );
   groundMesh.receiveShadow = true;
   scene.add(groundMesh);
-  app.createBox({
+  const ground = app.createBox({
     size: [ARENA_R * 2 + 4, 1, ARENA_R * 2 + 4],
     position: [0, -0.5, 0],
     color: 0x0a0a18,
-    physics: 'static'
+    physics: 'static',
   });
+  ground.mesh.visible = false;
 
   const grid = new THREE.GridHelper(ARENA_R * 2, 28, 0x22d3ee, 0xa855f7);
   (grid.material as THREE.Material).transparent = true;
@@ -64,22 +65,31 @@ export function buildWorld(app: KairoApp, shadows: boolean) {
   grid.position.y = 0.02;
   scene.add(grid);
 
-  // Arena walls
+  // Arena walls (physical boundaries + neon visuals)
   const edgeMat = new THREE.MeshStandardMaterial({
     color: 0x05010f,
     emissive: 0x22d3ee,
     emissiveIntensity: 2.2,
     roughness: 0.4,
-    metalness: 0.2
+    metalness: 0.2,
   });
   const wallThickness = 1.0;
   const wallSpecs: BoxSpec[] = [
     { width: ARENA_R * 2 + wallThickness * 2, height: WALL_HEIGHT, depth: wallThickness, x: 0, y: WALL_HEIGHT / 2, z: ARENA_R + wallThickness / 2, color: 0x0e1030 },
     { width: ARENA_R * 2 + wallThickness * 2, height: WALL_HEIGHT, depth: wallThickness, x: 0, y: WALL_HEIGHT / 2, z: -ARENA_R - wallThickness / 2, color: 0x0e1030 },
     { width: wallThickness, height: WALL_HEIGHT, depth: ARENA_R * 2 + wallThickness * 2, x: ARENA_R + wallThickness / 2, y: WALL_HEIGHT / 2, z: 0, color: 0x0e1030 },
-    { width: wallThickness, height: WALL_HEIGHT, depth: ARENA_R * 2 + wallThickness * 2, x: -ARENA_R - wallThickness / 2, y: WALL_HEIGHT / 2, z: 0, color: 0x0e1030 }
+    { width: wallThickness, height: WALL_HEIGHT, depth: ARENA_R * 2 + wallThickness * 2, x: -ARENA_R - wallThickness / 2, y: WALL_HEIGHT / 2, z: 0, color: 0x0e1030 },
   ];
-  for (const spec of wallSpecs) scene.add(buildBox(spec, shadows));
+  for (const spec of wallSpecs) {
+    scene.add(buildBox(spec, shadows));
+    const wall = app.createBox({
+      size: [spec.width, spec.height, spec.depth],
+      position: [spec.x, spec.y, spec.z],
+      color: spec.color,
+      physics: 'static',
+    });
+    wall.mesh.visible = false;
+  }
 
   // Neon top edges
   const neonSpecs: Array<[number, number, number, number]> = [
@@ -88,9 +98,9 @@ export function buildWorld(app: KairoApp, shadows: boolean) {
     [0.5, ARENA_R * 2 + wallThickness * 2, ARENA_R + wallThickness / 2, 0],
     [0.5, ARENA_R * 2 + wallThickness * 2, -ARENA_R - wallThickness / 2, 0]
   ];
-  for (const [width, depth, x, z] of neonSpecs) {
+  for (const [width, depth, posX, posZ] of neonSpecs) {
     const neon = new THREE.Mesh(new THREE.BoxGeometry(width, 0.12, depth), edgeMat);
-    neon.position.set(x, WALL_HEIGHT + 0.06, z);
+    neon.position.set(posX, WALL_HEIGHT + 0.06, posZ);
     scene.add(neon);
   }
 

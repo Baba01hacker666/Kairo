@@ -55,7 +55,7 @@ export function createControls(app: KairoApp, buttons: { sprint: string; jump: s
       const rect = joyZone.getBoundingClientRect();
       joyCenter.x = rect.left + rect.width / 2;
       joyCenter.y = rect.top + rect.height / 2;
-      updateJoystick(touchEvent.touches[0]);
+      updateJoystick(touchEvent.changedTouches[0]);
     },
     { passive: false }
   );
@@ -115,19 +115,19 @@ export function createControls(app: KairoApp, buttons: { sprint: string; jump: s
   );
 
   function readMove(): MoveInput {
-    let x = 0;
-    let z = 0;
-    if (app.isKeyDown('KeyA') || app.isKeyDown('ArrowLeft')) x -= 1;
-    if (app.isKeyDown('KeyD') || app.isKeyDown('ArrowRight')) x += 1;
-    if (app.isKeyDown('KeyW') || app.isKeyDown('ArrowUp')) z -= 1;
-    if (app.isKeyDown('KeyS') || app.isKeyDown('ArrowDown')) z += 1;
+    let moveX = 0;
+    let moveZ = 0;
+    if (app.isKeyDown('KeyA') || app.isKeyDown('ArrowLeft')) moveX -= 1;
+    if (app.isKeyDown('KeyD') || app.isKeyDown('ArrowRight')) moveX += 1;
+    if (app.isKeyDown('KeyW') || app.isKeyDown('ArrowUp')) moveZ -= 1;
+    if (app.isKeyDown('KeyS') || app.isKeyDown('ArrowDown')) moveZ += 1;
 
     if (app.input.touchJoystickActive) {
       const joystick = app.input.touchJoystickVector;
-      x += joystick.x;
-      z += joystick.y;
+      moveX += joystick.x;
+      moveZ += joystick.y;
     }
-    return { x, z };
+    return { x: moveX, z: moveZ };
   }
 
   return {
