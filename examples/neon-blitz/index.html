@@ -142,22 +142,33 @@
       transform: translate(-50%, -50%);
       transition: none;
     }
-    #btn-action {
+    .action-buttons {
+      position: absolute;
       right: 30px;
-      width: 90px; height: 90px;
-      background: rgba(168,85,247,0.15);
-      border: 2px solid rgba(168,85,247,0.5);
-      color: #d8b4fe;
-      font-size: 15px;
-      font-weight: 800;
+      bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: flex-end;
+    }
+    .action-btn {
+      width: 82px; height: 82px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 15px;
+      font-weight: 800;
+      color: #d8b4fe;
+      background: rgba(168,85,247,0.15);
+      border: 2px solid rgba(168,85,247,0.5);
     }
-    #btn-action.active { background: rgba(168,85,247,0.5); }
+    .action-btn.active { background: rgba(168,85,247,0.5); }
+    #btn-jump { border-color: rgba(34,211,238,0.5); color: #67e8f9; background: rgba(34,211,238,0.12); }
+    #btn-jump.active { background: rgba(34,211,238,0.45); }
 
     @media (min-width: 768px) {
-      .touch-zone { display: none; }
+      .touch-zone, .action-buttons { display: none; }
     }
   </style>
 </head>
@@ -193,13 +204,16 @@
     <div class="touch-zone" id="joy-zone">
       <div id="joy-knob"></div>
     </div>
-    <div class="touch-zone" id="btn-action">SPRINT</div>
+    <div class="action-buttons">
+      <div class="touch-zone action-btn" id="btn-jump">JUMP</div>
+      <div class="touch-zone action-btn" id="btn-sprint">SPRINT</div>
+    </div>
   </div>
 
   <div id="start-screen">
     <h1>⚡ NEON BLITZ</h1>
     <p>Roll your glowing orb through the neon arena. <b>Collect cyan orbs</b> for points, <b>dodge the spinning red spikes</b>, and hold <b>Sprint</b> to dash. Survive as long as you can and set a high score!</p>
-    <p class="controls-hint">WASD / Arrow Keys to move &nbsp;·&nbsp; Space / Shift to sprint</p>
+    <p class="controls-hint">WASD / Arrow Keys to move &nbsp;·&nbsp; Space / Shift to sprint &nbsp;·&nbsp; J to jump</p>
     <button class="btn" id="start-btn">▶ START GAME</button>
   </div>
 
