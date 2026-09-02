@@ -153,10 +153,10 @@ app.onUpdate((dt) => {
   if (!over && body) {
     const move = controls.readMove();
     const speed = controls.isSprintPressed() ? 16 : 9.5;
-    const magnitude = Math.hypot(move.x, move.z);
+    const magnitude = Math.hypot(move.xAxis, move.zAxis);
     const scale = magnitude > 1 ? speed / magnitude : speed;
-    body.velocity.x = move.x * scale;
-    body.velocity.z = move.z * scale;
+    body.velocity.x = move.xAxis * scale;
+    body.velocity.z = move.zAxis * scale;
     body.velocity.y = Math.max(-40, body.velocity.y);
 
     // Jump only while touching the ground (position-based contact check).

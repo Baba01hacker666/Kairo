@@ -1,8 +1,8 @@
 import { KairoApp } from '@kairo/core';
 
 export interface MoveInput {
-  x: number;
-  z: number;
+  xAxis: number;
+  zAxis: number;
 }
 
 export interface GameControls {
@@ -127,7 +127,7 @@ export function createControls(app: KairoApp, buttons: { sprint: string; jump: s
       moveX += joystick.x;
       moveZ += joystick.y;
     }
-    return { x: moveX, z: moveZ };
+    return { xAxis: moveX, zAxis: moveZ };
   }
 
   return {
