@@ -16,7 +16,7 @@ export class SharedEntityContext<T extends Record<string, any> = Record<string, 
   public readonly id: string;
   public readonly properties: Readonly<T>;
   private _entityIds: Set<EntityId> = new Set();
-  private _cachedPropertyKeys: string[];
+  public readonly _cachedPropertyKeys: string[];
 
   constructor(id: string, properties: T) {
     this.id = id;
@@ -149,7 +149,9 @@ export class SharedEntityContextManager {
     this.contexts.forEach((ctx) => {
       const count = ctx.entityCount;
       totalSharing += count;
-      totalKeysCount += Object.keys(ctx.properties).length;
+      // ⚡ Bolt: Avoid using `Object.keys()` in hot paths/loops (like getStats)
+      // since it generates GC pressure by allocating new arrays. Use the cached array length.
+      totalKeysCount += ctx._cachedPropertyKeys.length;
     });
 
     // Estimate ~64 bytes saved per redundant object property per entity

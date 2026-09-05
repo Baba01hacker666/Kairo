@@ -70,3 +70,6 @@
 ## 2026-08-31 - [Zero-Allocation Iteration in Shader Materials]
 **Learning:** High-frequency rendering systems updating dynamic shader properties (like CustomShaderMaterial converting uniforms to THREE.js) often iterate over uniform dictionaries. Using Object.entries() implicitly allocates new arrays on every frame, generating continuous GC pressure and slowing down rendering loops.
 **Action:** Replaced Object.entries() with standard for...in loops and Object.prototype.hasOwnProperty.call() to perform zero-allocation iteration on hot paths like updateThreeUniforms() and toThreeMaterial().
+## 2024-12-12 - [Eliminate Object.keys() array allocations in high-frequency loops]
+**Learning:** Calling `Object.keys()` inside a loop over collections (e.g. `SharedEntityContextManager.getStats()`) implicitly allocates a new array on every iteration, which creates continuous garbage collection (GC) pressure. Since the properties are already cached when the class is constructed, doing so is redundant and harms performance.
+**Action:** Pre-allocate or cache the results of `Object.keys()` as a property (like `_cachedPropertyKeys`), and use the cached array length or elements when iterating or calculating statistics, especially in frequently-called metrics functions or game loops.
