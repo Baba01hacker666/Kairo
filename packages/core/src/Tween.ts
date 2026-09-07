@@ -89,7 +89,11 @@ function cloneTweenable(value: Tweenable): Tweenable {
   if (typeof value === 'number') return value;
   if (Array.isArray(value)) return value.slice();
   const copy: Record<string, number> = {};
-  for (const key of Object.keys(value)) copy[key] = (value as Record<string, number>)[key];
+  for (const key in value) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      copy[key] = (value as Record<string, number>)[key];
+    }
+  }
   return copy;
 }
 
@@ -136,7 +140,8 @@ export class Tween {
     this.onUpdateCb = options.onUpdate;
     this.onCompleteCb = options.onComplete;
 
-    for (const key of Object.keys(to)) {
+    for (const key in to) {
+      if (!Object.prototype.hasOwnProperty.call(to, key)) continue;
       const fromVal = from ? from[key] : target[key];
       const toVal = to[key];
       if (!isTweenable(fromVal) || !isTweenable(toVal)) continue;
@@ -279,7 +284,11 @@ export class TweenManager {
   /** Create a tween from `from` to the target's current values. */
   public from(target: any, from: Record<string, unknown>, options?: TweenOptions): Tween {
     const current: Record<string, unknown> = {};
-    for (const key of Object.keys(from)) current[key] = target[key];
+    for (const key in from) {
+      if (Object.prototype.hasOwnProperty.call(from, key)) {
+        current[key] = target[key];
+      }
+    }
     return this.add(new Tween(target, current, from, options));
   }
 
