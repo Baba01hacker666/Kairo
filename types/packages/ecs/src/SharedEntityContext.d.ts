@@ -16,6 +16,7 @@ export declare class SharedEntityContext<T extends Record<string, any> = Record<
     private _cachedPropertyKeys;
     constructor(id: string, properties: T);
     get entityCount(): number;
+    get propertyKeyCount(): number;
     get entityIds(): ReadonlySet<EntityId>;
     get<K extends keyof T>(key: K): T[K];
     has(key: string): boolean;
