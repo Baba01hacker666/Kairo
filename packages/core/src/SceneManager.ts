@@ -61,7 +61,11 @@ export class SceneManager {
 
     const disposeMaterial = (mat: THREE.Material) => {
       // Dispose any textures attached to the material to avoid GPU leaks.
-      for (const value of Object.values(mat)) {
+      // ⚡ Bolt: for...in with hasOwnProperty avoids the temporary array that
+      // Object.values() would allocate on material disposal hot paths.
+      for (const key in mat) {
+        if (!Object.prototype.hasOwnProperty.call(mat, key)) continue;
+        const value = (mat as any)[key];
         if (value instanceof THREE.Texture) value.dispose();
       }
       mat.dispose();
