@@ -70,3 +70,7 @@
 ## 2026-08-31 - [Zero-Allocation Iteration in Shader Materials]
 **Learning:** High-frequency rendering systems updating dynamic shader properties (like CustomShaderMaterial converting uniforms to THREE.js) often iterate over uniform dictionaries. Using Object.entries() implicitly allocates new arrays on every frame, generating continuous GC pressure and slowing down rendering loops.
 **Action:** Replaced Object.entries() with standard for...in loops and Object.prototype.hasOwnProperty.call() to perform zero-allocation iteration on hot paths like updateThreeUniforms() and toThreeMaterial().
+
+## 2024-12-14 - [Eliminate GC Allocations in Metrics Polling]
+**Learning:** Performance metrics functions like `SharedEntityContextManager.getStats()` that poll values periodically can introduce GC churn if they dynamically calculate values like `Object.keys(ctx.properties).length` over large collections. Since the properties of `SharedEntityContext` are invariant and already cached as `_cachedPropertyKeys` upon instantiation, executing `Object.keys()` over and over on each statistics request implicitly allocates new arrays unnecessarily.
+**Action:** Expose cached lengths of invariant object keys via a class getter (e.g. `get propertyKeyCount()`) to replace dynamic `Object.keys()` calls in metrics or other polling methods to prevent garbage collection spikes.
