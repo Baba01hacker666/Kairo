@@ -70,3 +70,7 @@
 ## 2026-08-31 - [Zero-Allocation Iteration in Shader Materials]
 **Learning:** High-frequency rendering systems updating dynamic shader properties (like CustomShaderMaterial converting uniforms to THREE.js) often iterate over uniform dictionaries. Using Object.entries() implicitly allocates new arrays on every frame, generating continuous GC pressure and slowing down rendering loops.
 **Action:** Replaced Object.entries() with standard for...in loops and Object.prototype.hasOwnProperty.call() to perform zero-allocation iteration on hot paths like updateThreeUniforms() and toThreeMaterial().
+
+## 2024-12-11 - [Zero-Allocation Length Extraction from Invariant Objects]
+**Learning:** Functions that frequently need the length or array of keys for an object whose keys never change after initialization (like ECS properties or stats gathering loops) can cause unnecessary garbage collection pressure if they dynamically call `Object.keys().length`.
+**Action:** Cache the result of `Object.keys()` in a private class property upon initialization and expose the length via a getter (e.g. `get propertyKeyCount()`) to provide a zero-allocation way to query the key count in hot paths or polling functions.

@@ -51,6 +51,10 @@ export class SharedEntityContext<T extends Record<string, any> = Record<string, 
   public hasEntity(entity: EntityId): boolean {
     return this._entityIds.has(entity);
   }
+
+  public get propertyKeyCount(): number {
+    return this._cachedPropertyKeys.length;
+  }
 }
 
 export class SharedEntityContextManager {
@@ -149,7 +153,7 @@ export class SharedEntityContextManager {
     this.contexts.forEach((ctx) => {
       const count = ctx.entityCount;
       totalSharing += count;
-      totalKeysCount += Object.keys(ctx.properties).length;
+      totalKeysCount += ctx.propertyKeyCount;
     });
 
     // Estimate ~64 bytes saved per redundant object property per entity
