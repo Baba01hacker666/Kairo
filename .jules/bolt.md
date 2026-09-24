@@ -74,3 +74,6 @@
 ## 2024-12-14 - [Eliminate GC Allocations in Metrics Polling]
 **Learning:** Performance metrics functions like `SharedEntityContextManager.getStats()` that poll values periodically can introduce GC churn if they dynamically calculate values like `Object.keys(ctx.properties).length` over large collections. Since the properties of `SharedEntityContext` are invariant and already cached as `_cachedPropertyKeys` upon instantiation, executing `Object.keys()` over and over on each statistics request implicitly allocates new arrays unnecessarily.
 **Action:** Expose cached lengths of invariant object keys via a class getter (e.g. `get propertyKeyCount()`) to replace dynamic `Object.keys()` calls in metrics or other polling methods to prevent garbage collection spikes.
+## 2024-12-20 - [Eliminate GC Allocations when counting array elements]
+**Learning:** During optimization, it was noticed that using `Array.prototype.filter().length` to count elements matching a condition (like empty inventory slots) creates unnecessary garbage collection churn by implicitly allocating intermediate arrays on every call.
+**Action:** Use an explicit counting loop (e.g., a `for` loop) with a local counter variable instead of `.filter().length` to eliminate implicit array allocations and reduce GC overhead.

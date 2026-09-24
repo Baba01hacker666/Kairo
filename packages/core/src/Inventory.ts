@@ -423,7 +423,15 @@ export class InventoryBag {
   }
 
   public getEmptySlotCount(): number {
-    return this.slots.filter(slot => slot === null).length;
+    // ⚡ Bolt: Use explicit counting loop instead of .filter().length
+    // to eliminate implicit array allocations and reduce GC churn.
+    let count = 0;
+    for (let i = 0; i < this.slots.length; i++) {
+      if (this.slots[i] === null) {
+        count++;
+      }
+    }
+    return count;
   }
 
   public serialize(): InventorySnapshot {
