@@ -16,20 +16,25 @@
 ## 🚀 Quick Start
 
 ```bash
+# Requires Node.js 22.12 or newer.
 # Clone and install
 git clone https://github.com/Baba01hacker666/Kairo.git
 cd Kairo
-npm install
+npm ci
 
 # Start local dev server
 npm run dev
 
-# Run automated tests (171 tests passing)
+# Run automated tests
 npm test
 
-# Run Kairo CLI automated QA bug scanner
-npx kairo audit examples/fox-odyssey
+# Build the package before using the local CLI
+npm run build:cli
+npm run kairo -- audit examples/fox-odyssey
 ```
+
+The published CLI is Node-only and is not exported by the browser engine bundle.
+TypeScript consumers may need `skipLibCheck: true` due to upstream Babylon/WebXR declaration conflicts.
 
 ---
 

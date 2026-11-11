@@ -214,3 +214,17 @@ test('Tween - delay overshoot carries into the first tween frame', () => {
   assert.strictEqual(obj.x, 10);
   assert.strictEqual(manager.count, 0);
 });
+
+test('TweenManager preserves newly created tweens when callbacks clear the manager', () => {
+  const manager = new TweenManager();
+  const target = { x: 0, y: 0 };
+  manager.to(target, { x: 1 }, { duration: 1, onComplete: () => {
+    manager.killAll();
+    manager.to(target, { y: 2 }, { duration: 1, easing: 'linear' });
+  }});
+  manager.update(1);
+  assert.equal(manager.count, 1);
+  manager.update(1);
+  assert.equal(target.y, 2);
+  assert.equal(manager.count, 0);
+});

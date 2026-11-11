@@ -187,3 +187,45 @@ test('CombatSystem - re-register does not duplicate events; unregister stops for
   hero.damage(1);
   assert.strictEqual(events.length, before);
 });
+
+test('CombatSystem replaces registrations and ticks shared health only once', () => {
+  const cs = new CombatSystem();
+  const old = cs.add('hero', 10);
+  let forwarded = 0;
+  cs.events.on('entity_damaged', () => forwarded++);
+  const replacement = new HealthComponent(10, 'new');
+  cs.register('hero', replacement);
+  old.damage(1);
+  assert.equal(forwarded, 0);
+  cs.register('alias', replacement);
+  replacement.invulnerabilityDuration = 2;
+  replacement.damage(1);
+  cs.update(1);
+  assert.equal(replacement.invulnerabilityTimer, 1);
+  cs.unregister('hero');
+  cs.unregister('alias');
+  replacement.damage(1, { ignoreInvulnerability: true });
+  assert.equal(forwarded, 1);
+});
+
+test('HealthComponent protects health invariants and reentrant death', () => {
+  const hp = new HealthComponent(10);
+  hp.damage(2);
+  for (const value of [-1, 0, NaN, Infinity]) {
+    assert.equal(hp.heal(value), 0);
+    assert.equal(hp.damage(value), 0);
+  }
+  assert.equal(hp.current, 8);
+  let deaths = 0;
+  hp.on('damaged', () => hp.damage(1));
+  hp.on('died', () => deaths++);
+  hp.damage(8);
+  assert.equal(deaths, 1);
+  assert.equal(hp.isDead, true);
+  hp.revive(0);
+  assert.equal(hp.isDead, true);
+  hp.revive(1);
+  assert.equal(hp.isDead, false);
+  hp.setMax(1);
+  assert.ok(hp.current > 0);
+});

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ShaderPresets, CustomShaderMaterial } from '@kairo/renderer';
+import { createMeadowDetails } from './MeadowDetails.ts';
 import { createTree, createTreeField, createRockField, createCloudField } from '@kairo/geometry';
 
 export class GroveWorld {
@@ -7,7 +8,7 @@ export class GroveWorld {
   public waterMaterial: CustomShaderMaterial;
   public shrineGroup: THREE.Group;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, mobile = false) {
     this.group = new THREE.Group();
     scene.add(this.group);
 
@@ -22,17 +23,32 @@ export class GroveWorld {
       floorPosAttr.setZ(i, height);
     }
     floorGeo.computeVertexNormals();
+    // Soft broad color variation breaks up the formerly flat, single-color ground.
+    const colors: number[] = [];
+    const dark = new THREE.Color(0x375b3e);
+    const light = new THREE.Color(0x73915b);
+    const tint = new THREE.Color();
+    for (let i = 0; i < floorPosAttr.count; i++) {
+      const x = floorPosAttr.getX(i);
+      const z = floorPosAttr.getY(i);
+      const variation = 0.5 + 0.25 * Math.sin(x * 0.13 + z * 0.08) + 0.2 * Math.cos(z * 0.17 - x * 0.04);
+      tint.copy(dark).lerp(light, THREE.MathUtils.clamp(variation, 0, 1));
+      colors.push(tint.r, tint.g, tint.b);
+    }
+    floorGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x1b4332,
+      color: 0xffffff,
+      vertexColors: true,
       roughness: 0.85,
       metalness: 0.05,
-      flatShading: true
+      flatShading: false
     });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.receiveShadow = true;
     this.group.add(floorMesh);
+    this.group.add(createMeadowDetails((x, z) => this.getTerrainHeight(x, z), mobile));
 
     // 2. Procedural Water Pond
     this.waterMaterial = ShaderPresets.createWaterShader();
@@ -130,7 +146,7 @@ export class GroveWorld {
       scale: number;
       canopyColor: number;
     } => ({
-      position: [pos[0], pos[1], pos[2]],
+      position: [pos[0], this.getTerrainHeight(pos[0], pos[2]), pos[2]],
       scale: 1.0 + (idx % 4) * 0.25,
       canopyColor: idx % 2 === 0 ? 0x2d6a4f : 0x40916c
     }));

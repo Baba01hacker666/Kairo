@@ -33,6 +33,9 @@ export class SceneNode {
   }
 
   addChild(child: SceneNode): this {
+    for (let node: SceneNode | null = this; node; node = node.parent) {
+      if (node === child) throw new Error("Cannot create a cycle in the scene graph");
+    }
     if (child.parent) {
       child.parent.removeChild(child);
     }
@@ -117,6 +120,9 @@ export class Scene {
   }
 
   remove(node: SceneNode): void {
+    let ancestor: SceneNode | null = node;
+    while (ancestor && ancestor !== this.root) ancestor = ancestor.parent;
+    if (!ancestor || node === this.root) return;
     const parent = node.parent ?? this.root;
     const childCount = parent.children.length;
     parent.removeChild(node);

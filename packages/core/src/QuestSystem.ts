@@ -125,7 +125,7 @@ export class QuestSystem extends EventEmitter {
     }
     // Objectives can be completed before the quest starts (progress accumulates
     // while locked, or is restored from a save) — re-check so the quest completes.
-    if (quest.objectives.every(o => o.completed)) {
+    if (quest.status === 'active' && quest.objectives.every(o => o.completed)) {
       quest.status = 'completed';
       quest.completedAt = Date.now();
       this.emit('quest_completed', id);
@@ -161,6 +161,7 @@ export class QuestSystem extends EventEmitter {
 
   /** Set an objective's progress to an absolute value. */
   public setProgress(id: string, objectiveId: string, value: number): void {
+    if (!Number.isFinite(value)) return;
     const quest = this.ensureState(id);
     const obj = quest.objectives.find(o => o.id === objectiveId);
     if (!obj || obj.completed) return;
@@ -255,10 +256,11 @@ export class QuestSystem extends EventEmitter {
   }
 
   private addProgress(id: string, objectiveId: string, amount: number): void {
+    if (!Number.isFinite(amount)) return;
     const quest = this.ensureState(id);
     const obj = quest.objectives.find(o => o.id === objectiveId);
     if (!obj || obj.completed) return;
-    obj.progress = Math.min(obj.target, obj.progress + amount);
+    obj.progress = Math.max(0, Math.min(obj.target, obj.progress + amount));
     this.emit('objective_progress', { questId: id, objectiveId, progress: obj.progress, target: obj.target } satisfies ObjectiveProgressEvent);
     if (obj.progress >= obj.target) this.completeObjective(quest, obj.id);
   }
@@ -297,7 +299,7 @@ export class QuestSystem extends EventEmitter {
       objectives: def.objectives.map(o => ({
         id: o.id,
         text: o.text,
-        target: o.target ?? 1,
+        target: Number.isFinite(o.target) && o.target! > 0 ? o.target! : 1,
         progress: 0,
         completed: false
       })),

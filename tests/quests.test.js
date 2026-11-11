@@ -156,3 +156,17 @@ test('QuestSystem - start on a completed quest is a no-op; failed quest restarts
   assert.strictEqual(qs.isActive('f'), true);
   assert.strictEqual(qs.get('f').objectives[0].progress, 0);
 });
+
+test('QuestSystem guards invalid progress and start-event reentrancy', () => {
+  const quests = new QuestSystem();
+  quests.register({ id: 'q', title: 'Q', objectives: [{ id: 'o', text: 'O', target: 2 }] });
+  let completions = 0;
+  quests.on('quest_completed', () => completions++);
+  quests.advance('q', 'o', -5);
+  quests.advance('q', 'o', NaN);
+  assert.equal(quests.get('q').objectives[0].progress, 0);
+  quests.advance('q', 'o', 2);
+  quests.on('quest_started', () => quests.complete('q'));
+  quests.start('q');
+  assert.equal(completions, 1);
+});

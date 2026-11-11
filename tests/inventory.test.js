@@ -203,3 +203,60 @@ test('ECS - EntityBuilder .inventory() trait', () => {
   assert.strictEqual(comp.capacity, 30);
   assert.strictEqual(comp.bagId, 'hero_bag');
 });
+
+test('equipment replacement refuses to lose an item in a full bag', () => {
+  const sys = new InventorySystem();
+  sys.defineItem({ id: 'old', name: 'old', slotType: 'hand' });
+  sys.defineItem({ id: 'new', name: 'new', slotType: 'hand', maxStack: 5 });
+  const bag = sys.createBag('tiny', { capacity: 1 });
+  bag.addItem('old');
+  bag.slots[0].durability = 42;
+  assert.equal(bag.equip(0), true);
+  bag.addItem('new', 2);
+  assert.equal(bag.equip(0), false);
+  assert.equal(bag.getEquipped('hand').id, 'old');
+  assert.equal(bag.getEquipped('hand').durability, 42);
+  assert.equal(bag.getItemCount('new'), 2);
+  bag.removeItem('new', 1);
+  assert.equal(bag.equip(0), true);
+  assert.equal(bag.getItemAt(0).durability, 42);
+});
+
+test('transfer and unequip conserve metadata and do not duplicate items', () => {
+  const sys = new InventorySystem();
+  sys.defineItem({ id: 'tool', name: 'tool', slotType: 'hand' });
+  sys.defineItem({ id: 'arrows', name: 'arrows', slotType: 'quiver', maxStack: 10 });
+  const a = sys.createBag('a', { capacity: 2 });
+  const b = sys.createBag('b', { capacity: 1 });
+  a.addItem('tool', 1, { quality: 'rare' });
+  a.slots[0].durability = 17;
+  assert.equal(sys.transferItem('a', 'a', 0), false);
+  assert.equal(sys.transferItem('a', 'b', 0), true);
+  assert.equal(b.slots[0].durability, 17);
+  assert.deepEqual(b.slots[0].customData, { quality: 'rare' });
+  assert.equal(b.equip(0), true);
+  assert.equal(b.unequip('hand'), true);
+  assert.equal(b.slots[0].durability, 17);
+  b.clear();
+  b.addItem('arrows', 5);
+  b.equip(0);
+  assert.equal(b.isFull(), true);
+  assert.equal(b.unequip('quiver'), true);
+  assert.equal(b.getItemCount('arrows'), 5);
+});
+
+test('invalid counts cannot corrupt inventory and use callbacks cannot consume replacement items', () => {
+  const sys = new InventorySystem();
+  assert.throws(() => sys.defineItem({ id: 'bad', name: 'bad', maxStack: 0 }), RangeError);
+  sys.defineItem({ id: 'potion', name: 'potion', onUse: bag => bag.swapSlots(0, 1) });
+  const bag = sys.createBag('test-invalid', { capacity: 2 });
+  bag.addItem('potion', 2);
+  bag.addItem('gem');
+  assert.equal(bag.addItem('gem', NaN).success, false);
+  assert.equal(bag.removeItem('potion', NaN), 0);
+  assert.equal(bag.removeItemAt(0, 0), null);
+  assert.equal(bag.splitStack(0, 1, NaN), false);
+  assert.equal(bag.useItem(0), true);
+  assert.equal(bag.getItemCount('gem'), 1);
+  assert.equal(bag.getItemCount('potion'), 1);
+});

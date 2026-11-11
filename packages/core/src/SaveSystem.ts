@@ -1,4 +1,4 @@
-import { Serializer } from './Serializer.ts';
+import { Serializer, type SaveStateEnvelope } from './Serializer.ts';
 
 export interface AchievementDef {
   id: string;
@@ -20,12 +20,11 @@ export class SaveSystem {
   
   public load(): void {
     try {
-      if (typeof localStorage === 'undefined') return;
-      const raw = localStorage.getItem(this.saveKey);
+      const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(this.saveKey);
       if (raw) {
-        const envelope = JSON.parse(raw);
+        const envelope = Serializer.deserialize<SaveStateEnvelope<Record<string, any>>>(raw);
         const verified = Serializer.verifyAndUnwrapSave<Record<string, any>>(envelope);
-        if (verified.valid && verified.payload) {
+        if (verified.valid && verified.payload && typeof verified.payload === 'object' && !Array.isArray(verified.payload)) {
           this.data = verified.payload;
         }
       }
@@ -33,15 +32,15 @@ export class SaveSystem {
       console.warn('[SaveSystem] Could not load save:', e);
     }
     
-    if (!this.data.achievements) this.data.achievements = {};
-    if (!this.data.progress) this.data.progress = {};
+    if (!this.data.achievements || typeof this.data.achievements !== 'object' || Array.isArray(this.data.achievements)) this.data.achievements = {};
+    if (!this.data.progress || typeof this.data.progress !== 'object' || Array.isArray(this.data.progress)) this.data.progress = {};
   }
   
   public save(): void {
     try {
       if (typeof localStorage === 'undefined') return;
       const envelope = Serializer.createSaveEnvelope(this.data);
-      localStorage.setItem(this.saveKey, JSON.stringify(envelope));
+      localStorage.setItem(this.saveKey, Serializer.serialize(envelope));
     } catch (e) {
       console.warn('[SaveSystem] Could not save progress:', e);
     }

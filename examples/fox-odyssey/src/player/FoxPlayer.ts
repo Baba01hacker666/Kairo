@@ -96,17 +96,8 @@ export class FoxPlayer {
 
   private loadFoxModel() {
     const loader = new GLTFLoader();
-    const isGhPages = typeof window !== 'undefined' && window.location.pathname.includes('/Kairo');
-    const basePath = isGhPages ? '/Kairo' : '';
-
-    const candidateUrls = [
-      `${basePath}/models/Fox.glb`,
-      '../../models/Fox.glb',
-      '../models/Fox.glb',
-      './models/Fox.glb',
-      '/models/Fox.glb',
-      'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb'
-    ];
+    // Vite's base URL works for nested deployments as well as the dev server.
+    const candidateUrls = [`${(import.meta as any).env.BASE_URL}models/Fox.glb`];
 
     const tryLoad = (index: number) => {
       if (index >= candidateUrls.length) {

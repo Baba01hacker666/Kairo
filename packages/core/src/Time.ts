@@ -10,16 +10,27 @@ export class Time {
   public static fps: number = 60;
   public static frameCount: number = 0;
 
-  private static lastTime: number = 0;
+  private static lastTime: number | null = null;
   private static frameTimeAccumulator: number = 0;
   private static framesThisSecond: number = 0;
 
+  /** Start a new timing interval without advancing simulation time. */
+  static resetClock(): void {
+    this.lastTime = null;
+    this.deltaTime = 0;
+    this.frameTimeAccumulator = 0;
+    this.framesThisSecond = 0;
+  }
+
   static update(currentTime: number): void {
-    if (this.lastTime === 0) {
+    if (!Number.isFinite(currentTime)) return;
+    if (this.lastTime === null) {
       this.lastTime = currentTime;
+      this.deltaTime = 0;
       return;
     }
 
+    if (currentTime < this.lastTime) return;
     const rawDelta = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
 
@@ -33,9 +44,9 @@ export class Time {
     this.framesThisSecond++;
 
     if (this.frameTimeAccumulator >= 1.0) {
-      this.fps = this.framesThisSecond;
+      this.fps = this.framesThisSecond / this.frameTimeAccumulator;
       this.framesThisSecond = 0;
-      this.frameTimeAccumulator -= 1.0;
+      this.frameTimeAccumulator = 0;
     }
   }
 }

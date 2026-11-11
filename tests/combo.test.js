@@ -73,3 +73,17 @@ test('InputManager - registerCombo helper integration', () => {
 
   assert.strictEqual(specialMove, true);
 });
+
+test('ComboDetector handles overlapping prefixes and reentrant callbacks', () => {
+  const detector = new ComboDetector();
+  let calls = 0;
+  detector.register({ name: 'overlap', sequence: ['a', 'a', 'b'], onTrigger: () => {
+    calls++;
+    detector.feed('a', 5);
+  }});
+  for (const [i, key] of ['a', 'a', 'a', 'b'].entries()) detector.feed(key, i);
+  assert.equal(calls, 1);
+  detector.feed('a', 6);
+  detector.feed('b', 7);
+  assert.equal(calls, 2);
+});
