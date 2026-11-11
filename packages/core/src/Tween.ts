@@ -290,9 +290,14 @@ export class TweenManager {
 
   /** Advance all active tweens and drop finished ones. */
   public update(dt: number): void {
-    for (let i = this.tweens.length - 1; i >= 0; i--) {
-      if (this.tweens[i].update(dt)) {
-        this.tweens.splice(i, 1);
+    // Callbacks may kill or add tweens during update. Iterate the original set
+    // and remove by identity so a newly added tween is never spliced out.
+    const frameTweens = this.tweens.slice();
+    for (let i = frameTweens.length - 1; i >= 0; i--) {
+      const tween = frameTweens[i];
+      if (tween.update(dt)) {
+        const index = this.tweens.indexOf(tween);
+        if (index !== -1) this.tweens.splice(index, 1);
       }
     }
   }

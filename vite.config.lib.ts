@@ -21,8 +21,7 @@ export default defineConfig({
           three: 'THREE',
           'cannon-es': 'CANNON',
           '@babylonjs/core': 'BABYLON'
-        },
-        compact: true
+        }
       }
     }
   },

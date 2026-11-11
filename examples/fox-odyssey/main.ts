@@ -46,11 +46,14 @@ const sunLight = app.setLighting({
   sunPosition: [30, 45, 20],
   sunColor: 0xfff3d6,
   sunIntensity: 1.8,
-  ambientColor: 0x6ee7b7,
-  ambientIntensity: 0.9
+  ambientColor: 0xd2dec1,
+  ambientIntensity: 0.7
 }).sun;
 // Add the sun's target to the scene so its shadow camera can follow the player
 app.scene.add(sunLight.target);
+// RenderPipeline enables shadows by default; honor the mobile quality tier.
+app.renderer.shadowMap.enabled = !isMobile;
+sunLight.castShadow = !isMobile;
 
 // --- 2. Shared Particle Systems ---
 const leafParticles = new ParticleSystem(300, 0x34d399);
@@ -66,7 +69,7 @@ app.scene.add(splashParticles.mesh);
 // --- 3. Subsystem Modules & Realms Initialization ---
 const audio = new ForestAudio(app.audio);
 const input = new MobileInput();
-const worldL1 = new GroveWorld(app.scene);
+const worldL1 = new GroveWorld(app.scene, isMobile);
 const worldL2 = new CrystalPeaksWorld(app.scene);
 const worldL3 = new AzureGrottoWorld(app.scene);
 const player = new FoxPlayer(app.scene, dustParticles, sparkleParticles, audio);

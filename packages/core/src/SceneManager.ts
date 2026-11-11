@@ -10,6 +10,7 @@ export type SceneSetupFunction = (app: KairoApp) => void | Promise<void>;
 export class SceneManager {
   private activeSceneName: string | null = null;
   private scenes: Map<string, SceneSetupFunction> = new Map();
+  private pending: Promise<void> = Promise.resolve();
 
   constructor(private app: KairoApp) {}
 
@@ -21,7 +22,8 @@ export class SceneManager {
   }
 
   /**
-   * Unload the current scene and load a new one.
+   * Unload the current scene and load a new one. Concurrent loads run in order.
+   * Scene setup must not await another load on this manager (that would deadlock).
    */
   public async load(name: string): Promise<void> {
     const setupFn = this.scenes.get(name);
@@ -30,7 +32,14 @@ export class SceneManager {
       return;
     }
 
-    this.activeSceneName = name;
+    const transition = this.pending.then(() => this.transitionTo(name, setupFn));
+    // A failed setup must not prevent later loads.
+    this.pending = transition.catch(() => {});
+    return transition;
+  }
+
+  private async transitionTo(name: string, setupFn: SceneSetupFunction): Promise<void> {
+    this.activeSceneName = null;
     
     // 1. Stop any cutscenes
     if (this.app.cutscene) {
@@ -59,17 +68,29 @@ export class SceneManager {
       toRemove.push(node);
     });
 
+    const disposedMaterials = new Set<THREE.Material>();
+    const disposedTextures = new Set<THREE.Texture>();
+    const disposedGeometries = new Set<THREE.BufferGeometry>();
     const disposeMaterial = (mat: THREE.Material) => {
+      if (disposedMaterials.has(mat)) return;
+      disposedMaterials.add(mat);
       // Dispose any textures attached to the material to avoid GPU leaks.
       for (const value of Object.values(mat)) {
-        if (value instanceof THREE.Texture) value.dispose();
+        if (value instanceof THREE.Texture && !disposedTextures.has(value)) {
+          disposedTextures.add(value);
+          value.dispose();
+        }
       }
       mat.dispose();
     };
 
     for (const node of toRemove) {
       if ((node as any).geometry) {
-        (node as any).geometry.dispose();
+        const geometry = (node as any).geometry as THREE.BufferGeometry;
+        if (!disposedGeometries.has(geometry)) {
+          disposedGeometries.add(geometry);
+          geometry.dispose();
+        }
       }
       if ((node as any).material) {
         const mat = (node as any).material;
@@ -93,6 +114,7 @@ export class SceneManager {
 
     // 6. Run the new Scene Setup logic
     await setupFn(this.app);
+    this.activeSceneName = name;
     
     console.log(`[SceneManager] Loaded scene '${name}'`);
   }

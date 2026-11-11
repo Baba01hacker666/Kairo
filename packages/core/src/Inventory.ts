@@ -63,7 +63,8 @@ export class InventoryBag {
 
   constructor(id: string, capacity: number = 20, system: InventorySystem, maxWeight?: number) {
     this.id = id;
-    this.capacity = Math.max(1, capacity);
+    if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError("Inventory capacity must be a positive integer");
+    this.capacity = capacity;
     this.system = system;
     this.maxWeight = maxWeight;
     this.slots = new Array(this.capacity).fill(null);
@@ -72,8 +73,8 @@ export class InventoryBag {
   /**
    * Add items to the bag. Automatically stacks into existing slots before filling empty slots.
    */
-  public addItem(itemId: string, count: number = 1, customData?: Record<string, any>): ItemAddResult {
-    if (count <= 0) return { success: false, added: 0, remaining: count };
+  public addItem(itemId: string, count: number = 1, customData?: Record<string, any>, durability?: number): ItemAddResult {
+    if (!Number.isSafeInteger(count) || count <= 0) return { success: false, added: 0, remaining: count };
 
     const def = this.system.getItemDef(itemId);
     const maxStack = def?.maxStack ?? (def?.slotType ? 1 : 99);
@@ -81,10 +82,10 @@ export class InventoryBag {
     let totalAdded = 0;
 
     // 1. Try to merge into existing non-full stacks (if stackable and no unique customData)
-    if (maxStack > 1 && !customData) {
+    if (maxStack > 1 && !customData && durability === undefined) {
       for (let i = 0; i < this.slots.length && remaining > 0; i++) {
         const slotItem = this.slots[i];
-        if (slotItem && slotItem.id === itemId && slotItem.count < maxStack && !slotItem.customData) {
+        if (slotItem && slotItem.id === itemId && slotItem.count < maxStack && !slotItem.customData && slotItem.durability === undefined) {
           const space = maxStack - slotItem.count;
           const toAdd = Math.min(space, remaining);
           slotItem.count += toAdd;
@@ -105,7 +106,8 @@ export class InventoryBag {
           id: itemId,
           count: toAdd,
           slot: i,
-          customData: customData ? { ...customData } : undefined
+          customData: customData ? { ...customData } : undefined,
+          durability
         };
         this.slots[i] = newItem;
         remaining -= toAdd;
@@ -131,7 +133,7 @@ export class InventoryBag {
    * Remove a quantity of an item from the bag across any matching slots.
    */
   public removeItem(itemId: string, count: number = 1): number {
-    if (count <= 0) return 0;
+    if (!Number.isSafeInteger(count) || count <= 0) return 0;
     let needed = count;
     let totalRemoved = 0;
 
@@ -163,11 +165,12 @@ export class InventoryBag {
    * Remove items from a specific slot index.
    */
   public removeItemAt(slotIndex: number, count?: number): InventoryItem | null {
-    if (slotIndex < 0 || slotIndex >= this.slots.length) return null;
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= this.slots.length) return null;
     const item = this.slots[slotIndex];
     if (!item) return null;
 
-    const removeCount = count !== undefined ? Math.min(item.count, Math.max(1, count)) : item.count;
+    if (count !== undefined && (!Number.isSafeInteger(count) || count <= 0)) return null;
+    const removeCount = count !== undefined ? Math.min(item.count, count) : item.count;
     item.count -= removeCount;
 
     const removedItem: InventoryItem = {
@@ -213,7 +216,7 @@ export class InventoryBag {
    * Get the item in a specific slot index.
    */
   public getItemAt(slotIndex: number): InventoryItem | null {
-    if (slotIndex < 0 || slotIndex >= this.slots.length) return null;
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= this.slots.length) return null;
     return this.slots[slotIndex];
   }
 
@@ -221,16 +224,16 @@ export class InventoryBag {
    * Swap the contents of two slots, or merge them if they are identical stackable items.
    */
   public swapSlots(fromSlot: number, toSlot: number): boolean {
-    if (fromSlot < 0 || fromSlot >= this.slots.length || toSlot < 0 || toSlot >= this.slots.length) return false;
+    if (!Number.isInteger(fromSlot) || !Number.isInteger(toSlot) || fromSlot < 0 || fromSlot >= this.slots.length || toSlot < 0 || toSlot >= this.slots.length) return false;
     if (fromSlot === toSlot) return true;
 
     const itemA = this.slots[fromSlot];
     const itemB = this.slots[toSlot];
 
     // If both are same stackable item without unique customData, merge from A into B
-    if (itemA && itemB && itemA.id === itemB.id && !itemA.customData && !itemB.customData) {
+    if (itemA && itemB && itemA.id === itemB.id && !itemA.customData && !itemB.customData && itemA.durability === undefined && itemB.durability === undefined) {
       const def = this.system.getItemDef(itemA.id);
-      const maxStack = def?.maxStack ?? 99;
+      const maxStack = def?.maxStack ?? (def?.slotType ? 1 : 99);
       if (itemB.count < maxStack) {
         const space = maxStack - itemB.count;
         const transfer = Math.min(space, itemA.count);
@@ -258,8 +261,8 @@ export class InventoryBag {
    * Split a stack from one slot into another empty or partially filled slot.
    */
   public splitStack(fromSlot: number, toSlot: number, count: number): boolean {
-    if (fromSlot < 0 || fromSlot >= this.slots.length || toSlot < 0 || toSlot >= this.slots.length) return false;
-    if (fromSlot === toSlot || count <= 0) return false;
+    if (!Number.isInteger(fromSlot) || !Number.isInteger(toSlot) || fromSlot < 0 || fromSlot >= this.slots.length || toSlot < 0 || toSlot >= this.slots.length) return false;
+    if (fromSlot === toSlot || !Number.isSafeInteger(count) || count <= 0) return false;
 
     const source = this.slots[fromSlot];
     if (!source || source.count <= count) return false;
@@ -271,13 +274,14 @@ export class InventoryBag {
         id: source.id,
         count,
         slot: toSlot,
-        customData: source.customData ? { ...source.customData } : undefined
+        customData: source.customData ? { ...source.customData } : undefined,
+        durability: source.durability
       };
       this.events.emit('changed', this);
       return true;
-    } else if (dest.id === source.id && !source.customData && !dest.customData) {
+    } else if (dest.id === source.id && !source.customData && !dest.customData && source.durability === undefined && dest.durability === undefined) {
       const def = this.system.getItemDef(source.id);
-      const maxStack = def?.maxStack ?? 99;
+      const maxStack = def?.maxStack ?? (def?.slotType ? 1 : 99);
       const space = maxStack - dest.count;
       const transfer = Math.min(space, count);
       if (transfer > 0) {
@@ -302,14 +306,17 @@ export class InventoryBag {
     const slotType = targetSlotType || def?.slotType;
     if (!slotType) return false;
 
+    const previousEquipped = this.equipment.get(slotType);
+    // Taking the last item frees its slot; otherwise the old equipment must fit elsewhere.
+    if (previousEquipped && !this.canFit(previousEquipped, item.count === 1 ? slotIndex : undefined)) return false;
+
     // Remove single item from slot
     const equippedItem = this.removeItemAt(slotIndex, 1);
     if (!equippedItem) return false;
 
     // If an item is already equipped, put it back into the bag
-    const previousEquipped = this.equipment.get(slotType);
     if (previousEquipped) {
-      this.addItem(previousEquipped.id, previousEquipped.count, previousEquipped.customData);
+      this.addItem(previousEquipped.id, previousEquipped.count, previousEquipped.customData, previousEquipped.durability);
       this.events.emit('item_unequipped', { itemId: previousEquipped.id, slotType, bagId: this.id });
       this.system.events.emit('item_unequipped', { itemId: previousEquipped.id, slotType, bagId: this.id });
     }
@@ -329,7 +336,7 @@ export class InventoryBag {
     const equipped = this.equipment.get(slotType);
     if (!equipped) return false;
 
-    if (this.isFull()) return false;
+    if (!this.canFit(equipped)) return false;
 
     this.equipment.delete(slotType);
 
@@ -337,7 +344,7 @@ export class InventoryBag {
       equipped.slot = targetSlotIndex;
       this.slots[targetSlotIndex] = equipped;
     } else {
-      this.addItem(equipped.id, equipped.count, equipped.customData);
+      this.addItem(equipped.id, equipped.count, equipped.customData, equipped.durability);
     }
 
     this.events.emit('item_unequipped', { itemId: equipped.id, slotType, bagId: this.id });
@@ -399,7 +406,8 @@ export class InventoryBag {
     }
 
     if (shouldConsume) {
-      this.removeItemAt(slotIndex, 1);
+      const currentSlot = this.slots.indexOf(item);
+      if (currentSlot !== -1) this.removeItemAt(currentSlot, 1);
     }
 
     this.events.emit('item_used', { itemId: item.id, slot: slotIndex, bagId: this.id, entityId });
@@ -416,6 +424,22 @@ export class InventoryBag {
     }
     this.equipment.clear();
     this.events.emit('changed', this);
+  }
+
+  /** Whether an existing item can be returned without dropping any of it. */
+  private canFit(item: InventoryItem, freedSlot?: number): boolean {
+    const def = this.system.getItemDef(item.id);
+    const maxStack = def?.maxStack ?? (def?.slotType ? 1 : 99);
+    let space = 0;
+    for (let i = 0; i < this.slots.length; i++) {
+      const slot = i === freedSlot ? null : this.slots[i];
+      if (!slot) space += maxStack;
+      else if (!item.customData && item.durability === undefined && slot.id === item.id && !slot.customData && slot.durability === undefined) {
+        space += Math.max(0, maxStack - slot.count);
+      }
+      if (space >= item.count) return true;
+    }
+    return false;
   }
 
   public isFull(): boolean {
@@ -475,6 +499,9 @@ export class InventorySystem {
    * Register a new item definition.
    */
   public defineItem(def: ItemDef): ItemDef {
+    if (def.maxStack !== undefined && (!Number.isSafeInteger(def.maxStack) || def.maxStack < 1)) {
+      throw new RangeError("maxStack must be a positive integer");
+    }
     this.itemDefs.set(def.id, def);
     return def;
   }
@@ -533,15 +560,16 @@ export class InventorySystem {
   public transferItem(fromBagId: string, toBagId: string, fromSlot: number, count?: number): boolean {
     const fromBag = this.getBag(fromBagId);
     const toBag = this.getBag(toBagId);
-    if (!fromBag || !toBag) return false;
+    if (!fromBag || !toBag || fromBag === toBag) return false;
 
     const item = fromBag.getItemAt(fromSlot);
     if (!item) return false;
 
+    if (count !== undefined && (!Number.isSafeInteger(count) || count <= 0)) return false;
     const transferCount = count !== undefined ? Math.min(item.count, count) : item.count;
     if (transferCount <= 0) return false;
 
-    const addResult = toBag.addItem(item.id, transferCount, item.customData);
+    const addResult = toBag.addItem(item.id, transferCount, item.customData, item.durability);
     if (addResult.added > 0) {
       fromBag.removeItemAt(fromSlot, addResult.added);
       this.events.emit('item_transferred', {

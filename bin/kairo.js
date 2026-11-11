@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { runCLI } from '../packages/tools/src/cli.ts';
+import { runCLI } from '../dist/cli/cli.js';
 
 runCLI().then(exitCode => {
   if (exitCode !== 0) {

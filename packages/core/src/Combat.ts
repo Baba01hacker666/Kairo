@@ -58,7 +58,7 @@ export class HealthComponent extends EventEmitter {
 
   constructor(max: number = 100, id: string = 'entity') {
     super();
-    this.max = Math.max(1, max);
+    this.max = Number.isFinite(max) ? Math.max(1, max) : 100;
     this.current = this.max;
     this.isDead = false;
     this.id = id;
@@ -67,15 +67,16 @@ export class HealthComponent extends EventEmitter {
   /** Apply damage. Returns the amount actually dealt (0 if invulnerable/dead). */
   public damage(amount: number, options: DamageOptions = {}): number {
     if (this.isDead) return 0;
-    if (!(amount > 0)) return 0; // zero/negative/NaN would heal or emit bogus hits
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
     if (!options.ignoreInvulnerability && this.isInvulnerable) return 0;
 
     const dealt = Math.min(amount, this.current);
     this.current = Math.max(0, this.current - amount);
     const killed = this.current <= 0;
+    if (killed) this.isDead = true;
 
     const duration = options.invulnerabilityDuration ?? this.invulnerabilityDuration;
-    if (duration > 0) {
+    if (Number.isFinite(duration) && duration > 0) {
       this.invulnerabilityTimer = duration;
       this.isInvulnerable = true;
     }
@@ -89,8 +90,7 @@ export class HealthComponent extends EventEmitter {
       killed
     } satisfies DamageEvent);
 
-    if (killed && !this.isDead) {
-      this.isDead = true;
+    if (killed) {
       this.emit('died', { id: this.id });
     }
     return dealt;
@@ -98,7 +98,7 @@ export class HealthComponent extends EventEmitter {
 
   /** Restore health. Returns the amount actually restored. */
   public heal(amount: number): number {
-    if (this.isDead) return 0;
+    if (this.isDead || !Number.isFinite(amount) || amount <= 0) return 0;
     const restored = Math.min(amount, this.max - this.current);
     this.current += restored;
     this.emit('healed', { id: this.id, amount: restored, current: this.current, max: this.max } satisfies HealEvent);
@@ -107,11 +107,12 @@ export class HealthComponent extends EventEmitter {
 
   /** Resize the max health pool. */
   public setMax(max: number, keepCurrentRatio: boolean = true): void {
+    if (!Number.isFinite(max)) return;
     const oldMax = this.max;
     this.max = Math.max(1, max);
     if (keepCurrentRatio) {
       const ratio = oldMax > 0 ? this.current / oldMax : 1;
-      this.current = Math.round(this.max * ratio);
+      this.current = this.isDead ? 0 : Math.max(Number.EPSILON, this.max * ratio);
     } else {
       this.current = Math.min(this.current, this.max);
     }
@@ -119,7 +120,10 @@ export class HealthComponent extends EventEmitter {
 
   /** Revive with full (or partial) health. */
   public revive(health?: number): void {
+    if (health !== undefined && (!Number.isFinite(health) || health <= 0)) return;
     this.isDead = false;
+    this.invulnerabilityTimer = 0;
+    this.isInvulnerable = false;
     this.current = Math.max(0, Math.min(health ?? this.max, this.max));
     this.emit('revived', { id: this.id, current: this.current, max: this.max } satisfies ReviveEvent);
   }
@@ -134,7 +138,7 @@ export class HealthComponent extends EventEmitter {
 
   /** Tick invulnerability timers. Safe to call every frame. */
   public update(dt: number): void {
-    if (this.invulnerabilityTimer <= 0) return;
+    if (this.invulnerabilityTimer <= 0 || !Number.isFinite(dt) || dt <= 0) return;
     this.invulnerabilityTimer -= dt;
     if (this.invulnerabilityTimer <= 0) {
       this.invulnerabilityTimer = 0;
@@ -164,6 +168,8 @@ export class CombatSystem {
   public events: EventEmitter = new EventEmitter();
 
   public register(id: string, health: HealthComponent): HealthComponent {
+    const existing = this.entities.get(id);
+    if (existing && existing !== health) this.unregister(id);
     this.entities.set(id, health);
     const ids = this.forwarderIds.get(health);
     if (ids) {
@@ -226,7 +232,7 @@ export class CombatSystem {
 
   /** Tick invulnerability timers for every registered entity. */
   public update(dt: number): void {
-    this.entities.forEach(health => health.update(dt));
+    this.forwarderIds.forEach((_ids, health) => health.update(dt));
   }
 
   public get size(): number {

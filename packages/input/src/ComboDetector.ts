@@ -69,19 +69,24 @@ export class ComboDetector {
         // Completed sequence!
         if (tracker.currentIndex >= combo.sequence.length) {
           triggered.push(combo.name);
+          tracker.currentIndex = 0; // Reset before callbacks, which may feed another input.
           if (combo.onTrigger) {
             combo.onTrigger();
           }
           this.events.emit('combo_triggered', { name: combo.name, sequence: combo.sequence });
-          tracker.currentIndex = 0; // Reset after successful trigger
         }
       } else {
-        // If not matching next step, check if it matches the first step of this combo
-        if (combo.sequence[0].toLowerCase() === inputKey.toLowerCase()) {
-          tracker.currentIndex = 1;
-          tracker.lastInputTime = currentTime;
-        } else {
-          tracker.currentIndex = 0;
+        // Retain the longest prefix that is also a suffix of the inputs so far.
+        // Merely restarting at the first key loses overlapping sequences (A A B).
+        const matched = combo.sequence.slice(0, tracker.currentIndex).map(key => key.toLowerCase());
+        matched.push(inputKey.toLowerCase());
+        tracker.currentIndex = 0;
+        for (let length = Math.min(matched.length, combo.sequence.length - 1); length > 0; length--) {
+          if (matched.slice(-length).every((key, i) => key === combo.sequence[i].toLowerCase())) {
+            tracker.currentIndex = length;
+            tracker.lastInputTime = currentTime;
+            break;
+          }
         }
       }
     }

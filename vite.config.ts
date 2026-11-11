@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: './',
   server: {
-    allowedHosts: ['.monkeycode-ai.live']
+    allowedHosts: ['.monkeycode-ai.live', '.e2b.app']
   },
   build: {
     outDir: 'dist',
