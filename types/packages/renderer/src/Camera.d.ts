@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Vector3 } from '../../core/src/Math.ts';
+import { Vector3 } from '../../core/src/Math.js';
 export interface CameraShakeConfig {
     intensity: number;
     duration: number;

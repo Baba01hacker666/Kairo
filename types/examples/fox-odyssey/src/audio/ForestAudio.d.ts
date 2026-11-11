@@ -1,4 +1,4 @@
-import { AudioManager } from '@kairo/audio';
+import { AudioManager } from '../../../../packages/audio/src/index.js';
 export declare class ForestAudio {
     private audioManager;
     private nextMelodyTime;

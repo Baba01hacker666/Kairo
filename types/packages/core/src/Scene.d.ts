@@ -1,5 +1,5 @@
-import { Vector3, Quaternion, Matrix4 } from './Math.ts';
-import { EventEmitter } from './EventSystem.ts';
+import { Vector3, Quaternion, Matrix4 } from './Math.js';
+import { EventEmitter } from './EventSystem.js';
 export interface SceneNodeSerialized {
     id: string;
     name: string;

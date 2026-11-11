@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Font } from 'three/examples/jsm/loaders/FontLoader.js';
-import { CompressionStats } from './MeshCompressor.ts';
+import { CompressionStats } from './MeshCompressor.js';
 export type AssetModelType = 'gltf' | 'glb' | 'obj' | 'fbx' | 'stl' | 'ply' | 'dae' | 'vox' | 'drc' | 'blend';
 export interface ModelBoundsInfo {
     width: number;

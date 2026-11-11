@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { World, EntityBuilder, EntityId } from '@kairo/ecs';
+import type { World, EntityBuilder, EntityId } from '../../ecs/src/index.js';
 export interface ScriptContext {
     object: THREE.Object3D;
     scene?: THREE.Scene;

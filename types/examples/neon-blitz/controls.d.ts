@@ -1,4 +1,4 @@
-import { KairoApp } from '@kairo/core';
+import { KairoApp } from '../../packages/core/src/index.js';
 export interface MoveInput {
     xAxis: number;
     zAxis: number;

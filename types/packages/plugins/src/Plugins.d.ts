@@ -1,4 +1,4 @@
-import { Engine } from '../../core/src/Engine.ts';
+import { Engine } from '../../core/src/Engine.js';
 export interface PluginMeta {
     id: string;
     name: string;

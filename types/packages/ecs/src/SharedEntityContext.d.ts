@@ -3,7 +3,7 @@
  * Allows thousands of entities to share invariant archetype properties (geometry, materials, physics parameters)
  * in a single memory record, reducing heap allocations and cache misses during batch system updates.
  */
-import { EntityId } from './ECS.ts';
+import { EntityId } from './ECS.js';
 export interface SharedContextStats {
     totalRegisteredContexts: number;
     totalEntitiesSharing: number;

@@ -1,1 +1,0 @@
-import{xa as e}from"./vendor-BMZqWkbJ.js";export{e as lightUboDeclarationWGSL};

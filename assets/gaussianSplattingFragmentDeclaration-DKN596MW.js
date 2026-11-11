@@ -1,0 +1,1 @@
+import{ui as e}from"./vendor-CiG8lhUG.js";export{e as gaussianSplattingFragmentDeclaration};

@@ -1,4 +1,4 @@
-import { EventEmitter } from '../../core/src/EventSystem.ts';
+import { EventEmitter } from '../../core/src/EventSystem.js';
 export interface StateConfig<TContext = any, TState extends string = string> {
     /** Lifecycle hook invoked when entering this state. */
     onEnter?: (context: TContext, fromState: TState | null) => void;

@@ -1,1 +1,0 @@
-import{ai as e}from"./vendor-BMZqWkbJ.js";export{e as defaultVertexShader};

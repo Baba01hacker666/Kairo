@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KairoApp } from '@kairo/core';
+import { KairoApp } from '../../../packages/core/src/index.js';
 export declare class Monolith {
     app: KairoApp;
     group: THREE.Group;

@@ -1,3 +1,3 @@
-export * from './UI.ts';
-export * from './CinematicOverlay.ts';
-export * from './FloatingText.ts';
+export * from './UI.js';
+export * from './CinematicOverlay.js';
+export * from './FloatingText.js';

@@ -1,4 +1,4 @@
-import { RenderMetrics } from '@kairo/renderer';
+import { RenderMetrics } from '../../renderer/src/index.js';
 export declare class DebugInspector {
     private overlay;
     private metricsElement;

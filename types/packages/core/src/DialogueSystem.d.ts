@@ -1,5 +1,5 @@
-import { EventEmitter } from './EventSystem.ts';
-import { TextManager, SpeakerProfile, ParsedText } from './TextManager.ts';
+import { EventEmitter } from './EventSystem.js';
+import { TextManager, SpeakerProfile, ParsedText } from './TextManager.js';
 export interface DialogueChoice {
     text: string;
     /** Target line id (or index) to jump to after selecting; omit to end the dialogue. */

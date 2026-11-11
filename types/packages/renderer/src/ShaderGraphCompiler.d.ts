@@ -1,4 +1,4 @@
-import { UniformDefinition } from './ShaderMaterial.ts';
+import { UniformDefinition } from './ShaderMaterial.js';
 export type ShaderNodeType = 'input_time' | 'input_uv' | 'input_local_pos' | 'input_world_pos' | 'input_view_pos' | 'input_world_normal' | 'input_color' | 'input_noise' | 'input_float' | 'space_conversion' | 'matrix_transform' | 'fresnel' | 'math_add' | 'math_multiply' | 'math_sin' | 'math_step' | 'master_output';
 export interface ShaderNodePort {
     id: string;

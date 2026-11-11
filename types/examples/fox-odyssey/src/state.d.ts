@@ -1,4 +1,4 @@
-import type { HealthComponent } from '@kairo/core';
+import type { HealthComponent } from '../../../packages/core/src/index.js';
 export interface SaveData {
     acornsCollected: number;
     collectedAcornIds: number[];

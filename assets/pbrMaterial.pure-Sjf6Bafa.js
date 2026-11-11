@@ -1,0 +1,1 @@
+import{bo as e,xo as t,yo as n}from"./vendor-CiG8lhUG.js";export{n as PBRMaterial,e as RegisterPBRMaterial,t as RegisterPbrMaterial};

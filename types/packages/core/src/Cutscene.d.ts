@@ -1,4 +1,4 @@
-import { KairoApp } from './KairoApp.ts';
+import { KairoApp } from './KairoApp.js';
 export declare class CutsceneAbortError extends Error {
     constructor();
 }

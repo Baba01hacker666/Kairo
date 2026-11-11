@@ -1,4 +1,4 @@
-import type { QuestSystem, DialogueSystem } from '@kairo/core';
+import type { QuestSystem, DialogueSystem } from '../../../../packages/core/src/index.js';
 export interface ObjectiveItem {
     id: string;
     text: string;

@@ -1,0 +1,1 @@
+import{Qr as e}from"./vendor-CiG8lhUG.js";export{e as OptimizeIndices};

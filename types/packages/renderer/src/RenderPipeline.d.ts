@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PostProcessManager } from './PostProcessManager.ts';
+import { PostProcessManager } from './PostProcessManager.js';
 export interface CpuProfileMap {
     webGlRenderMs: number;
     physicsStepMs: number;

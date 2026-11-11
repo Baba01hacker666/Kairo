@@ -1,24 +1,24 @@
 import * as THREE from 'three';
-import { Engine } from './Engine.ts';
-import { World, EntityHandle } from '@kairo/ecs';
-import { PhysicsWorld, RigidBody, Collider } from '@kairo/physics';
-import { CameraController, RenderPipeline, CpuProfileMap } from '@kairo/renderer';
-import { InputManager } from '@kairo/input';
-import { AudioManager } from '@kairo/audio';
-import { UIManager } from '@kairo/ui';
-import { DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline, GameBugDetector } from '@kairo/tools';
-import { SaveSystem } from './SaveSystem.ts';
-import { SceneManager } from './SceneManager.ts';
-import { CutsceneManager } from './Cutscene.ts';
-import { QuestSystem } from './QuestSystem.ts';
-import { DialogueSystem } from './DialogueSystem.ts';
-import { CombatSystem } from './Combat.ts';
-import { TweenManager } from './Tween.ts';
-import { CameraFX } from './CameraFX.ts';
-import { InventorySystem } from './Inventory.ts';
-import { TextManager } from './TextManager.ts';
-import { VoiceManager } from '@kairo/audio';
-import { AssetManager } from '@kairo/assets';
+import { Engine } from './Engine.js';
+import { World, EntityHandle } from '../../ecs/src/index.js';
+import { PhysicsWorld, RigidBody, Collider } from '../../physics/src/index.js';
+import { CameraController, RenderPipeline, CpuProfileMap } from '../../renderer/src/index.js';
+import { InputManager } from '../../input/src/index.js';
+import { AudioManager } from '../../audio/src/index.js';
+import { UIManager } from '../../ui/src/index.js';
+import { DebugInspector, ScreenRecorder, DebugRenderer, VideoTimeline, GameBugDetector } from '../../tools/src/index.js';
+import { SaveSystem } from './SaveSystem.js';
+import { SceneManager } from './SceneManager.js';
+import { CutsceneManager } from './Cutscene.js';
+import { QuestSystem } from './QuestSystem.js';
+import { DialogueSystem } from './DialogueSystem.js';
+import { CombatSystem } from './Combat.js';
+import { TweenManager } from './Tween.js';
+import { CameraFX } from './CameraFX.js';
+import { InventorySystem } from './Inventory.js';
+import { TextManager } from './TextManager.js';
+import { VoiceManager } from '../../audio/src/index.js';
+import { AssetManager } from '../../assets/src/index.js';
 import * as BABYLON from '@babylonjs/core';
 export interface KairoAppConfig {
     canvas?: HTMLCanvasElement | string;
@@ -80,10 +80,10 @@ export declare class KairoApp {
     mobileControls(): this;
     registerObstacle(object: THREE.Object3D): void;
     createEntity(name?: string): EntityHandle;
-    createSharedContext(id: string, properties: Record<string, any>): import("@kairo/ecs").SharedEntityContext<Record<string, any>>;
+    createSharedContext(id: string, properties: Record<string, any>): import("../../ecs/src/index.js").SharedEntityContext<Record<string, any>>;
     createEntityWithSharedContext(contextId: string, name?: string): EntityHandle;
-    audit(): import("@kairo/tools").BugAuditReport;
-    runFuzzTest(durationSeconds?: number): Promise<import("@kairo/tools").FuzzTestResult>;
+    audit(): import("../../tools/src/index.js").BugAuditReport;
+    runFuzzTest(durationSeconds?: number): Promise<import("../../tools/src/index.js").FuzzTestResult>;
     toggleBugInspector(): void;
     clearObstacles(): void;
     setLighting(options: {
@@ -101,7 +101,7 @@ export declare class KairoApp {
     animate(target: any, keyframes: any, options?: any): any;
     onUpdate(callback: (dt: number) => void): void;
     onRender(callback: () => void): void;
-    createProceduralTerrain(options: any): import("@kairo/geometry").TerrainResult;
+    createProceduralTerrain(options: any): import("../../geometry/src/index.js").TerrainResult;
     start(): Promise<void>;
     stop(): void;
     /**

@@ -2,7 +2,7 @@
  * Kairo High-Performance Web UI Framework
  * Provides responsive, animated, themeable HUD overlays, menus, modals, toasts, and settings controls.
  */
-import { FloatingTextOptions, FloatingHealthBarOptions, FloatingHealthBarHandle } from './FloatingText.ts';
+import { FloatingTextOptions, FloatingHealthBarOptions, FloatingHealthBarHandle } from './FloatingText.js';
 export interface UITheme {
     primaryColor: string;
     accentColor: string;

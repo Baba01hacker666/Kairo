@@ -1,5 +1,5 @@
-import type { QuestSystem } from '@kairo/core';
-import type { GameState } from './state.ts';
+import type { QuestSystem } from '../../../packages/core/src/index.js';
+import type { GameState } from './state.js';
 /**
  * Fox Odyssey quest definitions (one quest per story chapter), driven through
  * the engine's QuestSystem. Objective progress is derived from GameState, which

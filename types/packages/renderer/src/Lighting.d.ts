@@ -1,4 +1,4 @@
-import { Color, Vector3 } from '../../core/src/Math.ts';
+import { Color, Vector3 } from '../../core/src/Math.js';
 export declare const LightType: {
     readonly Directional: "DIRECTIONAL";
     readonly Point: "POINT";

@@ -1,3 +1,3 @@
 export * from './ECS.js';
-export * from './FastSoAWorld.ts';
-export * from './SharedEntityContext.ts';
+export * from './FastSoAWorld.js';
+export * from './SharedEntityContext.js';

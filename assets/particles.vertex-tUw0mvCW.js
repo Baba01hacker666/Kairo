@@ -1,0 +1,1 @@
+import{Pr as e}from"./vendor-CiG8lhUG.js";export{e as particlesVertexShaderWGSL};

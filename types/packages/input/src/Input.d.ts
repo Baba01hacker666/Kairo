@@ -1,5 +1,5 @@
-import { Vector2 } from '../../core/src/Math.ts';
-import { ComboDetector, InputCombo } from './ComboDetector.ts';
+import { Vector2 } from '../../core/src/Math.js';
+import { ComboDetector, InputCombo } from './ComboDetector.js';
 export declare enum MouseButton {
     Left = 0,
     Middle = 1,

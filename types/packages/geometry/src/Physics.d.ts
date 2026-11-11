@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Collider } from '@kairo/physics';
+import { Collider } from '../../physics/src/index.js';
 /**
  * @kairo/geometry — Collider derivation.
  *

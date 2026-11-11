@@ -2,7 +2,7 @@
  * Kairo Engine Networking Framework
  * Client Prediction, Entity State Interpolation, RPC, WebSocket Transport & Snapshot Reconciliation
  */
-import { Vector3 } from '../../core/src/Math.ts';
+import { Vector3 } from '../../core/src/Math.js';
 export interface NetworkPacket {
     type: 'state' | 'rpc' | 'connect' | 'disconnect' | 'ping' | 'pong';
     senderId: string;

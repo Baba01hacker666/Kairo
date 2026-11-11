@@ -1,4 +1,4 @@
-import { EventEmitter } from './EventSystem.ts';
+import { EventEmitter } from './EventSystem.js';
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'quest' | 'material' | 'misc' | string;
 export interface ItemDef {
     /** Unique item identifier. */
@@ -58,7 +58,7 @@ export declare class InventoryBag {
     /**
      * Add items to the bag. Automatically stacks into existing slots before filling empty slots.
      */
-    addItem(itemId: string, count?: number, customData?: Record<string, any>): ItemAddResult;
+    addItem(itemId: string, count?: number, customData?: Record<string, any>, durability?: number): ItemAddResult;
     /**
      * Remove a quantity of an item from the bag across any matching slots.
      */
@@ -115,6 +115,8 @@ export declare class InventoryBag {
      * Clear all slots and unequip all items.
      */
     clear(): void;
+    /** Whether an existing item can be returned without dropping any of it. */
+    private canFit;
     isFull(): boolean;
     getEmptySlotCount(): number;
     serialize(): InventorySnapshot;

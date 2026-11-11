@@ -1,5 +1,5 @@
-import { EventEmitter } from '../../core/src/EventSystem.ts';
-import { AudioManager } from './Audio.ts';
+import { EventEmitter } from '../../core/src/EventSystem.js';
+import { AudioManager } from './Audio.js';
 export interface VoiceProfile {
     /** Voice profile identifier (e.g. 'owl', 'fox', 'duck', 'robot', 'narrator'). */
     name?: string;

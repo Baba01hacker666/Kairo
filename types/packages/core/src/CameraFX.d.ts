@@ -1,4 +1,4 @@
-import { TweenManager, EasingFn } from './Tween.ts';
+import { TweenManager, EasingFn } from './Tween.js';
 /** Minimal camera interface — anything with a position works (THREE cameras included). */
 export interface CameraLike {
     position: {

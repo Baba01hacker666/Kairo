@@ -1,4 +1,4 @@
-import { EventEmitter } from './EventSystem.ts';
+import { EventEmitter } from './EventSystem.js';
 export interface SpeakerProfile {
     /** Unique speaker id (e.g. 'owl', 'fox', 'elder_tree', 'system'). */
     id: string;

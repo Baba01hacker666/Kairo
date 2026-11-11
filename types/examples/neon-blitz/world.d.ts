@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KairoApp } from '@kairo/core';
+import { KairoApp } from '../../packages/core/src/index.js';
 export declare const ARENA_HALF = 14;
 export declare const PLAYER_SPAWN: THREE.Vector3;
 export declare function getRandomArenaPosition(clearance: number, height: number): THREE.Vector3;
@@ -14,8 +14,8 @@ export declare function buildWorld(app: KairoApp, shadows: boolean): {
     glowMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     player: {
         mesh: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial, THREE.Object3DEventMap>;
-        rb: import("@kairo/core").RigidBody;
-        col: import("@kairo/core").Collider;
+        rb: import("../../packages/core/src/index.js").RigidBody;
+        col: import("../../packages/core/src/index.js").Collider;
         dispose: () => void;
     } | {
         mesh: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial, THREE.Object3DEventMap>;

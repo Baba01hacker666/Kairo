@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ParticleSystem } from '@kairo/renderer';
+import { ParticleSystem } from '../../../../packages/renderer/src/index.js';
 export interface FriendlyDuck {
     id: number;
     mesh: THREE.Group;

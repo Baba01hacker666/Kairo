@@ -1,4 +1,4 @@
-import { CustomShaderMaterial } from './ShaderMaterial.ts';
+import { CustomShaderMaterial } from './ShaderMaterial.js';
 export type ShaderPresetName = 'water' | 'dissolve' | 'hologram' | 'toon' | 'fresnel';
 export declare const SHADER_PRESETS: ShaderPresetName[];
 export declare class ShaderPresets {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CustomShaderMaterial } from '@kairo/renderer';
+import { CustomShaderMaterial } from '../../../../packages/renderer/src/index.js';
 export declare class AzureGrottoWorld {
     group: THREE.Group;
     waterMaterial: CustomShaderMaterial;

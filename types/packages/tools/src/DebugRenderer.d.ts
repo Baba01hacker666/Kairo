@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KairoApp } from '@kairo/core';
+import { KairoApp } from '../../core/src/index.js';
 export declare class DebugRenderer {
     private app;
     private gridHelper;

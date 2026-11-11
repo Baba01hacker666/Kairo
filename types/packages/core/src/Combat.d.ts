@@ -1,4 +1,4 @@
-import { EventEmitter } from './EventSystem.ts';
+import { EventEmitter } from './EventSystem.js';
 export interface DamageOptions {
     /** Damage source label (e.g. enemy id, hazard name) for events/debugging. */
     source?: string;

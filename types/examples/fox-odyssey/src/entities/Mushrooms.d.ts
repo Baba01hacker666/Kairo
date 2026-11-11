@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { BouncyMushroom } from '../types.ts';
-import { ParticleSystem } from '@kairo/renderer';
-import { ForestAudio } from '../audio/ForestAudio.ts';
+import { BouncyMushroom } from '../types.js';
+import { ParticleSystem } from '../../../../packages/renderer/src/index.js';
+import { ForestAudio } from '../audio/ForestAudio.js';
 export declare class MushroomManager {
     mushrooms: BouncyMushroom[];
     private sparkleParticles;

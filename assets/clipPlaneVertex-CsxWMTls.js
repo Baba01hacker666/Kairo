@@ -1,1 +1,0 @@
-import{ao as e}from"./vendor-BMZqWkbJ.js";export{e as clipPlaneVertexWGSL};

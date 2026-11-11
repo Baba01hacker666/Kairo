@@ -1,6 +1,6 @@
-import { Color } from '../../core/src/Math.ts';
-import { CustomShaderMaterial } from './ShaderMaterial.ts';
-import { ShaderPresetName } from './ShaderPresets.ts';
+import { Color } from '../../core/src/Math.js';
+import { CustomShaderMaterial } from './ShaderMaterial.js';
+import { ShaderPresetName } from './ShaderPresets.js';
 export declare const RenderQueue: {
     readonly Opaque: 2000;
     readonly AlphaTest: 2450;

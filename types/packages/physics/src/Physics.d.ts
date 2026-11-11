@@ -1,4 +1,4 @@
-import { Vector3, BoundingBox, Ray } from '../../core/src/Math.ts';
+import { Vector3, BoundingBox, Ray } from '../../core/src/Math.js';
 import * as CANNON from 'cannon-es';
 export declare const RigidBodyType: {
     readonly Dynamic: "DYNAMIC";

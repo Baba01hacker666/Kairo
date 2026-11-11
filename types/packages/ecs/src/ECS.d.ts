@@ -8,7 +8,7 @@
  * - Entity Hierarchy & Parent/Child Relationships
  * - Full Entity & Component Serialization
  */
-import { SharedEntityContextManager, SharedEntityContext } from './SharedEntityContext.ts';
+import { SharedEntityContextManager, SharedEntityContext } from './SharedEntityContext.js';
 export type EntityId = number;
 export type ComponentType<T = any> = new (...args: any[]) => T;
 export interface Component {

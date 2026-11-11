@@ -1,4 +1,4 @@
-import { EventEmitter } from './EventSystem.ts';
+import { EventEmitter } from './EventSystem.js';
 export type QuestStatus = 'locked' | 'active' | 'completed' | 'failed';
 export interface QuestObjectiveDef {
     /** Unique objective id within the quest. */

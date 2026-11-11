@@ -1,2 +1,2 @@
-export * from './Audio.ts';
-export * from './VoiceManager.ts';
+export * from './Audio.js';
+export * from './VoiceManager.js';

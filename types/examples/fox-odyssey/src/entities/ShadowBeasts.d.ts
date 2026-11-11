@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { ParticleSystem } from '@kairo/renderer';
-import { ForestAudio } from '../audio/ForestAudio.ts';
+import { ParticleSystem } from '../../../../packages/renderer/src/index.js';
+import { ForestAudio } from '../audio/ForestAudio.js';
 export interface ShadowBeast {
     id: number;
     type: 'creeper' | 'specter' | 'behemoth';

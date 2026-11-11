@@ -1,2 +1,2 @@
-export * from './AI.ts';
-export * from './StateMachine.ts';
+export * from './AI.js';
+export * from './StateMachine.js';

@@ -11,5 +11,7 @@ export declare class Time {
     private static lastTime;
     private static frameTimeAccumulator;
     private static framesThisSecond;
+    /** Start a new timing interval without advancing simulation time. */
+    static resetClock(): void;
     static update(currentTime: number): void;
 }

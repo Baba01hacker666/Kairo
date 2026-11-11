@@ -1,5 +1,5 @@
-import { Scene } from './Scene.ts';
-import { EventEmitter } from './EventSystem.ts';
+import { Scene } from './Scene.js';
+import { EventEmitter } from './EventSystem.js';
 export declare const EngineState: {
     readonly Stopped: "STOPPED";
     readonly Running: "RUNNING";
@@ -12,6 +12,7 @@ export declare class Engine {
     events: EventEmitter;
     private animationFrameId;
     private fixedUpdateAccumulator;
+    private loopGeneration;
     constructor();
     start(): void;
     pause(): void;
